@@ -75,6 +75,7 @@ asynStatus SPiiPlusController::writeread(const char* format, ...)
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 : asynMotorAxis(pC, axisNo)
 {
+	setIntegerParam(pC->motorStatusHasEncoder_, 1);
 }
 
 asynStatus SPiiPlusAxis::poll(bool* moving)
