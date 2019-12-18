@@ -20,7 +20,7 @@
 #-                    Default: 19200
 #- ###################################################
 
-# ACS MCB-4B serial connection settings
+# ACS MP4U serial connection settings
 iocshLoad("$(IP)/iocsh/setSerialParams.iocsh", "PORT=$(PORT), BAUD=$(BAUD=19200), BITS=8, STOP=1, PARITY=none")
 asynOctetSetInputEos( "$(PORT)", -1, "\r")
 asynOctetSetOutputEos("$(PORT)", -1, "\r")
