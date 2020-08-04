@@ -5,21 +5,36 @@ include $(TOP)/configure/CONFIG
 #  ADD MACRO DEFINITIONS AFTER THIS LINE
 #=============================
 
+# The following are used for debugging messages.
+#!USR_CXXFLAGS += -DDEBUG
+
 #=============================
 # Build the IOC application
 
 PROD_IOC = acsMotion
-# acsMotion.dbd will be created and installed
-DBD += acsMotion.dbd
+# acsMotionIOC.dbd will be created and installed
+DBD += acsMotionIOC.dbd
 
 # acsMotion.dbd will be made up from these files:
 acsMotion_DBD += base.dbd
 
 # Include dbd files from all support applications:
-#acsMotion_DBD += xxx.dbd
+#ifdef ASYN
+acsMotion_DBD += asyn.dbd
+acsMotion_DBD += drvAsynIPPort.dbd
+#endif
+acsMotion_DBD += motorSupport.dbd
+acsMotion_DBD += AcsMotion.dbd
 
 # Add all the support libraries needed by this IOC
-#acsMotion_LIBS += xxx
+acsMotion_LIBS += AcsMotion
+acsMotion_LIBS += motor
+#ifdef ASYN
+acsMotion_LIBS += asyn
+#endif
+#ifdef SNCSEQ
+acsMotion_LIBS += seq pv
+#endif
 
 # acsMotion_registerRecordDeviceDriver.cpp derives from acsMotion.dbd
 acsMotion_SRCS += acsMotion_registerRecordDeviceDriver.cpp
