@@ -16,15 +16,15 @@ PROD_IOC = acsMotion
 DBD += acsMotionIOC.dbd
 
 # acsMotion.dbd will be made up from these files:
-acsMotion_DBD += base.dbd
+acsMotionIOC_DBD += base.dbd
 
 # Include dbd files from all support applications:
 #ifdef ASYN
-acsMotion_DBD += asyn.dbd
-acsMotion_DBD += drvAsynIPPort.dbd
+acsMotionIOC_DBD += asyn.dbd
+acsMotionIOC_DBD += drvAsynIPPort.dbd
 #endif
-acsMotion_DBD += motorSupport.dbd
-acsMotion_DBD += AcsMotion.dbd
+acsMotionIOC_DBD += motorSupport.dbd
+acsMotionIOC_DBD += AcsMotion.dbd
 
 # Add all the support libraries needed by this IOC
 acsMotion_LIBS += AcsMotion
