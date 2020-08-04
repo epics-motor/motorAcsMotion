@@ -1,0 +1,6 @@
+# Use the following lines if motorAcsMotion was built inside motor
+MOTOR=
+-include $(MOTOR)/configure/RELEASE
+# Use the following lines if motorAcsMotion was built outside motor
+#!MOTOR_ACSMOTION=
+#!-include $(MOTOR_ACSMOTION)/configure/RELEASE.local
