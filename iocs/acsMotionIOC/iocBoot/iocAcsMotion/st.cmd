@@ -1,18 +1,24 @@
 #!../../bin/linux-x86_64/acsMotion
 
-## You may have to change acsMotion to something else
-## everywhere it appears in this file
+< envPaths
 
-#< envPaths
+cd "${TOP}"
 
 ## Register all support components
-dbLoadDatabase("../../dbd/acsMotion.dbd",0,0)
-acsMotion_registerRecordDeviceDriver(pdbbase) 
+dbLoadDatabase "dbd/acsMotionIOC.dbd"
+acsMotion_registerRecordDeviceDriver pdbbase
 
-## Load record instances
-dbLoadRecords("../../db/acsMotion.db","user=kpetersn")
+cd "${TOP}/iocBoot/${IOC}"
 
-iocInit()
+## motorUtil (allstop & alldone)
+dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=acsMotion:")
 
-## Start any sequence programs
-#seq sncacsMotion,"user=kpetersn"
+## 
+#< AcsMotion.cmd
+
+iocInit
+
+## motorUtil (allstop & alldone)
+motorUtilInit("acsMotion:")
+
+# Boot complete
