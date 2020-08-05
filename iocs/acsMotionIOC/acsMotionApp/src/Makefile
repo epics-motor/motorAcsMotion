@@ -12,19 +12,19 @@ include $(TOP)/configure/CONFIG
 # Build the IOC application
 
 PROD_IOC = acsMotion
-# acsMotionIOC.dbd will be created and installed
-DBD += acsMotionIOC.dbd
+# acsMotion.dbd will be created and installed
+DBD += acsMotion.dbd
 
 # acsMotion.dbd will be made up from these files:
-acsMotionIOC_DBD += base.dbd
+acsMotion_DBD += base.dbd
 
 # Include dbd files from all support applications:
 #ifdef ASYN
-acsMotionIOC_DBD += asyn.dbd
-acsMotionIOC_DBD += drvAsynIPPort.dbd
+acsMotion_DBD += asyn.dbd
+acsMotion_DBD += drvAsynIPPort.dbd
 #endif
-acsMotionIOC_DBD += motorSupport.dbd
-acsMotionIOC_DBD += AcsMotion.dbd
+acsMotion_DBD += motorSupport.dbd
+acsMotion_DBD += AcsMotionSupport.dbd
 
 # Add all the support libraries needed by this IOC
 acsMotion_LIBS += AcsMotion

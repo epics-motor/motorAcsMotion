@@ -5,7 +5,7 @@ include $(TOP)/configure/CONFIG
 # The following are used for debugging messages.
 #USR_CXXFLAGS += -DDEBUG
 
-DBD += AcsMotion.dbd
+DBD += AcsMotionSupport.dbd
 
 LIBRARY_IOC = AcsMotion
 
