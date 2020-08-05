@@ -12,6 +12,11 @@ include $(TOP)/configure/CONFIG
 # Build the IOC application
 
 PROD_IOC = acsMotion
+
+# Include the old dbd file that travis appears to have cached until it builds the new one
+DBD += acsMotion.dbd
+acsMotion_DBD += base.dbd
+
 # acsMotionIOC.dbd will be created and installed
 DBD += acsMotionIOC.dbd
 
