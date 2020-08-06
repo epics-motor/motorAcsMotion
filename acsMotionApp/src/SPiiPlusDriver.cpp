@@ -16,9 +16,9 @@
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
-#include "SPiiPlusDriver.h"
-
 #include <epicsExport.h>
+
+#include "SPiiPlusDriver.h"
 
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
                                              double movingPollPeriod, double idlePollPeriod)
