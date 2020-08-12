@@ -5,7 +5,7 @@
 cd "${TOP}"
 
 ## Register all support components
-dbLoadDatabase "dbd/acsMotionIOC.dbd"
+dbLoadDatabase "dbd/acsMotion.dbd"
 acsMotion_registerRecordDeviceDriver pdbbase
 
 cd "${TOP}/iocBoot/${IOC}"
