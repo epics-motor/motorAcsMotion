@@ -14,7 +14,7 @@ cd "${TOP}/iocBoot/${IOC}"
 dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=acsMotion:")
 
 ## 
-#< AcsMotion.cmd
+< AcsMotion.cmd
 
 iocInit
 

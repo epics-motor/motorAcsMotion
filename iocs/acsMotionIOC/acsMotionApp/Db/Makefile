@@ -12,6 +12,24 @@ include $(TOP)/configure/CONFIG
 # databases, templates, substitutions like this
 #DB += xxx.db
 
+### These databases come from motor
+DB_INSTALLS += $(MOTOR)/db/asyn_motor.db
+DB_INSTALLS += $(MOTOR)/db/asyn_motor_positions.req
+DB_INSTALLS += $(MOTOR)/db/asyn_motor_settings.req
+DB_INSTALLS += $(MOTOR)/db/basic_asyn_motor.db
+DB_INSTALLS += $(MOTOR)/db/profileMoveController.template
+DB_INSTALLS += $(MOTOR)/db/profileMoveController_settings.req
+DB_INSTALLS += $(MOTOR)/db/profileMoveAxis.template
+DB_INSTALLS += $(MOTOR)/db/profileMoveAxis_settings.req
+
+#!ifdef MOTOR_ACSMOTION
+#!### motorAcsMotion was built outside motor
+#!DB_INSTALLS += $(MOTOR_ACSMOTION)/db/local.db
+#!else
+#!### motorAcsMotion was built inside motor/modules
+#!DB_INSTALLS += $(MOTOR)/db/local.db
+#!endif
+
 #----------------------------------------------------
 # If <anyname>.db template is not named <anyname>*.template add
 # <anyname>_template = <templatename>

@@ -1,0 +1,21 @@
+file "$(TOP)/db/asyn_motor.db"
+{
+pattern
+{P,           N,   M,       DTYP,         PORT,  ADDR,  DESC,          EGU, DIR,  VELO,  VBAS,  ACCL,  BDST,  BVEL,  BACC,  MRES,  PREC,  DHLM,  DLLM,  INIT}
+{acsMotion:,  1,  "m$(N)",  "asynMotor",  ACS1,  0,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+{acsMotion:,  2,  "m$(N)",  "asynMotor",  ACS1,  1,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+{acsMotion:,  3,  "m$(N)",  "asynMotor",  ACS1,  2,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+{acsMotion:,  4,  "m$(N)",  "asynMotor",  ACS1,  3,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+{acsMotion:,  5,  "m$(N)",  "asynMotor",  ACS1,  4,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+{acsMotion:,  6,  "m$(N)",  "asynMotor",  ACS1,  5,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+{acsMotion:,  7,  "m$(N)",  "asynMotor",  ACS1,  6,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+{acsMotion:,  8,  "m$(N)",  "asynMotor",  ACS1,  7,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:,  9,  "m$(N)",  "asynMotor",  ACS1,  8,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:, 10,  "m$(N)",  "asynMotor",  ACS1,  9,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:, 11,  "m$(N)",  "asynMotor",  ACS1, 10,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:, 12,  "m$(N)",  "asynMotor",  ACS1, 11,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:, 13,  "m$(N)",  "asynMotor",  ACS1, 12,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:, 14,  "m$(N)",  "asynMotor",  ACS1, 13,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:, 15,  "m$(N)",  "asynMotor",  ACS1, 14,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+#!{acsMotion:, 16,  "m$(N)",  "asynMotor",  ACS1, 15,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
+}
