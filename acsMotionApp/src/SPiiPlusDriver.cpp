@@ -76,6 +76,8 @@ SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 : asynMotorAxis(pC, axisNo)
 {
 	setIntegerParam(pC->motorStatusHasEncoder_, 1);
+	// Gain Support is required for setClosedLoop to be called
+	setIntegerParam(pC->motorStatusGainSupport_, 1);
 }
 
 asynStatus SPiiPlusAxis::poll(bool* moving)
@@ -128,17 +130,29 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	setIntegerParam(controller->motorStatusHighLimit_, right_limit);
 	setIntegerParam(controller->motorStatusLowLimit_, left_limit);
 	
-	status = controller->writeread("?MST(%d).#MOVE", axisNo_);
+	// Read the entire motor status and parse the relevant bits
+	int axis_status;
+	std::stringstream status_convert;
+	
+	status = controller->writeread("?D/MST(%d)", axisNo_);
 	controller->instring.replace(0,1," ");
 	
-	int motion;
-	std::stringstream moving_convert;
+	status_convert << controller->instring;
+	status_convert >> axis_status;
 	
-	moving_convert << controller->instring;
-	moving_convert >> motion;
+	int enabled;
+	//int open_loop;
+	//int in_pos;
+	int motion;
+	
+	enabled = axis_status & (1<<0);
+	//open_loop = axis_status & (1<<1);
+	//in_pos = axis_status & (1<<4);
+	motion = axis_status & (1<<5);
 	
 	setIntegerParam(controller->motorStatusDone_, !motion);
 	setIntegerParam(controller->motorStatusMoving_, motion);
+	setIntegerParam(controller->motorStatusPowerOn_, enabled);
 	
 	callParamCallbacks();
 	
@@ -182,6 +196,28 @@ asynStatus SPiiPlusAxis::stop(double acceleration)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	return controller->writeread("HALT %d", axisNo_);
+}
+
+/** Set the motor closed loop status. 
+  * \param[in] closedLoop true = close loop, false = open looop. */
+asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	
+	/*
+	 Enable/disable the axis instead of changing the closed-loop state.
+	*/
+	if (closedLoop)
+	{
+		status = controller->writeread("ENABLE %d", axisNo_);
+	}
+	else
+	{
+		status = controller->writeread("DISABLE %d", axisNo_);
+	}
+	
+	return status;
 }
 
 static void AcsMotionConfig(const char* acs_port, const char* asyn_port, int num_axes, double moving_rate, double idle_rate)
