@@ -19,3 +19,24 @@ pattern
 #!{acsMotion:, 15,  "m$(N)",  "asynMotor",  ACS1, 14,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
 #!{acsMotion:, 16,  "m$(N)",  "asynMotor",  ACS1, 15,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0025,  4,     100,   -100,  ""}
 }
+
+file "$(TOP)/db/profileMoveController.template"
+{
+pattern
+{P,       R,     PORT, NAXES,  NPOINTS, NPULSES, TIMEOUT}
+{acsMotion:, pm1:,  ACS1,     8,     2000,    2000,     2.0}
+}
+
+file "$(TOP)/db/profileMoveAxis.template"
+{
+pattern
+{P,       R,     M, NPOINTS, NREADBACK, PORT, ADDR, TIMEOUT, PREC}
+{acsMotion:, pm1:,  1,    2000,      2000, ACS1,    0,     2.0,    4}
+{acsMotion:, pm1:,  2,    2000,      2000, ACS1,    1,     2.0,    4}
+{acsMotion:, pm1:,  3,    2000,      2000, ACS1,    2,     2.0,    4}
+{acsMotion:, pm1:,  4,    2000,      2000, ACS1,    3,     2.0,    4}
+{acsMotion:, pm1:,  5,    2000,      2000, ACS1,    4,     2.0,    4}
+{acsMotion:, pm1:,  6,    2000,      2000, ACS1,    5,     2.0,    4}
+{acsMotion:, pm1:,  7,    2000,      2000, ACS1,    6,     2.0,    4}
+{acsMotion:, pm1:,  8,    2000,      2000, ACS1,    7,     2.0,    4}
+}

@@ -3,6 +3,9 @@
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
+#define SPIIPLUS_MAX_AXES 64
+#define MAX_MESSAGE_LEN   256
+
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
 {
 public:
@@ -27,8 +30,21 @@ public:
 	
 	asynStatus writeread(const char* format, ...);
 	
+	/* These are functions for profile moves */
+	asynStatus buildProfile();
+	asynStatus executeProfile();
+	asynStatus abortProfile();
+	
+	/* These are the methods that are new to this class */
+	void profileThread();
+	asynStatus runProfile();
+	
 protected:
 	std::string instring;
+	
+private:
+	epicsEventId profileExecuteEvent_;
+	std::vector <int> profileAxes_;
 	
 friend class SPiiPlusAxis;
 };

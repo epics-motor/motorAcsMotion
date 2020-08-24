@@ -20,6 +20,10 @@
 
 #include "SPiiPlusDriver.h"
 
+static const char *driverName = "SPiiPlusController";
+
+static void SPiiPlusProfileThreadC(void *pPvt);
+
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
                                              double movingPollPeriod, double idlePollPeriod)
  : asynMotorController(ACSPortName, numAxes, 0, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0)
@@ -40,6 +44,19 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	}
 	
 	this->startPoller(movingPollPeriod, idlePollPeriod, 2);
+	
+	// Create the event that wakes up the thread for profile moves
+	profileExecuteEvent_ = epicsEventMustCreate(epicsEventEmpty);
+	
+	// Create the thread that will execute profile moves
+	epicsThreadCreate("SPiiPlusProfile", 
+		epicsThreadPriorityLow,
+		epicsThreadGetStackSize(epicsThreadStackMedium),
+		(EPICSTHREADFUNC)SPiiPlusProfileThreadC, (void *)this);
+	
+	// TODO: should this be an arg to the controller creation call or a separate call like it is in the XPS driver
+	// hard-code the max number of points for now
+	initializeProfile(2000);
 }
 
 SPiiPlusAxis* SPiiPlusController::getAxis(asynUser *pasynUser)
@@ -218,6 +235,132 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 	}
 	
 	return status;
+}
+
+/** Function to build a coordinated move of multiple axes. */
+asynStatus SPiiPlusController::buildProfile()
+{
+  //int i, j; 
+  int j; 
+  //int status;
+  //bool buildOK=true;
+  //bool verifyOK=true;
+  //int numPoints;
+  //int numElements;
+  //double trajVel;
+  //double D0, D1, T0, T1;
+  char message[MAX_MESSAGE_LEN];
+  //int buildStatus;
+  //double distance;
+  //double maxVelocity;
+  //double maxAcceleration;
+  //double maxVelocityActual=0.0;
+  //double maxAccelerationActual=0.0;
+  //double minPositionActual=0.0, maxPositionActual=0.0;
+  //double minProfile, maxProfile;
+  //double lowLimit, highLimit;
+  //double minJerkTime, maxJerkTime;
+  //double preTimeMax, postTimeMax;
+  //double preVelocity[SPIIPLUS_MAX_AXES], postVelocity[SPIIPLUS_MAX_AXES];
+  //double time;
+  //int axis
+  int useAxis;
+  
+  static const char *functionName = "buildProfile";
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: entry\n",
+            driverName, functionName);
+            
+  // Call the base class method which will build the time array if needed
+  asynMotorController::buildProfile();
+
+  strcpy(message, "");
+  setStringParam(profileBuildMessage_, message);
+  setIntegerParam(profileBuildState_, PROFILE_BUILD_BUSY);
+  setIntegerParam(profileBuildStatus_, PROFILE_STATUS_UNDEFINED);
+  callParamCallbacks();
+  
+  // IAMHERE
+  
+  // Calculate pre & post profile distances?
+
+  // check which axes should be used
+  for (j=0; j<numAxes_; j++) {
+    getIntegerParam(j, profileUseAxis_, &useAxis);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i axis will be used: %i\n", driverName, functionName, j, useAxis);
+    if (useAxis)
+    {
+      profileAxes_.push_back(j);
+    }
+  }
+  
+  for (j=0; j<profileAxes_.size(); j++)
+  {
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i axis will be used\n", driverName, functionName, profileAxes_[j]);
+  }
+  
+  // figure out how to convert from the N use_axis variables to 
+  // POINT commands with this syntax: POINT (0,1,5), 1000,2000,3000, 500
+  
+  // Verfiy the profile
+  
+  return asynSuccess;
+}
+
+/** Function to execute a coordinated move of multiple axes. */
+asynStatus SPiiPlusController::executeProfile()
+{
+  // static const char *functionName = "executeProfile";
+  epicsEventSignal(profileExecuteEvent_);
+  return asynSuccess;
+}
+
+/* C Function which runs the profile thread */ 
+static void SPiiPlusProfileThreadC(void *pPvt)
+{
+  SPiiPlusController *pC = (SPiiPlusController*)pPvt;
+  pC->profileThread();
+}
+
+/* Function which runs in its own thread to execute profiles */ 
+void SPiiPlusController::profileThread()
+{
+  while (true) {
+    epicsEventWait(profileExecuteEvent_);
+    runProfile();
+  }
+}
+
+/* Function to run trajectory.  It runs in a dedicated thread, so it's OK to block.
+ * It needs to lock and unlock when it accesses class data. */ 
+asynStatus SPiiPlusController::runProfile()
+{
+  //IAMHERE
+
+  // move motors to the starting position
+
+  // configure data recording
+
+  // configure pulse output
+
+  // start data recording?
+
+  // wake up poller
+  
+  // run the trajectory
+  
+  // cleanup
+
+  return asynSuccess;
+}
+
+/** Function to abort a profile. */
+asynStatus SPiiPlusController::abortProfile()
+{
+  // static const char *functionName = "abortProfile";
+  // TODO
+  return asynSuccess;
 }
 
 static void AcsMotionConfig(const char* acs_port, const char* asyn_port, int num_axes, double moving_rate, double idle_rate)

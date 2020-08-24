@@ -23,12 +23,18 @@ acsMotion_DBD += base.dbd
 acsMotion_DBD += asyn.dbd
 acsMotion_DBD += drvAsynIPPort.dbd
 #endif
+#ifdef BUSY
+acsMotion_DBD += busySupport.dbd
+#endif
 acsMotion_DBD += motorSupport.dbd
 acsMotion_DBD += AcsMotionSupport.dbd
 
 # Add all the support libraries needed by this IOC
 acsMotion_LIBS += AcsMotion
 acsMotion_LIBS += motor
+#ifdef BUSY
+acsMotion_LIBS += busy
+#endif
 #ifdef ASYN
 acsMotion_LIBS += asyn
 #endif
