@@ -43,6 +43,8 @@ protected:
 	std::string instring;
 	
 private:
+	std::string axesToString(std::vector <int> axes);
+	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;
 	

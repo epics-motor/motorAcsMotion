@@ -237,6 +237,32 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 	return status;
 }
 
+std::string SPiiPlusController::axesToString(std::vector <int> axes)
+{
+  static const char *functionName = "axesToString";
+  uint i;
+  std::stringstream outputStr;
+  
+  for (i=0; i<axes.size(); i++)
+  {
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i axis will be used\n", driverName, functionName, axes[i]);
+    if (axes[i] == axes.front())
+    {
+      outputStr << '(' << axes[i];
+    }
+    else if (axes[i] == axes.back())
+    {
+      outputStr << ',' << axes[i] << ')';
+    }
+    else
+    {
+      outputStr << ',' << axes[i];
+    }
+  }
+  
+  return outputStr.str();
+}
+
 /** Function to build a coordinated move of multiple axes. */
 asynStatus SPiiPlusController::buildProfile()
 {
@@ -264,6 +290,7 @@ asynStatus SPiiPlusController::buildProfile()
   //double preVelocity[SPIIPLUS_MAX_AXES], postVelocity[SPIIPLUS_MAX_AXES];
   //double time;
   //int axis
+  std::string axisList;
   int useAxis;
   
   static const char *functionName = "buildProfile";
@@ -288,17 +315,15 @@ asynStatus SPiiPlusController::buildProfile()
   // check which axes should be used
   for (j=0; j<numAxes_; j++) {
     getIntegerParam(j, profileUseAxis_, &useAxis);
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i axis will be used: %i\n", driverName, functionName, j, useAxis);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: %i axis will be used: %i\n", driverName, functionName, j, useAxis);
     if (useAxis)
     {
       profileAxes_.push_back(j);
     }
   }
   
-  for (j=0; j<profileAxes_.size(); j++)
-  {
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i axis will be used\n", driverName, functionName, profileAxes_[j]);
-  }
+  axisList = axesToString(profileAxes_);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisList = %s\n", driverName, functionName, axisList.c_str());
   
   // figure out how to convert from the N use_axis variables to 
   // POINT commands with this syntax: POINT (0,1,5), 1000,2000,3000, 500
