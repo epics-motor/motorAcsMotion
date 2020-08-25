@@ -498,10 +498,9 @@ void SPiiPlusController::profileThread()
  * It needs to lock and unlock when it accesses class data. */ 
 asynStatus SPiiPlusController::runProfile()
 {
-  //int status;
+  int status;
   //bool executeOK=true;
   //bool aborted=false;
-  //int j;
   int startPulses, endPulses;
   //int lastTime;
   int numPoints, numElements, numPulses;
@@ -509,11 +508,14 @@ asynStatus SPiiPlusController::runProfile()
   //double pulsePeriod;
   double position;
   //double time;
-  int i;
+  //int i;
+  uint j;
   int moveMode;
   char message[MAX_MESSAGE_LEN];
   //char buffer[MAX_GATHERING_STRING];
   std::string positions;
+  std::stringstream positionStr;
+  std::stringstream commandStr;
   //int eventId;
   SPiiPlusAxis *pAxis;
   static const char *functionName = "runProfile";
@@ -534,30 +536,39 @@ asynStatus SPiiPlusController::runProfile()
   // move motors to the starting position
   getIntegerParam(profileMoveMode_, &moveMode);
   
-  // IAMHERE - need preDistance to be defined for axes for moving to the start position to make sense
-
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE) {
-      std::stringstream positionStr;
-      
-      for (i=0; i<profileAxes_.size(); i++)
-      {
-        pAxis = getAxis(profileAxes_[i]);
-        position = pAxis->profilePositions_[0] - pAxis->profilePreDistance_;
-        if (profileAxes_[i] == profileAxes_.front())
-        {
-          positionStr << position;
-        }
-        else 
-        {
-          positionStr << ',' << position;
-        }
-      }
     
+    for (j=0; j<profileAxes_.size(); j++)
+    {
+      pAxis = getAxis(profileAxes_[j]);
+      position = pAxis->profilePositions_[0] - pAxis->profilePreDistance_;
+      if (profileAxes_[j] == profileAxes_.front())
+      {
+        positionStr << position;
+      }
+      else 
+      {
+        positionStr << ',' << position;
+      }
+    }
     asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: positionStr = %s\n", driverName, functionName, positionStr.str().c_str());
-
-  } else {
+    commandStr << "PTP/m " << axesToString(profileAxes_) << ", " << positionStr.str();
+  }
+  else
+  {
     // Do something eventually
   }
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: commandStr = %s\n", driverName, functionName, commandStr.str().c_str());
+  status = writeread(commandStr.str().c_str());
+
+  // Wait for the motors to get there
+  //wakeupPoller();
+  //waitMotors();
+
+  lock();
+  setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_EXECUTING);
+  callParamCallbacks();
+  unlock();
 
   // configure data recording
 
