@@ -533,47 +533,45 @@ asynStatus SPiiPlusController::runProfile()
   callParamCallbacks();
   unlock();
   
-  // move motors to the starting position
+  /* move motors to the starting position */
   getIntegerParam(profileMoveMode_, &moveMode);
-  
-  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE) {
-    for (j=0; j<profileAxes_.size(); j++)
+  for (j=0; j<profileAxes_.size(); j++)
+  {
+    pAxis = getAxis(profileAxes_[j]);
+    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      pAxis = getAxis(profileAxes_[j]);
       // calculate the absolute starting position
       position = pAxis->profilePositions_[0] - pAxis->profilePreDistance_;
-      if (profileAxes_[j] == profileAxes_.front())
-      {
-        positionStr << position;
-      }
-      else 
-      {
-        positionStr << ',' << position;
-      }
     }
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: positionStr = %s\n", driverName, functionName, positionStr.str().c_str());
-    commandStr << "PTP/m " << axesToString(profileAxes_) << ", " << positionStr.str();
+    else
+    {
+      // calculate the relative starting position
+      position = -pAxis->profilePreDistance_;
+    }
+    
+    if (profileAxes_[j] == profileAxes_.front())
+    {
+      positionStr << position;
+    }
+    else 
+    {
+      positionStr << ',' << position;
+    }
+  }
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: positionStr = %s\n", driverName, functionName, positionStr.str().c_str());
+  
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+  {
+    commandStr << "PTP/m ";
   }
   else
   {
-    for (j=0; j<profileAxes_.size(); j++)
-    {
-      pAxis = getAxis(profileAxes_[j]);
-      // calculate the relative starting position
-      position = -pAxis->profilePreDistance_;
-      if (profileAxes_[j] == profileAxes_.front())
-      {
-        positionStr << position;
-      }
-      else 
-      {
-        positionStr << ',' << position;
-      }
-    }
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: positionStr = %s\n", driverName, functionName, positionStr.str().c_str());
-    commandStr << "PTP/mr " << axesToString(profileAxes_) << ", " << positionStr.str();
+    commandStr << "PTP/mr ";
   }
+  commandStr << axesToString(profileAxes_) << ", " << positionStr.str();
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: commandStr = %s\n", driverName, functionName, commandStr.str().c_str());
+  
+  // Send the group move command
   status = writeread(commandStr.str().c_str());
 
   // Wait for the motors to get there
