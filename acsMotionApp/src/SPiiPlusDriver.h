@@ -17,6 +17,11 @@ public:
 	asynStatus setPosition(double position);
 	asynStatus setClosedLoop(bool closedLoop);
 	
+	
+private:
+	double profilePreDistance_;
+	double profilePostDistance_;
+	
 friend class SPiiPlusController;
 };
 
@@ -40,10 +45,14 @@ public:
 	asynStatus runProfile();
 	
 protected:
+	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
 	std::string instring;
 	
 private:
 	std::string axesToString(std::vector <int> axes);
+	std::string positionsToString(int positionIndex);
+	int parseInt();
+	double parseDouble();
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;

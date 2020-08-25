@@ -24,11 +24,19 @@ static const char *driverName = "SPiiPlusController";
 
 static void SPiiPlusProfileThreadC(void *pPvt);
 
+#ifndef MAX
+#define MAX(a,b) ((a)>(b)? (a): (b))
+#endif
+#ifndef MIN
+#define MIN(a,b) ((a)<(b)? (a): (b))
+#endif
+
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
                                              double movingPollPeriod, double idlePollPeriod)
  : asynMotorController(ACSPortName, numAxes, 0, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0)
 {
 	asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
+	pAxes_ = (SPiiPlusAxis **)(asynMotorController::pAxes_);
 	
 	if (status)
 	{
@@ -87,6 +95,33 @@ asynStatus SPiiPlusController::writeread(const char* format, ...)
 	va_end(args);
 	
 	return out;
+}
+
+// The following parse methods would be better as a template method, but that might break VxWorks compatibility
+int SPiiPlusController::parseInt()
+{
+	int out_val;
+	std::stringstream val_convert;
+	
+	instring.replace(0,1," ");
+	
+	val_convert << instring;
+	val_convert >> out_val;
+	
+	return out_val;
+}
+
+double SPiiPlusController::parseDouble()
+{
+	double out_val;
+	std::stringstream val_convert;
+	
+	instring.replace(0,1," ");
+	
+	val_convert << instring;
+	val_convert >> out_val;
+	
+	return out_val;
 }
 
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
@@ -248,7 +283,12 @@ std::string SPiiPlusController::axesToString(std::vector <int> axes)
     asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i axis will be used\n", driverName, functionName, axes[i]);
     if (axes[i] == axes.front())
     {
-      outputStr << '(' << axes[i];
+      if (axes.size() > 1)
+      {
+          // Parentheses are only required when multiple axes are used
+          outputStr << '(';
+      }
+      outputStr << axes[i];
     }
     else if (axes[i] == axes.back())
     {
@@ -263,32 +303,56 @@ std::string SPiiPlusController::axesToString(std::vector <int> axes)
   return outputStr.str();
 }
 
+std::string SPiiPlusController::positionsToString(int positionIndex)
+{
+  static const char *functionName = "positionsToString";
+  uint i;
+  SPiiPlusAxis *pAxis;
+  std::stringstream outputStr;
+  
+  for (i=0; i<profileAxes_.size(); i++)
+  {
+    pAxis = getAxis(i);
+    
+    if (profileAxes_[i] == profileAxes_.front())
+    {
+      outputStr << pAxis->profilePositions_[positionIndex];
+    }
+    else 
+    {
+      outputStr << ',' << pAxis->profilePositions_[positionIndex];
+    }
+  }
+  
+  return outputStr.str();
+}
+
 /** Function to build a coordinated move of multiple axes. */
 asynStatus SPiiPlusController::buildProfile()
 {
-  //int i, j; 
-  int j; 
-  //int status;
-  //bool buildOK=true;
+  int i; 
+  uint j; 
+  int status;
+  bool buildOK=true;
   //bool verifyOK=true;
-  //int numPoints;
+  int numPoints;
   //int numElements;
   //double trajVel;
   //double D0, D1, T0, T1;
   char message[MAX_MESSAGE_LEN];
   int buildStatus;
-  //double distance;
-  //double maxVelocity;
-  //double maxAcceleration;
+  double maxVelocity;
+  double maxAcceleration;
   //double maxVelocityActual=0.0;
   //double maxAccelerationActual=0.0;
   //double minPositionActual=0.0, maxPositionActual=0.0;
   //double minProfile, maxProfile;
   //double lowLimit, highLimit;
   //double minJerkTime, maxJerkTime;
-  //double preTimeMax, postTimeMax;
-  //double preVelocity[SPIIPLUS_MAX_AXES], postVelocity[SPIIPLUS_MAX_AXES];
-  //double time;
+  double preTimeMax, postTimeMax;
+  double preVelocity[SPIIPLUS_MAX_AXES], postVelocity[SPIIPLUS_MAX_AXES];
+  double preTime, postTime;
+  double preDistance, postDistance;
   //int axis
   std::string axisList;
   int useAxis;
@@ -308,21 +372,81 @@ asynStatus SPiiPlusController::buildProfile()
   setIntegerParam(profileBuildStatus_, PROFILE_STATUS_UNDEFINED);
   callParamCallbacks();
   
-  // Calculate pre & post profile distances?
-
-  // check which axes should be used
+  // 
   profileAxes_.clear();
-  for (j=0; j<numAxes_; j++) {
-    getIntegerParam(j, profileUseAxis_, &useAxis);
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: %i axis will be used: %i\n", driverName, functionName, j, useAxis);
+  
+  for (i=0; i<numAxes_; i++) {
+    // Zero the velocity arrays
+    preVelocity[i] = 0.;
+    postVelocity[i] = 0.;
+    // Check which axes should be used
+    getIntegerParam(i, profileUseAxis_, &useAxis);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: %i axis will be used: %i\n", driverName, functionName, i, useAxis);
     if (useAxis)
     {
-      profileAxes_.push_back(j);
+      profileAxes_.push_back(i);
     }
   }
   
   axisList = axesToString(profileAxes_);
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisList = %s\n", driverName, functionName, axisList.c_str());
+  
+  // TODO: how should an empty axis list be handled?
+  
+  /* We create trajectories with an extra element at the beginning and at the end.
+   * The distance and time of the first element is defined so that the motors will
+   * accelerate from 0 to the velocity of the first "real" element at their 
+   * maximum allowed acceleration.
+   * Similarly, the distance and time of last element is defined so that the 
+   * motors will decelerate from the velocity of the last "real" element to 0 
+   * at the maximum allowed acceleration. */
+
+  preTimeMax = 0.;
+  postTimeMax = 0.;
+  getIntegerParam(profileNumPoints_, &numPoints);
+  
+  for (j=0; j<profileAxes_.size(); j++)
+  {
+    // Query the max velocity and acceleration
+    status = writeread("?XVEL(%d)", j);
+    maxVelocity = parseDouble();
+    if (status) {
+      buildOK = false;
+      sprintf(message, "Error getting XVEL, status=%d\n", status);
+      goto done;
+    }
+    status = writeread("?XACC(%d)", j);
+    maxAcceleration = parseDouble();
+    if (status) {
+      buildOK = false;
+      sprintf(message, "Error getting XACC, status=%d\n", status);
+      goto done;
+    }
+    
+    /* The calculation using maxAcceleration read from controller below
+     * is "correct" but subject to roundoff errors when sending ASCII commands.
+     * Reduce acceleration 10% to account for this. */
+    maxAcceleration *= 0.9;
+    preDistance = pAxes_[j]->profilePositions_[1] - pAxes_[j]->profilePositions_[0];
+    preVelocity[j] = preDistance/profileTimes_[0];
+    preTime = fabs(preVelocity[j]) / maxAcceleration;
+    preTimeMax = MAX(preTimeMax, preTime);
+    postDistance = pAxes_[j]->profilePositions_[numPoints-1] - 
+               pAxes_[j]->profilePositions_[numPoints-2];
+    postVelocity[j] = postDistance/profileTimes_[numPoints-1];
+    postTime = fabs(postVelocity[j]) / maxAcceleration;
+    postTimeMax = MAX(postTimeMax, postTime);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
+              "%s:%s: axis %d profilePositions[0]=%f, profilePositions[%d]=%f, maxAcceleration=%f, preTimeMax=%f, postTimeMax=%f\n",
+              driverName, functionName, j, pAxes_[j]->profilePositions_[0], numPoints-1, pAxes_[j]->profilePositions_[numPoints-1],
+              maxAcceleration, preTimeMax, postTimeMax);
+  }
+    
+  for (j=0; j<profileAxes_.size(); j++)
+  {
+    pAxes_[j]->profilePreDistance_  =  0.5 * preVelocity[j]  * preTimeMax; 
+    pAxes_[j]->profilePostDistance_ =  0.5 * postVelocity[j] * postTimeMax; 
+  }  
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
   
@@ -374,9 +498,66 @@ void SPiiPlusController::profileThread()
  * It needs to lock and unlock when it accesses class data. */ 
 asynStatus SPiiPlusController::runProfile()
 {
-  //IAMHERE
+  //int status;
+  //bool executeOK=true;
+  //bool aborted=false;
+  //int j;
+  int startPulses, endPulses;
+  //int lastTime;
+  int numPoints, numElements, numPulses;
+  //int executeStatus;
+  //double pulsePeriod;
+  double position;
+  //double time;
+  int i;
+  int moveMode;
+  char message[MAX_MESSAGE_LEN];
+  //char buffer[MAX_GATHERING_STRING];
+  std::string positions;
+  //int eventId;
+  SPiiPlusAxis *pAxis;
+  static const char *functionName = "runProfile";
 
+  lock();
+  getIntegerParam(profileStartPulses_, &startPulses);
+  getIntegerParam(profileEndPulses_,   &endPulses);
+  getIntegerParam(profileNumPoints_,   &numPoints);
+  getIntegerParam(profileNumPulses_,   &numPulses);
+  
+  strcpy(message, " ");
+  setStringParam(profileExecuteMessage_, message);
+  setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_MOVE_START);
+  setIntegerParam(profileExecuteStatus_, PROFILE_STATUS_UNDEFINED);
+  callParamCallbacks();
+  unlock();
+  
   // move motors to the starting position
+  getIntegerParam(profileMoveMode_, &moveMode);
+  
+  // IAMHERE - need preDistance to be defined for axes for moving to the start position to make sense
+
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE) {
+      std::stringstream positionStr;
+      
+      for (i=0; i<profileAxes_.size(); i++)
+      {
+        pAxis = getAxis(profileAxes_[i]);
+        position = pAxis->profilePositions_[0] - pAxis->profilePreDistance_;
+        if (profileAxes_[i] == profileAxes_.front())
+        {
+          positionStr << position;
+        }
+        else 
+        {
+          positionStr << ',' << position;
+        }
+      }
+    
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: positionStr = %s\n", driverName, functionName, positionStr.str().c_str());
+
+  } else {
+    // Do something eventually
+  }
 
   // configure data recording
 
