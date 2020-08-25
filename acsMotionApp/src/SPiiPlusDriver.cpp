@@ -276,7 +276,7 @@ asynStatus SPiiPlusController::buildProfile()
   //double trajVel;
   //double D0, D1, T0, T1;
   char message[MAX_MESSAGE_LEN];
-  //int buildStatus;
+  int buildStatus;
   //double distance;
   //double maxVelocity;
   //double maxAcceleration;
@@ -301,18 +301,17 @@ asynStatus SPiiPlusController::buildProfile()
             
   // Call the base class method which will build the time array if needed
   asynMotorController::buildProfile();
-
+  
   strcpy(message, "");
   setStringParam(profileBuildMessage_, message);
   setIntegerParam(profileBuildState_, PROFILE_BUILD_BUSY);
   setIntegerParam(profileBuildStatus_, PROFILE_STATUS_UNDEFINED);
   callParamCallbacks();
   
-  // IAMHERE
-  
   // Calculate pre & post profile distances?
 
   // check which axes should be used
+  profileAxes_.clear();
   for (j=0; j<numAxes_; j++) {
     getIntegerParam(j, profileUseAxis_, &useAxis);
     asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: %i axis will be used: %i\n", driverName, functionName, j, useAxis);
@@ -325,11 +324,25 @@ asynStatus SPiiPlusController::buildProfile()
   axisList = axesToString(profileAxes_);
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisList = %s\n", driverName, functionName, axisList.c_str());
   
-  // figure out how to convert from the N use_axis variables to 
-  // POINT commands with this syntax: POINT (0,1,5), 1000,2000,3000, 500
+  // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
   
-  // Verfiy the profile
+  // Verfiy the profile (check speed, accel, limit violations)
   
+  done:
+  // Can't fail if nothing is verified
+  buildStatus = PROFILE_STATUS_SUCCESS;
+  setIntegerParam(profileBuildStatus_, buildStatus);
+  setStringParam(profileBuildMessage_, message);
+  if (buildStatus != PROFILE_STATUS_SUCCESS) {
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: %s\n",
+              driverName, functionName, message);
+  }
+  /* Clear build command.  This is a "busy" record, don't want to do this until build is complete. */
+  setIntegerParam(profileBuild_, 0);
+  setIntegerParam(profileBuildState_, PROFILE_BUILD_DONE);
+  callParamCallbacks();
+  //return status ? asynError : asynSuccess;
   return asynSuccess;
 }
 
