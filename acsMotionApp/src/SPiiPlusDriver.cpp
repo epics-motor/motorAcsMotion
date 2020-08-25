@@ -537,10 +537,10 @@ asynStatus SPiiPlusController::runProfile()
   getIntegerParam(profileMoveMode_, &moveMode);
   
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE) {
-    
     for (j=0; j<profileAxes_.size(); j++)
     {
       pAxis = getAxis(profileAxes_[j]);
+      // calculate the absolute starting position
       position = pAxis->profilePositions_[0] - pAxis->profilePreDistance_;
       if (profileAxes_[j] == profileAxes_.front())
       {
@@ -556,7 +556,22 @@ asynStatus SPiiPlusController::runProfile()
   }
   else
   {
-    // Do something eventually
+    for (j=0; j<profileAxes_.size(); j++)
+    {
+      pAxis = getAxis(profileAxes_[j]);
+      // calculate the relative starting position
+      position = -pAxis->profilePreDistance_;
+      if (profileAxes_[j] == profileAxes_.front())
+      {
+        positionStr << position;
+      }
+      else 
+      {
+        positionStr << ',' << position;
+      }
+    }
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: positionStr = %s\n", driverName, functionName, positionStr.str().c_str());
+    commandStr << "PTP/mr " << axesToString(profileAxes_) << ", " << positionStr.str();
   }
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: commandStr = %s\n", driverName, functionName, commandStr.str().c_str());
   status = writeread(commandStr.str().c_str());
