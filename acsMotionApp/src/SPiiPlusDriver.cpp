@@ -79,6 +79,7 @@ SPiiPlusAxis* SPiiPlusController::getAxis(int axisNo)
 
 asynStatus SPiiPlusController::writeread(const char* format, ...)
 {
+	static const char *functionName = "writeread";
 	va_list args;
 	va_start(args, format);
 	
@@ -93,6 +94,9 @@ asynStatus SPiiPlusController::writeread(const char* format, ...)
 	this->instring = std::string(inString_);
 	
 	va_end(args);
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: outString_ = %s\n", driverName, functionName, outString_);
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  inString_ = %s\n", driverName, functionName, inString_);
 	
 	return out;
 }
@@ -204,8 +208,8 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	//in_pos = axis_status & (1<<4);
 	motion = axis_status & (1<<5);
 	
-	asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i status: %i\n", driverName, functionName, axisNo_, axis_status);
-	asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i motion: %i\n", driverName, functionName, axisNo_, motion);
+	//asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i status: %i\n", driverName, functionName, axisNo_, axis_status);
+	//asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i motion: %i\n", driverName, functionName, axisNo_, motion);
 	
 	setIntegerParam(controller->motorStatusDone_, !motion);
 	setIntegerParam(controller->motorStatusMoving_, motion);
@@ -306,7 +310,6 @@ std::string SPiiPlusController::axesToString(std::vector <int> axes)
   
   for (i=0; i<axes.size(); i++)
   {
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i axis will be used\n", driverName, functionName, axes[i]);
     if (axes[i] == axes.front())
     {
       if (axes.size() > 1)
@@ -342,11 +345,11 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
     
     if (profileAxes_[i] == profileAxes_.front())
     {
-      outputStr << pAxis->profilePositions_[positionIndex];
+      outputStr << round(pAxis->profilePositions_[positionIndex]);
     }
     else 
     {
-      outputStr << ',' << pAxis->profilePositions_[positionIndex];
+      outputStr << ',' << round(pAxis->profilePositions_[positionIndex]);
     }
   }
   
@@ -407,7 +410,7 @@ asynStatus SPiiPlusController::buildProfile()
     postVelocity[i] = 0.;
     // Check which axes should be used
     getIntegerParam(i, profileUseAxis_, &useAxis);
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: %i axis will be used: %i\n", driverName, functionName, i, useAxis);
+    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: %i axis will be used: %i\n", driverName, functionName, i, useAxis);
     if (useAxis)
     {
       profileAxes_.push_back(i);
@@ -415,7 +418,7 @@ asynStatus SPiiPlusController::buildProfile()
   }
   
   axisList = axesToString(profileAxes_);
-  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisList = %s\n", driverName, functionName, axisList.c_str());
+  asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisList = %s\n", driverName, functionName, axisList.c_str());
   
   // TODO: how should an empty axis list be handled?
   
@@ -544,6 +547,10 @@ asynStatus SPiiPlusController::runProfile()
   std::stringstream commandStr;
   //int eventId;
   SPiiPlusAxis *pAxis;
+  int ptExecIdx;
+  int ptLoadedIdx;
+  int ptFree;
+  int ptIdx;
   static const char *functionName = "runProfile";
 
   lock();
@@ -584,7 +591,6 @@ asynStatus SPiiPlusController::runProfile()
       positionStr << ',' << position;
     }
   }
-  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: positionStr = %s\n", driverName, functionName, positionStr.str().c_str());
   
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
@@ -595,7 +601,6 @@ asynStatus SPiiPlusController::runProfile()
     commandStr << "PTP/mr ";
   }
   commandStr << axesToString(profileAxes_) << ", " << positionStr.str();
-  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: commandStr = %s\n", driverName, functionName, commandStr.str().c_str());
   
   // Send the group move command
   status = writeread(commandStr.str().c_str());
@@ -617,7 +622,108 @@ asynStatus SPiiPlusController::runProfile()
 
   // wake up poller
   
-  // run the trajectory
+  /* run the trajectory */
+  
+  ptLoadedIdx = 0;
+  ptExecIdx = 0;
+  // Clear the command string
+  commandStr.str(std::string());
+  
+  // Send the command to start the coordinated motion, but wait for the GO command to move motors
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+  {
+    commandStr << "PATH/tw " << axesToString(profileAxes_);
+    status = writeread(commandStr.str().c_str());
+  }
+  else
+  {
+    commandStr << "PATH/twr " << axesToString(profileAxes_);
+    status = writeread(commandStr.str().c_str());
+  }
+  
+  // Fill the point buffer, which can only hold 50 points
+  for (ptIdx = 0; ptIdx < MIN(50, numPoints); ptIdx++)
+  {
+    // Clear the command string
+    commandStr.str(std::string());
+    // Create the point command (should this be ptIdx+1?)
+    commandStr << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
+    // send the point command
+    status = writeread(commandStr.str().c_str());
+    // Increment the counter of points that have been loaded
+    ptLoadedIdx++;
+  }
+  
+  if (numPoints > 50)
+  {
+    // Send the GO command
+    commandStr.str(std::string());
+    commandStr << "GO " << axesToString(profileAxes_);
+    status = writeread(commandStr.str().c_str());
+    
+    while (ptLoadedIdx < numPoints)
+    {
+      // Sleep for a short period of time
+      epicsThreadSleep(0.1);
+      // Query the number of free points in the buffer
+      commandStr.str(std::string());
+      commandStr << "?GSFREE(" << profileAxes_[0] << ")";
+      status = writeread(commandStr.str().c_str());
+      ptFree = parseInt();
+      
+      // Increment the counter of points that have been executed
+      ptExecIdx += ptFree;
+      
+      // load the rest of the points as needed
+      for (ptIdx=ptLoadedIdx; ptIdx<(ptLoadedIdx+ptFree); ptIdx++)
+      {
+        // Clear the command string
+        commandStr.str(std::string());
+        // Add the point and time data (should this be ptIdx+1?)
+        commandStr << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
+        // send the point command
+        status = writeread(commandStr.str().c_str());
+      }
+      
+      // Increment the counter of points that have been loaded
+      ptLoadedIdx += ptFree;
+    }
+    
+    // End the point sequence
+    commandStr.str(std::string());
+    commandStr << "ENDS " << axesToString(profileAxes_);
+    status = writeread(commandStr.str().c_str());
+  }
+  else
+  {
+    // End the point sequence
+    commandStr.str(std::string());
+    commandStr << "ENDS " << axesToString(profileAxes_);
+    status = writeread(commandStr.str().c_str());
+    
+    // Send the GO command
+    commandStr.str(std::string());
+    commandStr << "GO " << axesToString(profileAxes_);
+    status = writeread(commandStr.str().c_str());
+  }
+  
+  // Wait for the remaining points to be executed
+  while (ptExecIdx < numPoints)
+  {
+    // Sleep for a short period of time
+    epicsThreadSleep(0.1);
+    // Query the number of free points in the buffer
+    commandStr.str(std::string());
+    commandStr << "?GSFREE(" << profileAxes_[0] << ")";
+    status = writeread(commandStr.str().c_str());
+    ptFree = parseInt();
+    // Update the number of points that have been executed
+    ptExecIdx = numPoints - 50 + ptFree;
+  }
+  
+  // Confirm that the motors are done moving?
+  
+  // Move motors to the real end position
   
   // cleanup
 
@@ -643,7 +749,7 @@ asynStatus SPiiPlusController::waitMotors()
     }
     if (moving == 0) break;
   }
-  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: motors are done moving\n", driverName, functionName);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: motors are done moving\n", driverName, functionName);
   return asynSuccess;
 }
 
