@@ -10,6 +10,7 @@ class epicsShareClass SPiiPlusAxis : public asynMotorAxis
 {
 public:
 	SPiiPlusAxis(class SPiiPlusController *pC, int axisNo);
+	void report(FILE *fp, int level);
 	
 	asynStatus move(double position, int relative, double min_velocity, double max_velocity, double acceleration);
 	asynStatus stop(double acceleration);
@@ -19,8 +20,11 @@ public:
 	
 	
 private:
+	SPiiPlusController *pC_;	/**< Pointer to the asynMotorController to which this axis belongs.
+				*   Abbreviated because it is used very frequently */
 	double profilePreDistance_;
 	double profilePostDistance_;
+	int moving_;
 	
 friend class SPiiPlusController;
 };
@@ -32,7 +36,7 @@ public:
 	
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
-	
+	void report(FILE *fp, int level);
 	asynStatus writeread(const char* format, ...);
 	
 	/* These are functions for profile moves */

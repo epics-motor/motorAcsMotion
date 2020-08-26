@@ -125,7 +125,8 @@ double SPiiPlusController::parseDouble()
 }
 
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
-: asynMotorAxis(pC, axisNo)
+: asynMotorAxis(pC, axisNo),
+  pC_(pC)
 {
 	setIntegerParam(pC->motorStatusHasEncoder_, 1);
 	// Gain Support is required for setClosedLoop to be called
@@ -136,6 +137,7 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 {
 	asynStatus status;
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;	
+	static const char *functionName = "poll";
 	
 	status = controller->writeread("?APOS(%d)", axisNo_);
 	controller->instring.replace(0,1," ");
@@ -202,14 +204,19 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	//in_pos = axis_status & (1<<4);
 	motion = axis_status & (1<<5);
 	
+	asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i status: %i\n", driverName, functionName, axisNo_, axis_status);
+	asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i motion: %i\n", driverName, functionName, axisNo_, motion);
+	
 	setIntegerParam(controller->motorStatusDone_, !motion);
 	setIntegerParam(controller->motorStatusMoving_, motion);
 	setIntegerParam(controller->motorStatusPowerOn_, enabled);
 	
 	callParamCallbacks();
 	
-	if (motion)    { *moving = false; }
-	else           { *moving = true; }
+	moving_ = *moving;
+	
+	if (motion)    { *moving = true; }
+	else           { *moving = false; }
 	
 	return status;
 }
@@ -270,6 +277,25 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 	}
 	
 	return status;
+}
+
+/** Reports on status of the axis
+  * \param[in] fp The file pointer on which report information will be written
+  * \param[in] level The level of report detail desired
+  *
+  * If details > 0 then information is printed about each axis.
+  * After printing controller-specific information it calls asynMotorController::report()
+  */
+void SPiiPlusAxis::report(FILE *fp, int level)
+{
+  if (level > 0) {
+    fprintf(fp, "Configuration for axis %i:\n", axisNo_);
+    fprintf(fp, "  Moving: %i\n", moving_);
+    fprintf(fp, "\n");
+  }
+  
+  // Call the base class method
+  asynMotorAxis::report(fp, level);
 }
 
 std::string SPiiPlusController::axesToString(std::vector <int> axes)
@@ -604,6 +630,28 @@ asynStatus SPiiPlusController::abortProfile()
   // static const char *functionName = "abortProfile";
   // TODO
   return asynSuccess;
+}
+
+/** Reports on status of the driver
+  * \param[in] fp The file pointer on which report information will be written
+  * \param[in] level The level of report detail desired
+  *
+  * If details > 0 then information is printed about each axis.
+  * After printing controller-specific information it calls asynMotorController::report()
+  */
+void SPiiPlusController::report(FILE *fp, int level)
+{
+  fprintf(fp, "====================================\n");
+  fprintf(fp, "SPiiPlus motor driver:\n");
+  fprintf(fp, "    asyn port: %s\n", this->portName);
+  fprintf(fp, "    num axes: %i\n", numAxes_);
+  fprintf(fp, "    moving poll period: %lf\n", movingPollPeriod_);
+  fprintf(fp, "    idle poll period: %lf\n", idlePollPeriod_);
+  fprintf(fp, "\n");
+  
+  // Call the base class method
+    asynMotorController::report(fp, level);
+  fprintf(fp, "====================================\n");
 }
 
 static void AcsMotionConfig(const char* acs_port, const char* asyn_port, int num_axes, double moving_rate, double idle_rate)
