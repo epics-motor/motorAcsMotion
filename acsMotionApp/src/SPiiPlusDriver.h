@@ -57,6 +57,7 @@ private:
 	std::string positionsToString(int positionIndex);
 	int parseInt();
 	double parseDouble();
+	asynStatus waitMotors();
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;

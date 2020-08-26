@@ -601,8 +601,8 @@ asynStatus SPiiPlusController::runProfile()
   status = writeread(commandStr.str().c_str());
 
   // Wait for the motors to get there
-  //wakeupPoller();
-  //waitMotors();
+  wakeupPoller();
+  waitMotors();
 
   lock();
   setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_EXECUTING);
@@ -621,6 +621,29 @@ asynStatus SPiiPlusController::runProfile()
   
   // cleanup
 
+  return asynSuccess;
+}
+
+asynStatus SPiiPlusController::waitMotors()
+{
+  uint j;
+  SPiiPlusAxis* pAxis;
+  int moving;
+  static const char *functionName = "waitMotors";
+  
+  while (1) {
+    epicsThreadSleep(0.1);
+    
+    // assume no motors are moving
+    moving = 0;
+    for (j=0; j<profileAxes_.size(); j++)
+    {
+      pAxis = getAxis(profileAxes_[j]);
+      moving |= pAxis->moving_;
+    }
+    if (moving == 0) break;
+  }
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: motors are done moving\n", driverName, functionName);
   return asynSuccess;
 }
 
