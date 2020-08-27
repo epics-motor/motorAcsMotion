@@ -468,7 +468,7 @@ asynStatus SPiiPlusController::buildProfile()
   //int axis
   std::string axisList;
   int useAxis;
-  
+  std::stringstream cmd;
   static const char *functionName = "buildProfile";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
@@ -520,15 +520,15 @@ asynStatus SPiiPlusController::buildProfile()
   for (j=0; j<profileAxes_.size(); j++)
   {
     // Query the max velocity and acceleration
-    status = writeread("?XVEL(%d)", j);
-    maxVelocity = parseDouble();
+    cmd << "?XVEL(" << j << ")";
+    status = writeReadDouble(cmd, &maxVelocity);
     if (status) {
       buildOK = false;
       sprintf(message, "Error getting XVEL, status=%d\n", status);
       goto done;
     }
-    status = writeread("?XACC(%d)", j);
-    maxAcceleration = parseDouble();
+    cmd << "?XACC(" << j << ")";
+    status = writeReadDouble(cmd, &maxAcceleration);
     if (status) {
       buildOK = false;
       sprintf(message, "Error getting XACC, status=%d\n", status);
