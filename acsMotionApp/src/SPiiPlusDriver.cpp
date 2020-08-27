@@ -348,18 +348,20 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	asynStatus status;
+	std::stringstream cmd;
 	
 	/*
 	 Enable/disable the axis instead of changing the closed-loop state.
 	*/
 	if (closedLoop)
 	{
-		status = controller->writeread("ENABLE %d", axisNo_);
+		cmd << "ENABLE " << axisNo_;
 	}
 	else
 	{
-		status = controller->writeread("DISABLE %d", axisNo_);
+		cmd << "DISABLE " << axisNo_;
 	}
+	status = controller->writeReadAck(cmd);
 	
 	return status;
 }
