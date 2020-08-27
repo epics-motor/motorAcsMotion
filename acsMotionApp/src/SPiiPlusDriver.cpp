@@ -77,30 +77,6 @@ SPiiPlusAxis* SPiiPlusController::getAxis(int axisNo)
 	return static_cast<SPiiPlusAxis*>(asynMotorController::getAxis(axisNo));
 }
 
-asynStatus SPiiPlusController::writeread(const char* format, ...)
-{
-	static const char *functionName = "writeread";
-	va_list args;
-	va_start(args, format);
-	
-	std::fill(outString_, outString_ + 256, '\0');
-	std::fill(inString_, inString_ + 256, '\0');
-	
-	vsprintf(outString_, format, args);
-	
-	size_t response;
-	asynStatus out = this->writeReadController(outString_, inString_, 256, &response, -1);
-	
-	this->instring = std::string(inString_);
-	
-	va_end(args);
-	
-	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: outString_ = %s\n", driverName, functionName, outString_);
-	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  inString_ = %s\n", driverName, functionName, inString_);
-	
-	return out;
-}
-
 asynStatus SPiiPlusController::writeReadInt(std::stringstream& cmd, int* val)
 {
 	static const char *functionName = "writeReadInt";
@@ -628,6 +604,7 @@ asynStatus SPiiPlusController::runProfile()
   std::string positions;
   std::stringstream positionStr;
   std::stringstream commandStr;
+  std::stringstream cmd;
   //int eventId;
   SPiiPlusAxis *pAxis;
   int ptExecIdx;
@@ -675,18 +652,17 @@ asynStatus SPiiPlusController::runProfile()
     }
   }
   
+  // Send the group move command
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
-    commandStr << "PTP/m ";
+    cmd << "PTP/m ";
   }
   else
   {
-    commandStr << "PTP/mr ";
+    cmd << "PTP/mr ";
   }
-  commandStr << axesToString(profileAxes_) << ", " << positionStr.str();
-  
-  // Send the group move command
-  status = writeread(commandStr.str().c_str());
+  cmd << axesToString(profileAxes_) << ", " << positionStr.str();
+  status = writeReadAck(cmd);
 
   // Wait for the motors to get there
   wakeupPoller();
@@ -709,30 +685,25 @@ asynStatus SPiiPlusController::runProfile()
   
   ptLoadedIdx = 0;
   ptExecIdx = 0;
-  // Clear the command string
-  commandStr.str(std::string());
   
   // Send the command to start the coordinated motion, but wait for the GO command to move motors
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
-    commandStr << "PATH/tw " << axesToString(profileAxes_);
-    status = writeread(commandStr.str().c_str());
+    cmd << "PATH/tw ";
   }
   else
   {
-    commandStr << "PATH/twr " << axesToString(profileAxes_);
-    status = writeread(commandStr.str().c_str());
+    cmd << "PATH/twr ";
   }
+  cmd << axesToString(profileAxes_);
+  status = writeReadAck(cmd);
   
   // Fill the point buffer, which can only hold 50 points
   for (ptIdx = 0; ptIdx < MIN(50, numPoints); ptIdx++)
   {
-    // Clear the command string
-    commandStr.str(std::string());
-    // Create the point command (should this be ptIdx+1?)
-    commandStr << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
-    // send the point command
-    status = writeread(commandStr.str().c_str());
+    // Create and send the point command (should this be ptIdx+1?)
+    cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
+    status = writeReadAck(cmd);
     // Increment the counter of points that have been loaded
     ptLoadedIdx++;
   }
@@ -740,19 +711,17 @@ asynStatus SPiiPlusController::runProfile()
   if (numPoints > 50)
   {
     // Send the GO command
-    commandStr.str(std::string());
-    commandStr << "GO " << axesToString(profileAxes_);
-    status = writeread(commandStr.str().c_str());
+    cmd << "GO " << axesToString(profileAxes_);
+    status = writeReadAck(cmd);
     
     while (ptLoadedIdx < numPoints)
     {
       // Sleep for a short period of time
       epicsThreadSleep(0.1);
-      // Query the number of free points in the buffer
-      commandStr.str(std::string());
-      commandStr << "?GSFREE(" << profileAxes_[0] << ")";
-      status = writeread(commandStr.str().c_str());
-      ptFree = parseInt();
+      
+      // Query the number of free points in the buffer (the first axis in the vector is the lead axis)
+      cmd << "?GSFREE(" << profileAxes_[0] << ")";
+      status = writeReadInt(cmd, &ptFree);
       
       // Increment the counter of points that have been executed
       ptExecIdx += ptFree;
@@ -760,12 +729,9 @@ asynStatus SPiiPlusController::runProfile()
       // load the rest of the points as needed
       for (ptIdx=ptLoadedIdx; ptIdx<(ptLoadedIdx+ptFree); ptIdx++)
       {
-        // Clear the command string
-        commandStr.str(std::string());
-        // Add the point and time data (should this be ptIdx+1?)
-        commandStr << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
-        // send the point command
-        status = writeread(commandStr.str().c_str());
+        // Create and send the point command (should this be ptIdx+1?)
+        cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
+        status = writeReadAck(cmd);
       }
       
       // Increment the counter of points that have been loaded
@@ -773,21 +739,18 @@ asynStatus SPiiPlusController::runProfile()
     }
     
     // End the point sequence
-    commandStr.str(std::string());
-    commandStr << "ENDS " << axesToString(profileAxes_);
-    status = writeread(commandStr.str().c_str());
+    cmd << "ENDS " << axesToString(profileAxes_);
+    status = writeReadAck(cmd);
   }
   else
   {
     // End the point sequence
-    commandStr.str(std::string());
-    commandStr << "ENDS " << axesToString(profileAxes_);
-    status = writeread(commandStr.str().c_str());
+    cmd << "ENDS " << axesToString(profileAxes_);
+    status = writeReadAck(cmd);
     
     // Send the GO command
-    commandStr.str(std::string());
-    commandStr << "GO " << axesToString(profileAxes_);
-    status = writeread(commandStr.str().c_str());
+    cmd << "GO " << axesToString(profileAxes_);
+    status = writeReadAck(cmd);
   }
   
   // Wait for the remaining points to be executed
@@ -795,11 +758,11 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Sleep for a short period of time
     epicsThreadSleep(0.1);
+    
     // Query the number of free points in the buffer
-    commandStr.str(std::string());
-    commandStr << "?GSFREE(" << profileAxes_[0] << ")";
-    status = writeread(commandStr.str().c_str());
-    ptFree = parseInt();
+    cmd << "?GSFREE(" << profileAxes_[0] << ")";
+    status = writeReadInt(cmd, &ptFree);
+    
     // Update the number of points that have been executed
     ptExecIdx = numPoints - 50 + ptFree;
   }
