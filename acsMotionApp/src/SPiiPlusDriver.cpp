@@ -587,12 +587,12 @@ void SPiiPlusController::profileThread()
 asynStatus SPiiPlusController::runProfile()
 {
   int status;
-  //bool executeOK=true;
-  //bool aborted=false;
+  bool executeOK=true;
+  bool aborted=false;
   int startPulses, endPulses;
   //int lastTime;
   int numPoints, numElements, numPulses;
-  //int executeStatus;
+  int executeStatus;
   //double pulsePeriod;
   double position;
   //double time;
@@ -686,6 +686,11 @@ asynStatus SPiiPlusController::runProfile()
   ptLoadedIdx = 0;
   ptExecIdx = 0;
   
+  lock();
+  setIntegerParam(profileCurrentPoint_, ptExecIdx);
+  callParamCallbacks();
+  unlock();
+  
   // Send the command to start the coordinated motion, but wait for the GO command to move motors
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
@@ -736,6 +741,11 @@ asynStatus SPiiPlusController::runProfile()
       
       // Increment the counter of points that have been loaded
       ptLoadedIdx += ptFree;
+      
+      lock();
+      setIntegerParam(profileCurrentPoint_, ptExecIdx);
+      callParamCallbacks();
+      unlock();
     }
     
     // End the point sequence
@@ -765,6 +775,11 @@ asynStatus SPiiPlusController::runProfile()
     
     // Update the number of points that have been executed
     ptExecIdx = numPoints - 50 + ptFree;
+    
+    lock();
+    setIntegerParam(profileCurrentPoint_, ptExecIdx);
+    callParamCallbacks();
+    unlock();
   }
   
   // Confirm that the motors are done moving?
@@ -772,8 +787,24 @@ asynStatus SPiiPlusController::runProfile()
   // Move motors to the real end position
   
   // cleanup
-
-  return asynSuccess;
+  
+  lock();
+  if (executeOK)    executeStatus = PROFILE_STATUS_SUCCESS;
+  else if (aborted) executeStatus = PROFILE_STATUS_ABORT;
+  else              executeStatus = PROFILE_STATUS_FAILURE;
+  setIntegerParam(profileExecuteStatus_, executeStatus);
+  setStringParam(profileExecuteMessage_, message);
+  if (!executeOK) {
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: %s\n",
+              driverName, functionName, message);
+  }
+  /* Clear execute command.  This is a "busy" record, don't want to do this until build is complete. */
+  setIntegerParam(profileExecute_, 0);
+  setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_DONE);
+  callParamCallbacks();
+  unlock();
+  return executeOK ? asynSuccess : asynError; 
 }
 
 asynStatus SPiiPlusController::waitMotors()
