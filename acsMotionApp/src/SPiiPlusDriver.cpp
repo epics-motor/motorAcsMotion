@@ -84,7 +84,7 @@ asynStatus SPiiPlusController::writeread(const char* format, ...)
 	va_start(args, format);
 	
 	std::fill(outString_, outString_ + 256, '\0');
-	std::fill(outString_, inString_ + 256, '\0');
+	std::fill(inString_, inString_ + 256, '\0');
 	
 	vsprintf(outString_, format, args);
 	
@@ -100,6 +100,92 @@ asynStatus SPiiPlusController::writeread(const char* format, ...)
 	
 	return out;
 }
+
+asynStatus SPiiPlusController::writeReadInt(std::stringstream& cmd, int* val)
+{
+	static const char *functionName = "writeReadInt";
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	std::stringstream val_convert;
+	
+	std::fill(inString, inString + 256, '\0');
+	
+	size_t response;
+	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	
+	if (status != asynSuccess) return status;
+	if (inString[0] == '?') return asynError;
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	
+	// inString ends with \r:\r, but that isn't a problem for the following conversion
+	val_convert << std::string(inString);
+	val_convert >> *val;
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:    val = %i\n", driverName, functionName, *val);
+	
+	// clear the command stringstream
+	cmd.str("");
+	cmd.clear();
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::writeReadDouble(std::stringstream& cmd, double* val)
+{
+	static const char *functionName = "writeReadDouble";
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	std::stringstream val_convert;
+	
+	std::fill(inString, inString + 256, '\0');
+	
+	size_t response;
+	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	
+	if (status != asynSuccess) return status;
+	if (inString[0] == '?') return asynError;
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	
+	inString[0] = ' ';
+	
+	// inString ends with \r:\r, but that isn't a problem for the following conversion
+	val_convert << std::string(inString);
+	val_convert >> *val;
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:    val = %lf\n", driverName, functionName, *val);
+	
+	// clear the command stringstream -- this doesn't work
+	cmd.str("");
+	cmd.clear();
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
+{
+	static const char *functionName = "writeReadInt";
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	
+	std::fill(inString, inString + 256, '\0');
+	
+	size_t response;
+	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	
+	if (status != asynSuccess) return status;
+	if (inString[0] == '?') return asynError;
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	
+	// clear the command stringstream
+	cmd.str("");
+	cmd.clear();
+	
+	return status;
+}
+
 
 // The following parse methods would be better as a template method, but that might break VxWorks compatibility
 int SPiiPlusController::parseInt()
@@ -142,61 +228,30 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	asynStatus status;
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;	
 	static const char *functionName = "poll";
-	
-	status = controller->writeread("?APOS(%d)", axisNo_);
-	controller->instring.replace(0,1," ");
+	std::stringstream cmd;
 	
 	double position;
-	std::stringstream pos_convert;
-
-	pos_convert << controller->instring;
-	pos_convert >> position;
-	
+	cmd << "?APOS(" << axisNo_ << ")";
+	controller->writeReadDouble(cmd, &position);
 	setDoubleParam(controller->motorPosition_, position);
 	
-	
-	status = controller->writeread("?FPOS(%d)", axisNo_);
-	controller->instring.replace(0,1," ");
-	
 	double enc_position;
-	std::stringstream enc_pos_convert;	
-
-	enc_pos_convert << controller->instring;
-	enc_pos_convert >> enc_position;
-	
+	cmd << "?FPOS(" << axisNo_ << ")";
+	controller->writeReadDouble(cmd, &enc_position);
 	setDoubleParam(controller->motorEncoderPosition_, enc_position);
 	
-	
 	int left_limit, right_limit;
-	std::stringstream fault_convert;
-	
-	status = controller->writeread("?FAULT(%d).#LL", axisNo_);
-	controller->instring.replace(0,1," ");
-	
-	fault_convert << controller->instring;
-	fault_convert >> left_limit;
-	
-	status = controller->writeread("?FAULT(%d).#RL", axisNo_);
-	controller->instring.replace(0,1," ");
-	
-	fault_convert.str("");
-	fault_convert.clear();
-	
-	fault_convert << controller->instring;
-	fault_convert >> right_limit;
-	
-	setIntegerParam(controller->motorStatusHighLimit_, right_limit);
+	cmd << "?FAULT(" << axisNo_ << ").#LL";
+	controller->writeReadInt(cmd, &left_limit);
 	setIntegerParam(controller->motorStatusLowLimit_, left_limit);
+	cmd << "?FAULT(" << axisNo_ << ").#RL";
+	controller->writeReadInt(cmd, &right_limit);
+	setIntegerParam(controller->motorStatusHighLimit_, right_limit);
 	
 	// Read the entire motor status and parse the relevant bits
 	int axis_status;
-	std::stringstream status_convert;
-	
-	status = controller->writeread("?D/MST(%d)", axisNo_);
-	controller->instring.replace(0,1," ");
-	
-	status_convert << controller->instring;
-	status_convert >> axis_status;
+	cmd << "?D/MST(" << axisNo_ << ")";
+	controller->writeReadInt(cmd, &axis_status);
 	
 	int enabled;
 	//int open_loop;
@@ -229,21 +284,29 @@ asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity,
 {
 	asynStatus status;
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	std::stringstream cmd;
 	
-	status = controller->writeread("XACC(%d)=%f", axisNo_, acceleration + 10);
-	status = controller->writeread("ACC(%d)=%f", axisNo_, acceleration);
-	status = controller->writeread("DEC(%d)=%f", axisNo_, acceleration);
+	cmd << "XACC(" << axisNo_ << ")=" << (acceleration + 10);
+	status = controller->writeReadAck(cmd);
+	cmd << "ACC(" << axisNo_ << ")=" << acceleration;
+	status = controller->writeReadAck(cmd);
+	cmd << "DEC(" << axisNo_ << ")=" << acceleration;
+	status = controller->writeReadAck(cmd);
 	
-	status = controller->writeread("XVEL(%d)=%f", axisNo_, maxVelocity + 10);
-	status = controller->writeread("VEL(%d)=%f", axisNo_, maxVelocity);
+	cmd << "XVEL(" << axisNo_ << ")=" << (maxVelocity + 10);
+	status = controller->writeReadAck(cmd);
+	cmd << "VEL(" << axisNo_ << ")=" << maxVelocity;
+	status = controller->writeReadAck(cmd);
 	
 	if (relative)
 	{
-		status = controller->writeread("PTP/r %d, %f", axisNo_, position);
+		cmd << "PTP/r " << axisNo_ << ", " << position;
+		status = controller->writeReadAck(cmd);
 	}
 	else
 	{
-		status = controller->writeread("PTP %d, %f", axisNo_, position);
+		cmd << "PTP " << axisNo_ << ", " << position;
+		status = controller->writeReadAck(cmd);
 	}
 	
 	return status;

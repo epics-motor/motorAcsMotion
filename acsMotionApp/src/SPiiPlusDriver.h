@@ -38,6 +38,9 @@ public:
 	SPiiPlusAxis* getAxis(int axisNo);
 	void report(FILE *fp, int level);
 	asynStatus writeread(const char* format, ...);
+	asynStatus writeReadInt(std::stringstream& cmd, int* val);
+	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
+	asynStatus writeReadAck(std::stringstream& cmd);
 	
 	/* These are functions for profile moves */
 	asynStatus buildProfile();
