@@ -415,6 +415,17 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
   return outputStr.str();
 }
 
+asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
+{
+  asynStatus status;
+  // static const char *functionName = "initializeProfile";
+  
+  // Create point and time arrays that have one extra point to hold the 
+  // post-profile position and time
+  status = asynMotorController::initializeProfile(maxProfilePoints+1);
+  return status;
+}
+
 /** Function to build a coordinated move of multiple axes. */
 asynStatus SPiiPlusController::buildProfile()
 {
@@ -427,6 +438,7 @@ asynStatus SPiiPlusController::buildProfile()
   //int numElements;
   //double trajVel;
   //double D0, D1, T0, T1;
+  int moveMode;
   char message[MAX_MESSAGE_LEN];
   int buildStatus;
   double maxVelocity;
@@ -515,26 +527,48 @@ asynStatus SPiiPlusController::buildProfile()
      * is "correct" but subject to roundoff errors when sending ASCII commands.
      * Reduce acceleration 10% to account for this. */
     maxAcceleration *= 0.9;
+    
     preDistance = pAxes_[j]->profilePositions_[1] - pAxes_[j]->profilePositions_[0];
-    preVelocity[j] = preDistance/profileTimes_[0];
+    // Use the 2nd element of the times array instead of the 1st; the 1st will be used for the preDistance move.
+    preVelocity[j] = preDistance/profileTimes_[1];
     preTime = fabs(preVelocity[j]) / maxAcceleration;
     preTimeMax = MAX(preTimeMax, preTime);
-    postDistance = pAxes_[j]->profilePositions_[numPoints-1] - 
-               pAxes_[j]->profilePositions_[numPoints-2];
+    
+    postDistance = pAxes_[j]->profilePositions_[numPoints-1] - pAxes_[j]->profilePositions_[numPoints-2];
     postVelocity[j] = postDistance/profileTimes_[numPoints-1];
     postTime = fabs(postVelocity[j]) / maxAcceleration;
     postTimeMax = MAX(postTimeMax, postTime);
+    
     asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
               "%s:%s: axis %d profilePositions[0]=%f, profilePositions[%d]=%f, maxAcceleration=%f, preTimeMax=%f, postTimeMax=%f\n",
               driverName, functionName, j, pAxes_[j]->profilePositions_[0], numPoints-1, pAxes_[j]->profilePositions_[numPoints-1],
               maxAcceleration, preTimeMax, postTimeMax);
   }
-    
+  
+  /* move motors to the starting position */
+  getIntegerParam(profileMoveMode_, &moveMode);
+  
   for (j=0; j<profileAxes_.size(); j++)
   {
-    pAxes_[j]->profilePreDistance_  =  0.5 * preVelocity[j]  * preTimeMax; 
-    pAxes_[j]->profilePostDistance_ =  0.5 * postVelocity[j] * postTimeMax; 
-  }  
+    pAxes_[j]->profilePreDistance_  =  0.5 * preVelocity[j]  * preTimeMax;
+    pAxes_[j]->profilePostDistance_ =  0.5 * postVelocity[j] * postTimeMax;
+    
+    /* Add the postProfile position to the last (extra) element of the position array*/
+    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+    {
+      // calculate the absolute ending position
+      pAxes_[j]->profilePositions_[numPoints] = pAxes_[j]->profilePositions_[numPoints-1] + pAxes_[j]->profilePostDistance_;
+    }
+    else
+    {
+      // calculate the relative ending position
+      pAxes_[j]->profilePositions_[numPoints] = pAxes_[j]->profilePostDistance_;
+    }
+  }
+  
+  // Set the times for the pre and post profile segments
+  profileTimes_[0] = preTimeMax;
+  profileTimes_[numPoints] = postTimeMax;
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
   
@@ -713,13 +747,14 @@ asynStatus SPiiPlusController::runProfile()
     ptLoadedIdx++;
   }
   
-  if (numPoints > 50)
+  // numPoints+1 is used instead of numPoints because the postProfile position was added to the position array
+  if (numPoints+1 > 50)
   {
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
     status = writeReadAck(cmd);
     
-    while (ptLoadedIdx < numPoints)
+    while (ptLoadedIdx < numPoints+1)
     {
       // Sleep for a short period of time
       epicsThreadSleep(0.1);
@@ -764,7 +799,7 @@ asynStatus SPiiPlusController::runProfile()
   }
   
   // Wait for the remaining points to be executed
-  while (ptExecIdx < numPoints)
+  while (ptExecIdx < numPoints+1)
   {
     // Sleep for a short period of time
     epicsThreadSleep(0.1);
@@ -774,7 +809,7 @@ asynStatus SPiiPlusController::runProfile()
     status = writeReadInt(cmd, &ptFree);
     
     // Update the number of points that have been executed
-    ptExecIdx = numPoints - 50 + ptFree;
+    ptExecIdx = numPoints+1 - 50 + ptFree;
     
     lock();
     setIntegerParam(profileCurrentPoint_, ptExecIdx);

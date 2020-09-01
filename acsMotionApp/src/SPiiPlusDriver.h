@@ -42,6 +42,7 @@ public:
 	asynStatus writeReadAck(std::stringstream& cmd);
 	
 	/* These are functions for profile moves */
+	asynStatus initializeProfile(size_t maxProfilePoints);
 	asynStatus buildProfile();
 	asynStatus executeProfile();
 	asynStatus abortProfile();
