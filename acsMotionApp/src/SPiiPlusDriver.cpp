@@ -453,6 +453,7 @@ asynStatus SPiiPlusController::buildProfile()
   double preVelocity[SPIIPLUS_MAX_AXES], postVelocity[SPIIPLUS_MAX_AXES];
   double preTime, postTime;
   double preDistance, postDistance;
+  double accelTime;
   //int axis
   std::string axisList;
   int useAxis;
@@ -495,15 +496,16 @@ asynStatus SPiiPlusController::buildProfile()
   
   /* We create trajectories with an extra element at the beginning and at the end.
    * The distance and time of the first element is defined so that the motors will
-   * accelerate from 0 to the velocity of the first "real" element at their 
-   * maximum allowed acceleration.
+   * accelerate from 0 to the velocity of the first "real" element in the user-specified
+   * acceleration time, as long as it doesn't exceed the maximum allowed acceleration.
    * Similarly, the distance and time of last element is defined so that the 
    * motors will decelerate from the velocity of the last "real" element to 0 
-   * at the maximum allowed acceleration. */
+   * in the user-specified acceleration time. */
 
   preTimeMax = 0.;
   postTimeMax = 0.;
   getIntegerParam(profileNumPoints_, &numPoints);
+  getDoubleParam(profileAcceleration_, &accelTime);
   
   for (j=0; j<profileAxes_.size(); j++)
   {
@@ -533,11 +535,15 @@ asynStatus SPiiPlusController::buildProfile()
     preVelocity[j] = preDistance/profileTimes_[1];
     preTime = fabs(preVelocity[j]) / maxAcceleration;
     preTimeMax = MAX(preTimeMax, preTime);
+    // Use the acceleration specified by the user, if it is less than the max acceleration
+    preTimeMax = MAX(preTimeMax, accelTime);
     
     postDistance = pAxes_[j]->profilePositions_[numPoints-1] - pAxes_[j]->profilePositions_[numPoints-2];
     postVelocity[j] = postDistance/profileTimes_[numPoints-1];
     postTime = fabs(postVelocity[j]) / maxAcceleration;
     postTimeMax = MAX(postTimeMax, postTime);
+    // Use the acceleration specified by the user, if it is less than the max acceleration
+    postTimeMax = MAX(postTimeMax, accelTime);
     
     asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
               "%s:%s: axis %d profilePositions[0]=%f, profilePositions[%d]=%f, maxAcceleration=%f, preTimeMax=%f, postTimeMax=%f\n",
