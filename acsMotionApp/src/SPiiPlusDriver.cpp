@@ -812,16 +812,64 @@ asynStatus SPiiPlusController::runProfile()
     ptExecIdx = numPoints+1 - 50 + ptFree;
     
     lock();
-    setIntegerParam(profileCurrentPoint_, ptExecIdx);
+    // Stop updating current point when numPoints is reached
+    if (ptExecIdx < numPoints)
+      setIntegerParam(profileCurrentPoint_, ptExecIdx);
+    else
+      setIntegerParam(profileCurrentPoint_, numPoints);
     callParamCallbacks();
     unlock();
   }
   
   // Confirm that the motors are done moving?
   
-  // Move motors to the real end position
+  done:
+  lock();
+  setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_FLYBACK);
+  callParamCallbacks();
+  unlock();
   
-  // cleanup
+  /* move motors to the end position */
+  double relFactor;
+  int finalIdx;
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+  {
+    cmd << "PTP/m ";
+    relFactor = 1.0;
+    finalIdx = numPoints-1;
+  }
+  else
+  {
+    cmd << "PTP/mr ";
+    relFactor = -1.0;
+    finalIdx = numPoints;
+  }
+  
+  // Clear the position string
+  positionStr.str("");
+  positionStr.clear();
+  // Create the comma-separated list of positions
+  for (j=0; j<profileAxes_.size(); j++)
+  {
+    pAxis = getAxis(profileAxes_[j]);
+    
+    if (profileAxes_[j] == profileAxes_.front())
+    {
+      positionStr << (relFactor * pAxis->profilePositions_[finalIdx]);
+    }
+    else 
+    {
+      positionStr << ',' << (relFactor * pAxis->profilePositions_[finalIdx]);
+    }
+  }
+  
+  // Send the group move command
+  cmd << axesToString(profileAxes_) << ", " << positionStr.str();
+  status = writeReadAck(cmd);
+
+  // Wait for the motors to get there
+  wakeupPoller();
+  waitMotors();
   
   lock();
   if (executeOK)    executeStatus = PROFILE_STATUS_SUCCESS;
