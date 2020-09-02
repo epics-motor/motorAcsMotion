@@ -5,6 +5,7 @@
 
 #define SPIIPLUS_MAX_AXES 64
 #define MAX_MESSAGE_LEN   256
+#define MAX_ACCEL_SEGMENTS 20
 
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
 {
@@ -22,8 +23,13 @@ public:
 private:
 	SPiiPlusController *pC_;	/**< Pointer to the asynMotorController to which this axis belongs.
 				*   Abbreviated because it is used very frequently */
+	double profileAccelPositions_[MAX_ACCEL_SEGMENTS];  /**< Array of target positions for acceleration of profile moves */
+	double profileDecelPositions_[MAX_ACCEL_SEGMENTS];  /**< Array of target positions for deceleration of profile moves */
+	double *fullProfilePositions_;                      /**< Array of target positions for profile moves */
 	double profilePreDistance_;
 	double profilePostDistance_;
+	double profileStartPos_;
+	double profileFlybackPos_;
 	int moving_;
 	
 friend class SPiiPlusController;
@@ -50,20 +56,29 @@ public:
 	/* These are the methods that are new to this class */
 	void profileThread();
 	asynStatus runProfile();
+	int getNumAccelSegments(double time);
 	
 protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
 	std::string instring;
 	
 private:
+	double profileAccelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile acceleration point */
+	double profileDecelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile deceleration point */
+	double *fullProfileTimes_;                            /**< Array of times per profile point */
+	int fullProfileSize_;
 	std::string axesToString(std::vector <int> axes);
 	std::string positionsToString(int positionIndex);
+	std::string accelPositionsToString(int positionIndex);
+	std::string decelPositionsToString(int positionIndex);
 	int parseInt();
 	double parseDouble();
 	asynStatus waitMotors();
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;
+	int numAccelSegments_;
+	int numDecelSegments_;
 	
 friend class SPiiPlusAxis;
 };

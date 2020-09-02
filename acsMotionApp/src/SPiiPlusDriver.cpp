@@ -404,11 +404,11 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
     
     if (profileAxes_[i] == profileAxes_.front())
     {
-      outputStr << round(pAxis->profilePositions_[positionIndex]);
+      outputStr << round(pAxis->fullProfilePositions_[positionIndex]);
     }
     else 
     {
-      outputStr << ',' << round(pAxis->profilePositions_[positionIndex]);
+      outputStr << ',' << round(pAxis->fullProfilePositions_[positionIndex]);
     }
   }
   
@@ -417,12 +417,24 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
 
 asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
 {
+  int axis;
+  SPiiPlusAxis *pAxis;
   asynStatus status;
   // static const char *functionName = "initializeProfile";
   
-  // Create point and time arrays that have one extra point to hold the 
-  // post-profile position and time
-  status = asynMotorController::initializeProfile(maxProfilePoints+1);
+  /*
+   * Create point and time arrays that have extra elements for the 
+   * acceleration and deceleration, not including the starting position
+   */
+  if (fullProfileTimes_) free(fullProfileTimes_);
+  fullProfileTimes_ = (double *)calloc(maxProfilePoints+(2*MAX_ACCEL_SEGMENTS)-1, sizeof(double));
+  for (axis=0; axis<numAxes_; axis++) {
+    pAxis = getAxis(axis);
+    if (!pAxis) continue;
+    if (pAxis->fullProfilePositions_) free(pAxis->fullProfilePositions_);
+    pAxis->fullProfilePositions_ = (double *)calloc(maxProfilePoints+(2*MAX_ACCEL_SEGMENTS)-1, sizeof(double));
+  }
+  status = asynMotorController::initializeProfile(maxProfilePoints);
   return status;
 }
 
@@ -458,6 +470,7 @@ asynStatus SPiiPlusController::buildProfile()
   std::string axisList;
   int useAxis;
   std::stringstream cmd;
+  int profileIdx;
   static const char *functionName = "buildProfile";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
@@ -475,11 +488,16 @@ asynStatus SPiiPlusController::buildProfile()
   
   // 
   profileAxes_.clear();
+  memset(profileAccelTimes_, 0, MAX_ACCEL_SEGMENTS*sizeof(double));
+  memset(profileDecelTimes_, 0, MAX_ACCEL_SEGMENTS*sizeof(double));
   
   for (i=0; i<numAxes_; i++) {
     // Zero the velocity arrays
     preVelocity[i] = 0.;
     postVelocity[i] = 0.;
+    // Zero the accel/decel arrays
+    memset(pAxes_[i]->profileAccelPositions_, 0, MAX_ACCEL_SEGMENTS*sizeof(double));
+    memset(pAxes_[i]->profileDecelPositions_, 0, MAX_ACCEL_SEGMENTS*sizeof(double));
     // Check which axes should be used
     getIntegerParam(i, profileUseAxis_, &useAxis);
     asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: %i axis will be used: %i\n", driverName, functionName, i, useAxis);
@@ -494,11 +512,11 @@ asynStatus SPiiPlusController::buildProfile()
   
   // TODO: how should an empty axis list be handled?
   
-  /* We create trajectories with an extra element at the beginning and at the end.
-   * The distance and time of the first element is defined so that the motors will
+  /* We create trajectories with extra elements at the beginning and at the end.
+   * The distance and time of the prepended elements are defined so that the motors will
    * accelerate from 0 to the velocity of the first "real" element in the user-specified
    * acceleration time, as long as it doesn't exceed the maximum allowed acceleration.
-   * Similarly, the distance and time of last element is defined so that the 
+   * Similarly, the distance and time of appended elements are defined so that the 
    * motors will decelerate from the velocity of the last "real" element to 0 
    * in the user-specified acceleration time. */
 
@@ -551,30 +569,115 @@ asynStatus SPiiPlusController::buildProfile()
               maxAcceleration, preTimeMax, postTimeMax);
   }
   
-  /* move motors to the starting position */
   getIntegerParam(profileMoveMode_, &moveMode);
   
+  // calculate the number of acceleration segments
+  numAccelSegments_ = getNumAccelSegments(preTimeMax);
+  numDecelSegments_ = getNumAccelSegments(postTimeMax);
+  
+  // Use a constant time for accel/decel segments
+  for (i=0; i<numAccelSegments_; i++)
+  {
+    profileAccelTimes_[i] = preTimeMax / numAccelSegments_;
+  }
+  for (i=0; i<numDecelSegments_; i++)
+  {
+    profileDecelTimes_[i] = postTimeMax / numDecelSegments_;
+  }
+  
+  /*
+   * Every segment of PATH/POINT/ENDS motion is at a constant velocity.
+   * The driver is resposnible for creating the acceleration and 
+   * deceleration phases of the full profile move.
+   */
   for (j=0; j<profileAxes_.size(); j++)
   {
     pAxes_[j]->profilePreDistance_  =  0.5 * preVelocity[j]  * preTimeMax;
     pAxes_[j]->profilePostDistance_ =  0.5 * postVelocity[j] * postTimeMax;
     
-    /* Add the postProfile position to the last (extra) element of the position array*/
+    float time;
+    
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      // calculate the absolute ending position
-      pAxes_[j]->profilePositions_[numPoints] = pAxes_[j]->profilePositions_[numPoints-1] + pAxes_[j]->profilePostDistance_;
+      pAxes_[j]->profileStartPos_ = pAxes_[j]->profilePositions_[0] - pAxes_[j]->profilePreDistance_;
+      pAxes_[j]->profileFlybackPos_ = pAxes_[j]->profilePositions_[numPoints-1];
+      
+      // Acceleration (absolute)
+      for (i=0; i<numAccelSegments_; i++)
+      {
+        time = preTimeMax * (i+1) / numAccelSegments_;
+        // position during accel period = starting position of user profile - acceleration distance + distance traveled in i acceleration segments
+        pAxes_[j]->profileAccelPositions_[i] = pAxes_[j]->profilePositions_[0] - pAxes_[j]->profilePreDistance_ + 0.5 * (preVelocity[j] / preTimeMax) * pow(time, 2);
+      }
+      
+      // Deceleration (absolute)
+      for (i=0; i<numDecelSegments_; i++)
+      {
+        time = postTimeMax * (i+1) / numDecelSegments_;
+        // position during decel period = ending position of user profile + distance traveled in i deceleration segments
+        pAxes_[j]->profileDecelPositions_[i] = pAxes_[j]->profilePositions_[numPoints-1] + postVelocity[j] * time - 0.5 * (postVelocity[j] / postTimeMax) * pow(time, 2);
+      }
     }
     else
     {
-      // calculate the relative ending position
-      pAxes_[j]->profilePositions_[numPoints] = pAxes_[j]->profilePostDistance_;
+      pAxes_[j]->profileStartPos_ = -pAxes_[j]->profilePreDistance_;
+      pAxes_[j]->profileFlybackPos_ = -pAxes_[j]->profilePostDistance_;
+
+      // Acceleration (relative) -- FIXME
+      for (i=0; i<numAccelSegments_; i++)
+      {
+        // position during accel period = -acceleration distance + distance traveled in i acceleration segments
+        pAxes_[j]->profileAccelPositions_[i] = -pAxes_[j]->profilePreDistance_ + 0.5 * (preVelocity[j] / preTimeMax) * pow((preTimeMax * (i+1) / numAccelSegments_), 2);
+      }
+      
+      // Deceleration (relative) -- FIXME
+      for (i=0; i<numDecelSegments_; i++)
+      {
+        // position during decel period = distance traveled in i deceleration segments
+        pAxes_[j]->profileDecelPositions_[i] = 0.5 * (postVelocity[j] / postTimeMax) * pow((postTimeMax * (i+1) / numDecelSegments_), 2);
+      }
     }
   }
   
-  // Set the times for the pre and post profile segments
-  profileTimes_[0] = preTimeMax;
-  profileTimes_[numPoints] = postTimeMax;
+  /*
+   * Assemble the full profile array from the component arrays.
+   * The starting point, pAxes_[j]->profilePreDistance_, is not included.
+   * The first point of the user-specified profile is ignored because the
+   * first time in the user-specified array is not meaningful and the 
+   * first position in the user-specified array is the same as the last 
+   * position of the acceleration position array.
+   */
+  profileIdx = 0;
+  for (i=0; i<numAccelSegments_; i++)
+  {
+    fullProfileTimes_[profileIdx] = profileAccelTimes_[i];
+    for (j=0; j<profileAxes_.size(); j++)
+    {
+      pAxes_[j]->fullProfilePositions_[profileIdx] = pAxes_[j]->profileAccelPositions_[i];
+    }
+    profileIdx++;
+  }
+  for (i=1; i<numPoints; i++)
+  {
+    fullProfileTimes_[profileIdx] = profileTimes_[i];
+    for (j=0; j<profileAxes_.size(); j++)
+    {
+      pAxes_[j]->fullProfilePositions_[profileIdx] = pAxes_[j]->profilePositions_[i];
+    }
+    profileIdx++;
+  }
+  for (i=0; i<numDecelSegments_; i++)
+  {
+    fullProfileTimes_[profileIdx] = profileDecelTimes_[i];
+    for (j=0; j<profileAxes_.size(); j++)
+    {
+      pAxes_[j]->fullProfilePositions_[profileIdx] = pAxes_[j]->profileDecelPositions_[i];
+    }
+    profileIdx++;
+  }
+  fullProfileSize_ = numAccelSegments_ + (numPoints-1) + numDecelSegments_;
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i+(%i-1)+%i=%i?=%i\n", driverName, functionName, numAccelSegments_, numPoints, numDecelSegments_, fullProfileSize_, profileIdx);
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
   
@@ -622,6 +725,22 @@ void SPiiPlusController::profileThread()
   }
 }
 
+int SPiiPlusController::getNumAccelSegments(double time)
+{
+  int numSegments;
+  // The following value was chosen somewhat arbitrarily -- it gives MAX_ACCEL_SEGMENTS at an acceleration time of 0.2s
+  double minPeriod = 0.01;
+  
+  numSegments = round(time / minPeriod);
+  
+  if (numSegments > MAX_ACCEL_SEGMENTS)
+  {
+    numSegments = MAX_ACCEL_SEGMENTS;
+  }
+  
+  return numSegments;
+}
+
 /* Function to run trajectory.  It runs in a dedicated thread, so it's OK to block.
  * It needs to lock and unlock when it accesses class data. */ 
 asynStatus SPiiPlusController::runProfile()
@@ -666,21 +785,22 @@ asynStatus SPiiPlusController::runProfile()
   callParamCallbacks();
   unlock();
   
-  /* move motors to the starting position */
   getIntegerParam(profileMoveMode_, &moveMode);
+  
+  // move motors to the starting position
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+  {
+    cmd << "PTP/m ";
+  }
+  else
+  {
+    cmd << "PTP/mr ";
+  }
   for (j=0; j<profileAxes_.size(); j++)
   {
     pAxis = getAxis(profileAxes_[j]);
-    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
-    {
-      // calculate the absolute starting position
-      position = pAxis->profilePositions_[0] - pAxis->profilePreDistance_;
-    }
-    else
-    {
-      // calculate the relative starting position
-      position = -pAxis->profilePreDistance_;
-    }
+    
+    position = pAxis->profileStartPos_;
     
     if (profileAxes_[j] == profileAxes_.front())
     {
@@ -690,16 +810,6 @@ asynStatus SPiiPlusController::runProfile()
     {
       positionStr << ',' << position;
     }
-  }
-  
-  // Send the group move command
-  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
-  {
-    cmd << "PTP/m ";
-  }
-  else
-  {
-    cmd << "PTP/mr ";
   }
   cmd << axesToString(profileAxes_) << ", " << positionStr.str();
   status = writeReadAck(cmd);
@@ -744,23 +854,22 @@ asynStatus SPiiPlusController::runProfile()
   status = writeReadAck(cmd);
   
   // Fill the point buffer, which can only hold 50 points
-  for (ptIdx = 0; ptIdx < MIN(50, numPoints); ptIdx++)
+  for (ptIdx = 0; ptIdx < MIN(50, fullProfileSize_); ptIdx++)
   {
     // Create and send the point command (should this be ptIdx+1?)
-    cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
+    cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(fullProfileTimes_[ptIdx] * 1000.0);
     status = writeReadAck(cmd);
     // Increment the counter of points that have been loaded
     ptLoadedIdx++;
   }
   
-  // numPoints+1 is used instead of numPoints because the postProfile position was added to the position array
-  if (numPoints+1 > 50)
+  if (fullProfileSize_ > 50)
   {
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
     status = writeReadAck(cmd);
     
-    while (ptLoadedIdx < numPoints+1)
+    while (ptLoadedIdx < fullProfileSize_)
     {
       // Sleep for a short period of time
       epicsThreadSleep(0.1);
@@ -776,7 +885,7 @@ asynStatus SPiiPlusController::runProfile()
       for (ptIdx=ptLoadedIdx; ptIdx<(ptLoadedIdx+ptFree); ptIdx++)
       {
         // Create and send the point command (should this be ptIdx+1?)
-        cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(profileTimes_[ptIdx] * 1000.0);
+        cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(fullProfileTimes_[ptIdx] * 1000.0);
         status = writeReadAck(cmd);
       }
       
@@ -784,7 +893,11 @@ asynStatus SPiiPlusController::runProfile()
       ptLoadedIdx += ptFree;
       
       lock();
-      setIntegerParam(profileCurrentPoint_, ptExecIdx);
+      // Only report the current point of the user-specified array
+      if (ptExecIdx > numAccelSegments_)
+        setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
+      else
+        setIntegerParam(profileCurrentPoint_, 0);
       callParamCallbacks();
       unlock();
     }
@@ -805,7 +918,7 @@ asynStatus SPiiPlusController::runProfile()
   }
   
   // Wait for the remaining points to be executed
-  while (ptExecIdx < numPoints+1)
+  while (ptExecIdx < fullProfileSize_)
   {
     // Sleep for a short period of time
     epicsThreadSleep(0.1);
@@ -815,12 +928,15 @@ asynStatus SPiiPlusController::runProfile()
     status = writeReadInt(cmd, &ptFree);
     
     // Update the number of points that have been executed
-    ptExecIdx = numPoints+1 - 50 + ptFree;
+    ptExecIdx = fullProfileSize_ - 50 + ptFree;
     
     lock();
     // Stop updating current point when numPoints is reached
-    if (ptExecIdx < numPoints)
-      setIntegerParam(profileCurrentPoint_, ptExecIdx);
+    if (ptExecIdx < numAccelSegments_)
+      // This only gets executed if the user-specified profile has very few points in it
+      setIntegerParam(profileCurrentPoint_, 0);
+    else if ((ptExecIdx >= numAccelSegments_) && (ptExecIdx < numAccelSegments_+numPoints))
+      setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
     else
       setIntegerParam(profileCurrentPoint_, numPoints);
     callParamCallbacks();
@@ -836,39 +952,32 @@ asynStatus SPiiPlusController::runProfile()
   unlock();
   
   /* move motors to the end position */
-  double relFactor;
-  int finalIdx;
+  positionStr.str("");
+  positionStr.clear();
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
     cmd << "PTP/m ";
-    relFactor = 1.0;
-    finalIdx = numPoints-1;
   }
   else
   {
     cmd << "PTP/mr ";
-    relFactor = -1.0;
-    finalIdx = numPoints;
   }
-  
-  // Clear the position string
-  positionStr.str("");
-  positionStr.clear();
-  // Create the comma-separated list of positions
+  // Create the comma-separated list of final positions
   for (j=0; j<profileAxes_.size(); j++)
   {
     pAxis = getAxis(profileAxes_[j]);
     
+    position = pAxis->profileFlybackPos_;
+    
     if (profileAxes_[j] == profileAxes_.front())
     {
-      positionStr << (relFactor * pAxis->profilePositions_[finalIdx]);
+      positionStr << position;
     }
     else 
     {
-      positionStr << ',' << (relFactor * pAxis->profilePositions_[finalIdx]);
+      positionStr << ',' << position;
     }
   }
-  
   // Send the group move command
   cmd << axesToString(profileAxes_) << ", " << positionStr.str();
   status = writeReadAck(cmd);
