@@ -203,7 +203,7 @@ SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 asynStatus SPiiPlusAxis::poll(bool* moving)
 {
 	asynStatus status;
-	SPiiPlusController* controller = (SPiiPlusController*) pC_;	
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	static const char *functionName = "poll";
 	std::stringstream cmd;
 	
@@ -364,7 +364,7 @@ void SPiiPlusAxis::report(FILE *fp, int level)
 std::string SPiiPlusController::axesToString(std::vector <int> axes)
 {
   static const char *functionName = "axesToString";
-  uint i;
+  unsigned int i;
   std::stringstream outputStr;
   
   for (i=0; i<axes.size(); i++)
@@ -394,7 +394,7 @@ std::string SPiiPlusController::axesToString(std::vector <int> axes)
 std::string SPiiPlusController::positionsToString(int positionIndex)
 {
   static const char *functionName = "positionsToString";
-  uint i;
+  unsigned int i;
   SPiiPlusAxis *pAxis;
   std::stringstream outputStr;
   
@@ -420,6 +420,8 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
   int axis;
   SPiiPlusAxis *pAxis;
   asynStatus status;
+  int i;
+  std::stringstream cmd;
   // static const char *functionName = "initializeProfile";
   
   /*
@@ -435,6 +437,15 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
     pAxis->fullProfilePositions_ = (double *)calloc(maxProfilePoints+(2*MAX_ACCEL_SEGMENTS)-1, sizeof(double));
   }
   status = asynMotorController::initializeProfile(maxProfilePoints);
+  
+  // Create the arrays in the controller to hold the data that is recorded during profile moves
+  for (i=0; i<SPIIPLUS_MAX_DC_AXES; i++)
+  {
+    // Data recorded with the DC command will reside in DC_DATA_{1,2,3,4,5,6,7,8} 2D arrays
+    cmd << "GLOBAL REAL DC_DATA_" << (i+1) << " (3)(" << maxProfilePoints << ")";
+    writeReadAck(cmd);
+  }
+  
   return status;
 }
 
@@ -442,7 +453,7 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
 asynStatus SPiiPlusController::buildProfile()
 {
   int i; 
-  uint j; 
+  unsigned int j; 
   int status;
   bool buildOK=true;
   //bool verifyOK=true;
@@ -587,7 +598,7 @@ asynStatus SPiiPlusController::buildProfile()
     pAxes_[j]->profilePreDistance_  =  0.5 * preVelocity[j]  * preTimeMax;
     pAxes_[j]->profilePostDistance_ =  0.5 * postVelocity[j] * postTimeMax;
     
-    float time;
+    double time;
     
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
@@ -606,6 +617,9 @@ asynStatus SPiiPlusController::buildProfile()
   
   // populate the fullProfileTimes_ and fullProfilePositions_ arrays
   assembleFullProfile(numPoints);
+  
+  // calculate the time interval for data collection
+  calculateDataCollectionInterval();
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
   
@@ -706,7 +720,7 @@ void SPiiPlusController::createAccDecPositions(SPiiPlusAxis* axis, int moveMode,
 void SPiiPlusController::assembleFullProfile(int numPoints)
 {
   int i;
-  uint j;
+  unsigned int j;
   int profileIdx;
   static const char *functionName = "assembleFullProfile";
 
@@ -746,7 +760,22 @@ void SPiiPlusController::assembleFullProfile(int numPoints)
     }
     profileIdx++;
   }
+  // fullProfileSize_ == profileIdx at this point
   fullProfileSize_ = numAccelSegments_ + (numPoints-1) + numDecelSegments_;
+}
+
+void SPiiPlusController::calculateDataCollectionInterval()
+{
+  int i;
+  double time;
+  // static const char *functionName = "calculateDataCollectionInterval";
+  
+  for (i=0; i<fullProfileSize_; i++)
+  {
+    time += fullProfileTimes_[i];
+  }
+  
+  dataCollectionInterval_ = time / maxProfilePoints_;
 }
 
 /** Function to execute a coordinated move of multiple axes. */
@@ -788,7 +817,7 @@ asynStatus SPiiPlusController::runProfile()
   double position;
   //double time;
   //int i;
-  uint j;
+  unsigned int j;
   int moveMode;
   char message[MAX_MESSAGE_LEN];
   //char buffer[MAX_GATHERING_STRING];
@@ -855,13 +884,29 @@ asynStatus SPiiPlusController::runProfile()
   callParamCallbacks();
   unlock();
 
-  // configure data recording
-
+  // configure data recording, which will start when the GO command is issued
+  int axesToRecord;
+  if (profileAxes_.size() > 8)
+    axesToRecord = 8;
+  else
+    axesToRecord = profileAxes_.size();
+  for (j=0; j<axesToRecord; j++)
+  {
+    int axesToRecord = 0;
+    
+    // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
+    cmd << "DC/sw " << profileAxes_[j] << ",DC_DATA_" << (j+1) << "," << maxProfilePoints_ << ",";
+    cmd << round(dataCollectionInterval_ * 1000.0) << "," << "FPOS(" << profileAxes_[j] << "),PE(" << profileAxes_[j] << "),TIME";
+    status = writeReadAck(cmd);
+    
+    axesToRecord++;
+    if (axesToRecord > 8) break;
+  }
+  
   // configure pulse output
 
-  // start data recording?
-
   // wake up poller
+  //wakeupPoller();
   
   /* run the trajectory */
   
@@ -1039,7 +1084,7 @@ asynStatus SPiiPlusController::runProfile()
 
 asynStatus SPiiPlusController::waitMotors()
 {
-  uint j;
+  unsigned int j;
   SPiiPlusAxis* pAxis;
   int moving;
   static const char *functionName = "waitMotors";

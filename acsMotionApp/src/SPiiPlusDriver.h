@@ -4,6 +4,7 @@
 #include "asynMotorAxis.h"
 
 #define SPIIPLUS_MAX_AXES 64
+#define SPIIPLUS_MAX_DC_AXES 8
 #define MAX_MESSAGE_LEN   256
 #define MAX_ACCEL_SEGMENTS 20
 
@@ -77,11 +78,13 @@ private:
 	int parseInt();
 	double parseDouble();
 	asynStatus waitMotors();
+	void calculateDataCollectionInterval();
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;
 	int numAccelSegments_;
 	int numDecelSegments_;
+	double dataCollectionInterval_;
 	
 friend class SPiiPlusAxis;
 };
