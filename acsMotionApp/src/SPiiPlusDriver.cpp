@@ -574,15 +574,8 @@ asynStatus SPiiPlusController::buildProfile()
   numAccelSegments_ = getNumAccelSegments(preTimeMax);
   numDecelSegments_ = getNumAccelSegments(postTimeMax);
   
-  // Use a constant time for accel/decel segments
-  for (i=0; i<numAccelSegments_; i++)
-  {
-    profileAccelTimes_[i] = preTimeMax / numAccelSegments_;
-  }
-  for (i=0; i<numDecelSegments_; i++)
-  {
-    profileDecelTimes_[i] = postTimeMax / numDecelSegments_;
-  }
+  // populate the profileAccelTimes_ and profileDecelTimes_ arrays
+  createAccDecTimes(preTimeMax, postTimeMax);
   
   /*
    * Every segment of PATH/POINT/ENDS motion is at a constant velocity.
@@ -660,6 +653,22 @@ asynStatus SPiiPlusController::buildProfile()
   callParamCallbacks();
   //return status ? asynError : asynSuccess;
   return asynSuccess;
+}
+
+void SPiiPlusController::createAccDecTimes(double preTimeMax, double postTimeMax)
+{
+  int i;
+  static const char *functionName = "createAccDecTimes";
+  
+  // Use a constant time for accel/decel segments
+  for (i=0; i<numAccelSegments_; i++)
+  {
+    profileAccelTimes_[i] = preTimeMax / numAccelSegments_;
+  }
+  for (i=0; i<numDecelSegments_; i++)
+  {
+    profileDecelTimes_[i] = postTimeMax / numDecelSegments_;
+  }
 }
 
 void SPiiPlusController::assembleFullProfile(int numPoints)
