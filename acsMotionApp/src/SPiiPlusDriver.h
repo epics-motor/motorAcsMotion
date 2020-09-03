@@ -79,12 +79,14 @@ private:
 	double parseDouble();
 	asynStatus waitMotors();
 	void calculateDataCollectionInterval();
+	asynStatus stopDataCollection();
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;
 	int numAccelSegments_;
 	int numDecelSegments_;
 	double dataCollectionInterval_;
+	bool halted_;
 	
 friend class SPiiPlusAxis;
 };

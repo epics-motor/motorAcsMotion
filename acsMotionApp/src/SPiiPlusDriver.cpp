@@ -878,7 +878,14 @@ asynStatus SPiiPlusController::runProfile()
   // Wait for the motors to get there
   wakeupPoller();
   waitMotors();
-
+  
+  if (halted_)
+  {
+    aborted = true;
+    executeOK = false;
+    goto done;
+  }
+  
   lock();
   setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_EXECUTING);
   callParamCallbacks();
@@ -892,15 +899,10 @@ asynStatus SPiiPlusController::runProfile()
     axesToRecord = profileAxes_.size();
   for (j=0; j<axesToRecord; j++)
   {
-    int axesToRecord = 0;
-    
     // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
     cmd << "DC/sw " << profileAxes_[j] << ",DC_DATA_" << (j+1) << "," << maxProfilePoints_ << ",";
     cmd << round(dataCollectionInterval_ * 1000.0) << "," << "FPOS(" << profileAxes_[j] << "),PE(" << profileAxes_[j] << "),TIME";
     status = writeReadAck(cmd);
-    
-    axesToRecord++;
-    if (axesToRecord > 8) break;
   }
   
   // configure pulse output
@@ -948,6 +950,14 @@ asynStatus SPiiPlusController::runProfile()
     
     while (ptLoadedIdx < fullProfileSize_)
     {
+      if (halted_)
+      {
+        aborted = true;
+        executeOK = false;
+        status = stopDataCollection();
+        goto done;
+      }
+      
       // Sleep for a short period of time
       epicsThreadSleep(0.1);
       
@@ -997,6 +1007,14 @@ asynStatus SPiiPlusController::runProfile()
   // Wait for the remaining points to be executed
   while (ptExecIdx < fullProfileSize_)
   {
+    if (halted_)
+    {
+      aborted = true;
+      executeOK = false;
+      status = stopDataCollection();
+      goto done;
+    }
+    
     // Sleep for a short period of time
     epicsThreadSleep(0.1);
     
@@ -1063,6 +1081,8 @@ asynStatus SPiiPlusController::runProfile()
   wakeupPoller();
   waitMotors();
   
+  // Aborting the flyback move won't result in a profile abort status
+  
   lock();
   if (executeOK)    executeStatus = PROFILE_STATUS_SUCCESS;
   else if (aborted) executeStatus = PROFILE_STATUS_ABORT;
@@ -1078,6 +1098,7 @@ asynStatus SPiiPlusController::runProfile()
   setIntegerParam(profileExecute_, 0);
   setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_DONE);
   callParamCallbacks();
+  halted_ = false;
   unlock();
   return executeOK ? asynSuccess : asynError; 
 }
@@ -1105,11 +1126,39 @@ asynStatus SPiiPlusController::waitMotors()
   return asynSuccess;
 }
 
+asynStatus SPiiPlusController::stopDataCollection()
+{
+  asynStatus status;
+  std::stringstream cmd;
+  unsigned int j;
+  int axesToRecord;
+  // static const char *functionName = "stopDataCollection";  
+  
+  if (profileAxes_.size() > 8)
+    axesToRecord = 8;
+  else
+    axesToRecord = profileAxes_.size();
+  for (j=0; j<axesToRecord; j++)
+  {
+    cmd << "STOPDC/s " << profileAxes_[j];
+    status = writeReadAck(cmd);
+  }
+  
+  return status;
+}
+
 /** Function to abort a profile. */
 asynStatus SPiiPlusController::abortProfile()
 {
+  asynStatus status;
+  std::stringstream cmd;
   // static const char *functionName = "abortProfile";
-  // TODO
+  
+  cmd << "HALT " << axesToString(profileAxes_);
+  status = writeReadAck(cmd);
+  
+  halted_ = true;
+  
   return asynSuccess;
 }
 
