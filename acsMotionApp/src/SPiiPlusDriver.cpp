@@ -629,6 +629,22 @@ asynStatus SPiiPlusController::buildProfile()
   return asynSuccess;
 }
 
+int SPiiPlusController::getNumAccelSegments(double time)
+{
+  int numSegments;
+  // The following value was chosen somewhat arbitrarily -- it gives MAX_ACCEL_SEGMENTS at an acceleration time of 0.2s
+  double minPeriod = 0.01;
+  
+  numSegments = round(time / minPeriod);
+  
+  if (numSegments > MAX_ACCEL_SEGMENTS)
+  {
+    numSegments = MAX_ACCEL_SEGMENTS;
+  }
+  
+  return numSegments;
+}
+
 void SPiiPlusController::createAccDecTimes(double preTimeMax, double postTimeMax)
 {
   int i;
@@ -755,22 +771,6 @@ void SPiiPlusController::profileThread()
     epicsEventWait(profileExecuteEvent_);
     runProfile();
   }
-}
-
-int SPiiPlusController::getNumAccelSegments(double time)
-{
-  int numSegments;
-  // The following value was chosen somewhat arbitrarily -- it gives MAX_ACCEL_SEGMENTS at an acceleration time of 0.2s
-  double minPeriod = 0.01;
-  
-  numSegments = round(time / minPeriod);
-  
-  if (numSegments > MAX_ACCEL_SEGMENTS)
-  {
-    numSegments = MAX_ACCEL_SEGMENTS;
-  }
-  
-  return numSegments;
 }
 
 /* Function to run trajectory.  It runs in a dedicated thread, so it's OK to block.
