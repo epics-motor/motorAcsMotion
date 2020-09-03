@@ -470,7 +470,6 @@ asynStatus SPiiPlusController::buildProfile()
   std::string axisList;
   int useAxis;
   std::stringstream cmd;
-  int profileIdx;
   static const char *functionName = "buildProfile";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
@@ -639,6 +638,37 @@ asynStatus SPiiPlusController::buildProfile()
     }
   }
   
+  assembleFullProfile(numPoints);
+  
+  // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
+  
+  // Verfiy the profile (check speed, accel, limit violations)
+  
+  done:
+  // Can't fail if nothing is verified
+  buildStatus = PROFILE_STATUS_SUCCESS;
+  setIntegerParam(profileBuildStatus_, buildStatus);
+  setStringParam(profileBuildMessage_, message);
+  if (buildStatus != PROFILE_STATUS_SUCCESS) {
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: %s\n",
+              driverName, functionName, message);
+  }
+  /* Clear build command.  This is a "busy" record, don't want to do this until build is complete. */
+  setIntegerParam(profileBuild_, 0);
+  setIntegerParam(profileBuildState_, PROFILE_BUILD_DONE);
+  callParamCallbacks();
+  //return status ? asynError : asynSuccess;
+  return asynSuccess;
+}
+
+void SPiiPlusController::assembleFullProfile(int numPoints)
+{
+  int i;
+  uint j;
+  int profileIdx;
+  static const char *functionName = "assembleFullProfile";
+
   /*
    * Assemble the full profile array from the component arrays.
    * The starting point, pAxes_[j]->profilePreDistance_, is not included.
@@ -676,29 +706,6 @@ asynStatus SPiiPlusController::buildProfile()
     profileIdx++;
   }
   fullProfileSize_ = numAccelSegments_ + (numPoints-1) + numDecelSegments_;
-  
-  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %i+(%i-1)+%i=%i?=%i\n", driverName, functionName, numAccelSegments_, numPoints, numDecelSegments_, fullProfileSize_, profileIdx);
-  
-  // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
-  
-  // Verfiy the profile (check speed, accel, limit violations)
-  
-  done:
-  // Can't fail if nothing is verified
-  buildStatus = PROFILE_STATUS_SUCCESS;
-  setIntegerParam(profileBuildStatus_, buildStatus);
-  setStringParam(profileBuildMessage_, message);
-  if (buildStatus != PROFILE_STATUS_SUCCESS) {
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR,
-              "%s:%s: %s\n",
-              driverName, functionName, message);
-  }
-  /* Clear build command.  This is a "busy" record, don't want to do this until build is complete. */
-  setIntegerParam(profileBuild_, 0);
-  setIntegerParam(profileBuildState_, PROFILE_BUILD_DONE);
-  callParamCallbacks();
-  //return status ? asynError : asynSuccess;
-  return asynSuccess;
 }
 
 /** Function to execute a coordinated move of multiple axes. */

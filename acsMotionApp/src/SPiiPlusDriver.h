@@ -55,6 +55,7 @@ public:
 	
 	/* These are the methods that are new to this class */
 	void profileThread();
+	void assembleFullProfile(int numPoints);
 	asynStatus runProfile();
 	int getNumAccelSegments(double time);
 	
