@@ -593,44 +593,18 @@ asynStatus SPiiPlusController::buildProfile()
     {
       pAxes_[j]->profileStartPos_ = pAxes_[j]->profilePositions_[0] - pAxes_[j]->profilePreDistance_;
       pAxes_[j]->profileFlybackPos_ = pAxes_[j]->profilePositions_[numPoints-1];
-      
-      // Acceleration (absolute)
-      for (i=0; i<numAccelSegments_; i++)
-      {
-        time = preTimeMax * (i+1) / numAccelSegments_;
-        // position during accel period = starting position of user profile - acceleration distance + distance traveled in i acceleration segments
-        pAxes_[j]->profileAccelPositions_[i] = pAxes_[j]->profilePositions_[0] - pAxes_[j]->profilePreDistance_ + 0.5 * (preVelocity[j] / preTimeMax) * pow(time, 2);
-      }
-      
-      // Deceleration (absolute)
-      for (i=0; i<numDecelSegments_; i++)
-      {
-        time = postTimeMax * (i+1) / numDecelSegments_;
-        // position during decel period = ending position of user profile + distance traveled in i deceleration segments
-        pAxes_[j]->profileDecelPositions_[i] = pAxes_[j]->profilePositions_[numPoints-1] + postVelocity[j] * time - 0.5 * (postVelocity[j] / postTimeMax) * pow(time, 2);
-      }
     }
     else
     {
       pAxes_[j]->profileStartPos_ = -pAxes_[j]->profilePreDistance_;
       pAxes_[j]->profileFlybackPos_ = -pAxes_[j]->profilePostDistance_;
-
-      // Acceleration (relative) -- FIXME
-      for (i=0; i<numAccelSegments_; i++)
-      {
-        // position during accel period = -acceleration distance + distance traveled in i acceleration segments
-        pAxes_[j]->profileAccelPositions_[i] = -pAxes_[j]->profilePreDistance_ + 0.5 * (preVelocity[j] / preTimeMax) * pow((preTimeMax * (i+1) / numAccelSegments_), 2);
-      }
-      
-      // Deceleration (relative) -- FIXME
-      for (i=0; i<numDecelSegments_; i++)
-      {
-        // position during decel period = distance traveled in i deceleration segments
-        pAxes_[j]->profileDecelPositions_[i] = 0.5 * (postVelocity[j] / postTimeMax) * pow((postTimeMax * (i+1) / numDecelSegments_), 2);
-      }
     }
+    
+    // populate the profileAccelPositions_ and profileDecelPositions_ arrays
+    createAccDecPositions(pAxes_[j], moveMode, numPoints, preTimeMax, postTimeMax, preVelocity[j], postVelocity[j]);
   }
   
+  // populate the fullProfileTimes_ and fullProfilePositions_ arrays
   assembleFullProfile(numPoints);
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
@@ -668,6 +642,48 @@ void SPiiPlusController::createAccDecTimes(double preTimeMax, double postTimeMax
   for (i=0; i<numDecelSegments_; i++)
   {
     profileDecelTimes_[i] = postTimeMax / numDecelSegments_;
+  }
+}
+
+void SPiiPlusController::createAccDecPositions(SPiiPlusAxis* axis, int moveMode, int numPoints, double preTimeMax, double postTimeMax, double preVelocity, double postVelocity)
+{
+  int i;
+  double time;
+  static const char *functionName = "createAccDecPositions";
+  
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+  {
+    // Acceleration (absolute)
+    for (i=0; i<numAccelSegments_; i++)
+    {
+      time = preTimeMax * (i+1) / numAccelSegments_;
+      // position during accel period = starting position of user profile - acceleration distance + distance traveled in i acceleration segments
+      axis->profileAccelPositions_[i] = axis->profilePositions_[0] - axis->profilePreDistance_ + 0.5 * (preVelocity / preTimeMax) * pow(time, 2);
+    }
+    
+    // Deceleration (absolute)
+    for (i=0; i<numDecelSegments_; i++)
+    {
+      time = postTimeMax * (i+1) / numDecelSegments_;
+      // position during decel period = ending position of user profile + distance traveled in i deceleration segments
+      axis->profileDecelPositions_[i] = axis->profilePositions_[numPoints-1] + postVelocity * time - 0.5 * (postVelocity / postTimeMax) * pow(time, 2);
+    }
+  }
+  else
+  {
+    // Acceleration (relative) -- FIXME
+    for (i=0; i<numAccelSegments_; i++)
+    {
+      // position during accel period = -acceleration distance + distance traveled in i acceleration segments
+      axis->profileAccelPositions_[i] = -axis->profilePreDistance_ + 0.5 * (preVelocity / preTimeMax) * pow((preTimeMax * (i+1) / numAccelSegments_), 2);
+    }
+    
+    // Deceleration (relative) -- FIXME
+    for (i=0; i<numDecelSegments_; i++)
+    {
+      // position during decel period = distance traveled in i deceleration segments
+      axis->profileDecelPositions_[i] = 0.5 * (postVelocity / postTimeMax) * pow((postTimeMax * (i+1) / numDecelSegments_), 2);
+    }
   }
 }
 
