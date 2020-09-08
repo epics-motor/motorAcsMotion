@@ -936,7 +936,7 @@ asynStatus SPiiPlusController::runProfile()
   for (ptIdx = 0; ptIdx < MIN(50, fullProfileSize_); ptIdx++)
   {
     // Create and send the point command (should this be ptIdx+1?)
-    cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(fullProfileTimes_[ptIdx] * 1000.0);
+    cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
     status = writeReadAck(cmd);
     // Increment the counter of points that have been loaded
     ptLoadedIdx++;
@@ -972,7 +972,7 @@ asynStatus SPiiPlusController::runProfile()
       for (ptIdx=ptLoadedIdx; ptIdx<(ptLoadedIdx+ptFree); ptIdx++)
       {
         // Create and send the point command (should this be ptIdx+1?)
-        cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", "<< round(fullProfileTimes_[ptIdx] * 1000.0);
+        cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
         status = writeReadAck(cmd);
       }
       
