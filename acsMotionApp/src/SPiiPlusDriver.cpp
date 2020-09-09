@@ -582,10 +582,10 @@ asynStatus SPiiPlusController::buildProfile()
     goto done;
   }
   
-  sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
   asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisList = %s\n", driverName, functionName, axesToString(profileAxes_).c_str());
-  
-  // TODO: how should an empty axis list be handled?
+  sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
+  setStringParam(profileBuildMessage_, message);
+  callParamCallbacks();
   
   /* We create trajectories with extra elements at the beginning and at the end.
    * The distance and time of the prepended elements are defined so that the motors will
@@ -904,13 +904,15 @@ asynStatus SPiiPlusController::runProfile()
     goto done;
   }
   
+  asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisList = %s\n", driverName, functionName, axesToString(profileAxes_).c_str());
+  
   lock();
   getIntegerParam(profileStartPulses_, &startPulses);
   getIntegerParam(profileEndPulses_,   &endPulses);
   getIntegerParam(profileNumPoints_,   &numPoints);
   getIntegerParam(profileNumPulses_,   &numPulses);
   
-  strcpy(message, " ");
+  sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
   setStringParam(profileExecuteMessage_, message);
   setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_MOVE_START);
   setIntegerParam(profileExecuteStatus_, PROFILE_STATUS_UNDEFINED);
@@ -954,6 +956,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     aborted = true;
     executeOK = false;
+    strcpy(message, "Aborted during move to start");
     goto done;
   }
   
@@ -1028,6 +1031,7 @@ asynStatus SPiiPlusController::runProfile()
         aborted = true;
         executeOK = false;
         //status = stopDataCollection();
+        strcpy(message, "Aborted during profile move");
         goto done;
       }
       
@@ -1085,6 +1089,7 @@ asynStatus SPiiPlusController::runProfile()
       aborted = true;
       executeOK = false;
       //status = stopDataCollection();
+      strcpy(message, "Aborted during profile move");
       goto done;
     }
     
@@ -1153,7 +1158,13 @@ asynStatus SPiiPlusController::runProfile()
   wakeupPoller();
   waitMotors();
   
-  // Aborting the flyback move won't result in a profile abort status
+  if (halted_)
+  {
+    aborted = true;
+    executeOK = false;
+    strcpy(message, "Aborted during flyback");
+    goto done;
+  }
   
   done:
   lock();
@@ -1225,12 +1236,18 @@ asynStatus SPiiPlusController::abortProfile()
 {
   asynStatus status;
   std::stringstream cmd;
+  int executeState;
   // static const char *functionName = "abortProfile";
   
-  cmd << "HALT " << axesToString(profileAxes_);
-  status = writeReadAck(cmd);
-  
-  halted_ = true;
+  getIntegerParam(profileExecuteState_,   &executeState);
+    
+  if (executeState != PROFILE_EXECUTE_DONE)
+  {
+    cmd << "HALT " << axesToString(profileAxes_);
+    status = writeReadAck(cmd);
+    
+    halted_ = true;
+  }
   
   return asynSuccess;
 }
