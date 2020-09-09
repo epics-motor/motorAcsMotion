@@ -425,6 +425,28 @@ std::string SPiiPlusController::axesToString(std::vector <int> axes)
   return outputStr.str();
 }
 
+// Create a motor list string to be displayed in a message to the user
+std::string SPiiPlusController::motorsToString(std::vector <int> axes)
+{
+  static const char *functionName = "motorsToString";
+  unsigned int i;
+  std::stringstream outputStr;
+  
+  for (i=0; i<axes.size(); i++)
+  {
+    if (axes[i] == axes.front())
+    {
+      outputStr << (axes[i]+1);
+    }
+    else
+    {
+      outputStr << ", " << (axes[i]+1);
+    }
+  }
+  
+  return outputStr.str();
+}
+
 std::string SPiiPlusController::positionsToString(int positionIndex)
 {
   static const char *functionName = "positionsToString";
@@ -472,6 +494,7 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
   }
   status = asynMotorController::initializeProfile(maxProfilePoints);
   
+  /*
   // Create the arrays in the controller to hold the data that is recorded during profile moves
   for (i=0; i<SPIIPLUS_MAX_DC_AXES; i++)
   {
@@ -479,6 +502,7 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
     cmd << "GLOBAL REAL DC_DATA_" << (i+1) << " (3)(" << maxProfilePoints << ")";
     writeReadAck(cmd);
   }
+  */
   
   return status;
 }
@@ -551,8 +575,15 @@ asynStatus SPiiPlusController::buildProfile()
     }
   }
   
-  axisList = axesToString(profileAxes_);
-  asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisList = %s\n", driverName, functionName, axisList.c_str());
+  if (profileAxes_.size() == 0)
+  {
+    strcpy(message, "No axes selected");
+    buildOK = false;
+    goto done;
+  }
+  
+  sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
+  asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisList = %s\n", driverName, functionName, axesToString(profileAxes_).c_str());
   
   // TODO: how should an empty axis list be handled?
   
@@ -660,8 +691,7 @@ asynStatus SPiiPlusController::buildProfile()
   // Verfiy the profile (check speed, accel, limit violations)
   
   done:
-  // Can't fail if nothing is verified
-  buildStatus = PROFILE_STATUS_SUCCESS;
+  buildStatus = (buildOK) ? PROFILE_STATUS_SUCCESS : PROFILE_STATUS_FAILURE;
   setIntegerParam(profileBuildStatus_, buildStatus);
   setStringParam(profileBuildMessage_, message);
   if (buildStatus != PROFILE_STATUS_SUCCESS) {
@@ -866,7 +896,14 @@ asynStatus SPiiPlusController::runProfile()
   int ptFree;
   int ptIdx;
   static const char *functionName = "runProfile";
-
+  
+  if (profileAxes_.size() == 0)
+  {
+    strcpy(message, "No axes selected");
+    executeOK = false;
+    goto done;
+  }
+  
   lock();
   getIntegerParam(profileStartPulses_, &startPulses);
   getIntegerParam(profileEndPulses_,   &endPulses);
@@ -924,7 +961,8 @@ asynStatus SPiiPlusController::runProfile()
   setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_EXECUTING);
   callParamCallbacks();
   unlock();
-
+  
+  /*
   // configure data recording, which will start when the GO command is issued
   int axesToRecord;
   if (profileAxes_.size() > 8)
@@ -938,6 +976,7 @@ asynStatus SPiiPlusController::runProfile()
     cmd << round(dataCollectionInterval_ * 1000.0) << "," << "FPOS(" << profileAxes_[j] << "),PE(" << profileAxes_[j] << "),TIME";
     status = writeReadAck(cmd);
   }
+  */
   
   // configure pulse output
 
@@ -988,7 +1027,7 @@ asynStatus SPiiPlusController::runProfile()
       {
         aborted = true;
         executeOK = false;
-        status = stopDataCollection();
+        //status = stopDataCollection();
         goto done;
       }
       
@@ -1045,7 +1084,7 @@ asynStatus SPiiPlusController::runProfile()
     {
       aborted = true;
       executeOK = false;
-      status = stopDataCollection();
+      //status = stopDataCollection();
       goto done;
     }
     
@@ -1074,7 +1113,6 @@ asynStatus SPiiPlusController::runProfile()
   
   // Confirm that the motors are done moving?
   
-  done:
   lock();
   setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_FLYBACK);
   callParamCallbacks();
@@ -1117,6 +1155,7 @@ asynStatus SPiiPlusController::runProfile()
   
   // Aborting the flyback move won't result in a profile abort status
   
+  done:
   lock();
   if (executeOK)    executeStatus = PROFILE_STATUS_SUCCESS;
   else if (aborted) executeStatus = PROFILE_STATUS_ABORT;

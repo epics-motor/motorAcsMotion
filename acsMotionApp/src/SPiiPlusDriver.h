@@ -74,6 +74,7 @@ private:
 	double *fullProfileTimes_;                            /**< Array of times per profile point */
 	int fullProfileSize_;
 	std::string axesToString(std::vector <int> axes);
+	std::string motorsToString(std::vector <int> axes);
 	std::string positionsToString(int positionIndex);
 	std::string accelPositionsToString(int positionIndex);
 	std::string decelPositionsToString(int positionIndex);
