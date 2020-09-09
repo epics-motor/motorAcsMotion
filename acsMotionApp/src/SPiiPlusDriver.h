@@ -32,6 +32,8 @@ private:
 	double profileStartPos_;
 	double profileFlybackPos_;
 	int moving_;
+	int mflags_;
+	int dummy_;
 	
 friend class SPiiPlusController;
 };

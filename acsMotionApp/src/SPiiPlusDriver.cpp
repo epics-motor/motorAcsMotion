@@ -37,6 +37,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 {
 	asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
 	pAxes_ = (SPiiPlusAxis **)(asynMotorController::pAxes_);
+	std::stringstream cmd;
 	
 	if (status)
 	{
@@ -49,6 +50,12 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	for (int index = 0; index < numAxes; index += 1)
 	{
 		new SPiiPlusAxis(this, index);
+		
+		// Query the MFLAGS
+		cmd << "?D/MFLAGS(" << index << ")";
+		writeReadInt(cmd, &(pAxes_[index]->mflags_));
+		// Bit 0 is #DUMMY
+		pAxes_[index]->dummy_ = (pAxes_[index]->mflags_) & (1 << 0);
 	}
 	
 	this->startPoller(movingPollPeriod, idlePollPeriod, 2);
@@ -213,25 +220,35 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	if (status != asynSuccess) return status;
 	setDoubleParam(controller->motorPosition_, position);
 	
-	double enc_position;
-	cmd << "?FPOS(" << axisNo_ << ")";
-	status = controller->writeReadDouble(cmd, &enc_position);
-	if (status != asynSuccess) return status;
-	setDoubleParam(controller->motorEncoderPosition_, enc_position);
+	if (dummy_)
+	{
+		setDoubleParam(controller->motorEncoderPosition_, position);
+		// Faults are disabled for dummy axes
+		setIntegerParam(controller->motorStatusLowLimit_, 0);
+		setIntegerParam(controller->motorStatusHighLimit_, 0);
+	}
+	else
+	{
+		double enc_position;
+		cmd << "?FPOS(" << axisNo_ << ")";
+		status = controller->writeReadDouble(cmd, &enc_position);
+		if (status != asynSuccess) return status;
+		setDoubleParam(controller->motorEncoderPosition_, enc_position);
+		
+		int left_limit, right_limit;
+		cmd << "?FAULT(" << axisNo_ << ").#LL";
+		status = controller->writeReadInt(cmd, &left_limit);
+		if (status != asynSuccess) return status;
+		setIntegerParam(controller->motorStatusLowLimit_, left_limit);
+		cmd << "?FAULT(" << axisNo_ << ").#RL";
+		status = controller->writeReadInt(cmd, &right_limit);
+		if (status != asynSuccess) return status;
+		setIntegerParam(controller->motorStatusHighLimit_, right_limit);
+	}
 	
-	int left_limit, right_limit;
-	cmd << "?FAULT(" << axisNo_ << ").#LL";
-	status = controller->writeReadInt(cmd, &left_limit);
-	if (status != asynSuccess) return status;
-	setIntegerParam(controller->motorStatusLowLimit_, left_limit);
-	cmd << "?FAULT(" << axisNo_ << ").#RL";
-	status = controller->writeReadInt(cmd, &right_limit);
-	if (status != asynSuccess) return status;
-	setIntegerParam(controller->motorStatusHighLimit_, right_limit);
-	
-	// Read the entire motor status and parse the relevant bits
+	// Read the axis status
 	int axis_status;
-	cmd << "?D/MST(" << axisNo_ << ")";
+	cmd << "?D/AST(" << axisNo_ << ")";
 	status = controller->writeReadInt(cmd, &axis_status);
 	if (status != asynSuccess) return status;
 	
@@ -240,10 +257,24 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	//int in_pos;
 	int motion;
 	
-	enabled = axis_status & (1<<0);
-	//open_loop = axis_status & (1<<1);
-	//in_pos = axis_status & (1<<4);
-	motion = axis_status & (1<<5);
+	if (dummy_)
+	{
+		enabled = 0;
+		motion = axis_status & (1<<5);
+	}
+	else
+	{
+		// Read the entire motor status and parse the relevant bits
+		int motor_status;
+		cmd << "?D/MST(" << axisNo_ << ")";
+		status = controller->writeReadInt(cmd, &motor_status);
+		if (status != asynSuccess) return status;
+	
+		enabled = motor_status & (1<<0);
+		//open_loop = axis_status & (1<<1);
+		//in_pos = axis_status & (1<<4);
+		motion = motor_status & (1<<5);
+	}
 	
 	//asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i status: %i\n", driverName, functionName, axisNo_, axis_status);
 	//asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i motion: %i\n", driverName, functionName, axisNo_, motion);
@@ -323,21 +354,24 @@ asynStatus SPiiPlusAxis::stop(double acceleration)
 asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
-	asynStatus status;
+	asynStatus status=asynSuccess;
 	std::stringstream cmd;
 	
-	/*
-	 Enable/disable the axis instead of changing the closed-loop state.
-	*/
-	if (closedLoop)
+	if (!dummy_)
 	{
-		cmd << "ENABLE " << axisNo_;
+		/*
+		Enable/disable the axis instead of changing the closed-loop state.
+		*/
+		if (closedLoop)
+		{
+			cmd << "ENABLE " << axisNo_;
+		}
+		else
+		{
+			cmd << "DISABLE " << axisNo_;
+		}
+		status = controller->writeReadAck(cmd);
 	}
-	else
-	{
-		cmd << "DISABLE " << axisNo_;
-	}
-	status = controller->writeReadAck(cmd);
 	
 	return status;
 }
@@ -351,11 +385,11 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
   */
 void SPiiPlusAxis::report(FILE *fp, int level)
 {
-  if (level > 0) {
-    fprintf(fp, "Configuration for axis %i:\n", axisNo_);
-    fprintf(fp, "  Moving: %i\n", moving_);
-    fprintf(fp, "\n");
-  }
+  fprintf(fp, "Configuration for axis %i:\n", axisNo_);
+  fprintf(fp, "  mflags: %i\n", mflags_);
+  fprintf(fp, "  dummy:  %i\n", dummy_);
+  fprintf(fp, "  moving: %i\n", moving_);
+  fprintf(fp, "\n");
   
   // Call the base class method
   asynMotorAxis::report(fp, level);
@@ -1179,8 +1213,13 @@ void SPiiPlusController::report(FILE *fp, int level)
   fprintf(fp, "    idle poll period: %lf\n", idlePollPeriod_);
   fprintf(fp, "\n");
   
+  // Print more axis detail if level = 1
+  // Print all the asyn parameters if level > 1
+  if (level > 0)
+    level -= 1;
+  
   // Call the base class method
-    asynMotorController::report(fp, level);
+  asynMotorController::report(fp, level-1);
   fprintf(fp, "====================================\n");
 }
 
