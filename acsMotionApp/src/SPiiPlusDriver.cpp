@@ -89,7 +89,8 @@ asynStatus SPiiPlusController::writeReadInt(std::stringstream& cmd, int* val)
 	static const char *functionName = "writeReadInt";
 	char inString[MAX_CONTROLLER_STRING_SIZE];
 	std::stringstream val_convert;
-	
+	int errNo;
+
 	std::fill(inString, inString + 256, '\0');
 	
 	size_t response;
@@ -99,14 +100,28 @@ asynStatus SPiiPlusController::writeReadInt(std::stringstream& cmd, int* val)
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
-	if (status != asynSuccess) return status;
-	if (inString[0] == '?') return asynError;
-	
-	// inString ends with \r:\r, but that isn't a problem for the following conversion
-	val_convert << std::string(inString);
-	val_convert >> *val;
-	
-	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:    val = %i\n", driverName, functionName, *val);
+	if (status == asynSuccess)
+	{
+		if (inString[0] != '?')
+		{
+			// inString ends with \r:\r, but that isn't a problem for the following conversion
+			val_convert << std::string(inString);
+			val_convert >> *val;
+			
+			asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:    val = %i\n", driverName, functionName, *val);
+		}
+		else
+		{
+			// Overwrite the '?' so the conversion can succeed
+			inString[0] = ' ';
+			val_convert << std::string(inString);
+			val_convert >> errNo;
+			
+			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
+			
+			status = asynError;
+		}
+	}
 	
 	// clear the command stringstream
 	cmd.str("");
@@ -120,6 +135,7 @@ asynStatus SPiiPlusController::writeReadDouble(std::stringstream& cmd, double* v
 	static const char *functionName = "writeReadDouble";
 	char inString[MAX_CONTROLLER_STRING_SIZE];
 	std::stringstream val_convert;
+	int errNo;
 	
 	std::fill(inString, inString + 256, '\0');
 	
@@ -130,14 +146,29 @@ asynStatus SPiiPlusController::writeReadDouble(std::stringstream& cmd, double* v
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
-	if (status != asynSuccess) return status;
-	if (inString[0] == '?') return asynError;
 	
-	// inString ends with \r:\r, but that isn't a problem for the following conversion
-	val_convert << std::string(inString);
-	val_convert >> *val;
-	
-	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:    val = %lf\n", driverName, functionName, *val);
+	if (status == asynSuccess)
+	{
+		if (inString[0] != '?')
+		{
+			// inString ends with \r:\r, but that isn't a problem for the following conversion
+			val_convert << std::string(inString);
+			val_convert >> *val;
+			
+			asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:    val = %lf\n", driverName, functionName, *val);
+		}
+		else
+		{
+			// Overwrite the '?' so the conversion can succeed
+			inString[0] = ' ';
+			val_convert << std::string(inString);
+			val_convert >> errNo;
+			
+			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
+			
+			status = asynError;
+		}
+	}
 	
 	// clear the command stringstream -- this doesn't work
 	cmd.str("");
@@ -150,7 +181,9 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 {
 	static const char *functionName = "writeReadAck";
 	char inString[MAX_CONTROLLER_STRING_SIZE];
-	
+	std::stringstream val_convert;
+	int errNo;
+
 	std::fill(inString, inString + 256, '\0');
 	
 	size_t response;
@@ -160,8 +193,17 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
-	if (status != asynSuccess) return status;
-	if (inString[0] == '?') return asynError;
+	if (inString[0] == '?')
+	{
+		// Overwrite the '?' so the conversion can succeed
+		inString[0] = ' ';
+		val_convert << std::string(inString);
+		val_convert >> errNo;
+		
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
+		
+		status = asynError;
+	}
 	
 	// clear the command stringstream
 	cmd.str("");
@@ -169,7 +211,6 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 	
 	return status;
 }
-
 
 // The following parse methods would be better as a template method, but that might break VxWorks compatibility
 int SPiiPlusController::parseInt()
@@ -460,11 +501,11 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
     
     if (profileAxes_[i] == profileAxes_.front())
     {
-      outputStr << round(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << nearbyintl(pAxis->fullProfilePositions_[positionIndex]);
     }
     else 
     {
-      outputStr << ',' << round(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << ',' << nearbyintl(pAxis->fullProfilePositions_[positionIndex]);
     }
   }
   
@@ -494,7 +535,6 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
   }
   status = asynMotorController::initializeProfile(maxProfilePoints);
   
-  /*
   // Create the arrays in the controller to hold the data that is recorded during profile moves
   for (i=0; i<SPIIPLUS_MAX_DC_AXES; i++)
   {
@@ -502,7 +542,6 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
     cmd << "GLOBAL REAL DC_DATA_" << (i+1) << " (3)(" << maxProfilePoints << ")";
     writeReadAck(cmd);
   }
-  */
   
   return status;
 }
@@ -685,6 +724,8 @@ asynStatus SPiiPlusController::buildProfile()
   
   // calculate the time interval for data collection
   calculateDataCollectionInterval();
+  // clear the data arrays
+  //IAMHERE
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
   
@@ -709,11 +750,11 @@ asynStatus SPiiPlusController::buildProfile()
 
 int SPiiPlusController::getNumAccelSegments(double time)
 {
-  int numSegments;
+  long numSegments;
   // The following value was chosen somewhat arbitrarily -- it gives MAX_ACCEL_SEGMENTS at an acceleration time of 0.2s
   double minPeriod = 0.01;
   
-  numSegments = round(time / minPeriod);
+  numSegments = nearbyintl(time / minPeriod);
   
   if (numSegments > MAX_ACCEL_SEGMENTS)
   {
@@ -880,7 +921,7 @@ asynStatus SPiiPlusController::runProfile()
   //double pulsePeriod;
   double position;
   //double time;
-  //int i;
+  int i;
   unsigned int j;
   int moveMode;
   char message[MAX_MESSAGE_LEN];
@@ -895,6 +936,7 @@ asynStatus SPiiPlusController::runProfile()
   int ptLoadedIdx;
   int ptFree;
   int ptIdx;
+  std::string posData;
   static const char *functionName = "runProfile";
   
   if (profileAxes_.size() == 0)
@@ -965,8 +1007,7 @@ asynStatus SPiiPlusController::runProfile()
   callParamCallbacks();
   unlock();
   
-  /*
-  // configure data recording, which will start when the GO command is issued
+  /* configure data recording, which will start when the GO command is issued */
   int axesToRecord;
   if (profileAxes_.size() > 8)
     axesToRecord = 8;
@@ -974,12 +1015,33 @@ asynStatus SPiiPlusController::runProfile()
     axesToRecord = profileAxes_.size();
   for (j=0; j<axesToRecord; j++)
   {
+    // Zero the data array
+    cmd << "FILL(0,DC_DATA_" << (j+1) << ")";
+    status = writeReadAck(cmd);
+    
     // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
+    if (pAxes_[profileAxes_[j]]->dummy_)
+      // use the desired position for dummy axes, since FPOS and PE are always zero
+      posData = "APOS";
+    else
+      // use the feedback position for real motors
+      posData = "FPOS";
     cmd << "DC/sw " << profileAxes_[j] << ",DC_DATA_" << (j+1) << "," << maxProfilePoints_ << ",";
-    cmd << round(dataCollectionInterval_ * 1000.0) << "," << "FPOS(" << profileAxes_[j] << "),PE(" << profileAxes_[j] << "),TIME";
+    cmd << nearbyintl(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[j] << "),PE(" << profileAxes_[j] << "),TIME";
     status = writeReadAck(cmd);
   }
-  */
+  
+  /*
+   *  There is a bug in the controller firmware that prevents synchronized data 
+   * collection from starting when a the GO is issued for the PTP/tw move.  If 
+   * more than two axes are scanned, data collection must be started *before* 
+   * the PTP/tw is sent to the controller, which results in somewhat synchronized 
+   * data.  If only one axis is scanned, two GO commands could be sent after 
+   * the PTP/tw command, but that isn't implemented.
+   */
+  // Ugly hack: A GO is needed here to start data collection.
+  cmd << "GO " << axesToString(profileAxes_);
+  status = writeReadAck(cmd);
   
   // configure pulse output
 
@@ -1014,6 +1076,10 @@ asynStatus SPiiPlusController::runProfile()
     // Create and send the point command (should this be ptIdx+1?)
     cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
     status = writeReadAck(cmd);
+    
+    // DEBUG
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  point(%i) = %s\n", driverName, functionName, ptIdx, positionsToString(ptIdx).c_str());
+    
     // Increment the counter of points that have been loaded
     ptLoadedIdx++;
   }
@@ -1030,7 +1096,7 @@ asynStatus SPiiPlusController::runProfile()
       {
         aborted = true;
         executeOK = false;
-        //status = stopDataCollection();
+        status = stopDataCollection();
         strcpy(message, "Aborted during profile move");
         goto done;
       }
@@ -1051,6 +1117,9 @@ asynStatus SPiiPlusController::runProfile()
         // Create and send the point command (should this be ptIdx+1?)
         cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
         status = writeReadAck(cmd);
+        
+        // DEBUG
+        //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  point(%i) = %s\n", driverName, functionName, ptIdx, positionsToString(ptIdx).c_str());
       }
       
       // Increment the counter of points that have been loaded
@@ -1088,7 +1157,7 @@ asynStatus SPiiPlusController::runProfile()
     {
       aborted = true;
       executeOK = false;
-      //status = stopDataCollection();
+      status = stopDataCollection();
       strcpy(message, "Aborted during profile move");
       goto done;
     }
