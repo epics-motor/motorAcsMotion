@@ -212,6 +212,70 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 	return status;
 }
 
+asynStatus SPiiPlusController::writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes)
+{
+	static const char *functionName = "writeReadDoubleArray";
+	std::stringstream val_convert;
+	unsigned long cmdSize;
+	int errNo;
+	
+	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
+	
+	/*
+	 * Binary query int array format: [D3][F1][XX][XX]%??[08]cmd[D6]
+	 *   where XX XX is the command length (little endian)
+	 * 
+	 */
+	
+	outString_[0] = 0xd3;
+	outString_[1] = 0xf1;
+	cmdSize = cmd.str().size();
+	outString_[2] = (cmdSize >> 0) & 0xFF;
+	outString_[3] = (cmdSize >> 8) & 0xFF;
+	outString_[4] = 0x08;
+	strncpy(outString_+5, "%??", 3);
+	strncpy(outString_+8, cmd.str().c_str(), cmdSize);
+	outString_[8+cmdSize] = 0xd6;
+	
+	size_t response;
+	asynStatus status = this->writeReadController(outString_, buffer, numBytes+5, &response, -1);
+	
+	if (response != (unsigned long)numBytes+5)
+	{
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: MISMATCH - expected: %i - read: %li\n", driverName, functionName, numBytes+5, response);
+		
+		// If the first character of the data is a question mark, the error number follows it
+		if (buffer[4] == 0x3f)
+		{
+			/*
+			 *  Error response: [E3][F1][06][00]?####[0D][E6]
+			 */
+			 
+			// replace the carriage return with a null byte
+			buffer[9] = 0;
+			
+			// convert the error number bytes into an int
+			val_convert << buffer+5;
+			val_convert >> errNo;
+			
+			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
+		}
+		status = asynError;
+	}
+	else
+	{
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ARRAY READ SUCCESSFUL - read: %li\n", driverName, functionName, response);
+	}
+	
+	// clear the command stringstream
+	cmd.str("");
+	cmd.clear();
+	
+	return status;
+}
+
+
+
 // The following parse methods would be better as a template method, but that might break VxWorks compatibility
 int SPiiPlusController::parseInt()
 {
@@ -724,8 +788,7 @@ asynStatus SPiiPlusController::buildProfile()
   
   // calculate the time interval for data collection
   calculateDataCollectionInterval();
-  // clear the data arrays
-  //IAMHERE
+  // TODO: clear the data arrays heare instead of in runProfile?
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
   
@@ -1320,6 +1383,56 @@ asynStatus SPiiPlusController::abortProfile()
   
   return asynSuccess;
 }
+
+asynStatus SPiiPlusController::readbackProfile()
+{
+  char message[MAX_MESSAGE_LEN];
+  bool readbackOK=true;
+  //int numPulses;
+  char* buffer=NULL;
+  //char* bptr, *tptr;
+  //int currentSamples, maxSamples;
+  //double setpointPosition, actualPosition;
+  //int readbackStatus;
+  int status;
+  int i; 
+  unsigned int j;
+  //int nitems;
+  int numRead=0, numInBuffer, numChars;
+  std::stringstream cmd;
+  SPiiPlusAxis* pAxis;
+  static const char *functionName = "readbackProfile";
+
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: entry\n",
+            driverName, functionName);
+
+  strcpy(message, "");
+  setStringParam(profileReadbackMessage_, message);
+  setIntegerParam(profileReadbackState_, PROFILE_READBACK_BUSY);
+  setIntegerParam(profileReadbackStatus_, PROFILE_STATUS_UNDEFINED);
+  callParamCallbacks();
+  
+  //status = getIntegerParam(profileNumPulses_, &numPulses);
+
+  /* Erase the readback and error arrays */
+  for (i=0; i<numAxes_; i++) {
+    memset(pAxes_[i]->profileReadbacks_,       0, maxProfilePoints_*sizeof(double));
+    memset(pAxes_[i]->profileFollowingErrors_, 0, maxProfilePoints_*sizeof(double));
+  }
+  
+  buffer = (char *)calloc(MAX_BINARY_READ_LEN, sizeof(char));
+  
+  for (j=0; j<profileAxes_.size(); j++)
+  {
+    pAxis = getAxis(j);
+    cmd << "DC_DATA_" << (j+1) << "(0," << maxProfilePoints_ << ")(0," << maxProfilePoints_ << ")(0," << maxProfilePoints_ << ")";
+    writeReadDoubleArray(cmd, buffer, maxProfilePoints_*sizeof(double)*3);
+  }
+  
+  return asynSuccess;
+}
+
 
 /** Reports on status of the driver
   * \param[in] fp The file pointer on which report information will be written

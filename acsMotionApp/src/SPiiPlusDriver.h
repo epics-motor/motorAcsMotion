@@ -8,6 +8,9 @@
 #define MAX_MESSAGE_LEN   256
 #define MAX_ACCEL_SEGMENTS 20
 
+// Maximum number of bytes that can be returned by a binary read (set arbitrarly)
+#define MAX_BINARY_READ_LEN 65536
+
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
 {
 public:
@@ -49,12 +52,14 @@ public:
 	asynStatus writeReadInt(std::stringstream& cmd, int* val);
 	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
 	asynStatus writeReadAck(std::stringstream& cmd);
+	asynStatus writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes);
 	
 	/* These are functions for profile moves */
 	asynStatus initializeProfile(size_t maxProfilePoints);
 	asynStatus buildProfile();
 	asynStatus executeProfile();
 	asynStatus abortProfile();
+	asynStatus readbackProfile();
 	
 	/* These are the methods that are new to this class */
 	void profileThread();
