@@ -5,12 +5,38 @@
 
 #define SPIIPLUS_MAX_AXES 64
 #define SPIIPLUS_MAX_DC_AXES 8
-#define SPIIPLUS_TIMEOUT 0.05
+#define SPIIPLUS_CMD_TIMEOUT 0.05
+#define SPIIPLUS_ARRAY_TIMEOUT 5.0
 #define MAX_MESSAGE_LEN   256
 #define MAX_ACCEL_SEGMENTS 20
 
-// Maximum number of bytes that can be returned by a binary read (set arbitrarly)
+// Maximum number of bytes that can be returned by a binary read
 #define MAX_BINARY_READ_LEN 65536
+#define MAX_PACKET_DATA 1400
+//
+#define FRAME_START 		0xd3
+#define FRAME_END 		0xd6
+#define INT_DATA_SIZE 		0x04
+#define DOUBLE_DATA_SIZE	0x08
+#define READ_D_ARRAY_CMD	0xf0
+#define READ_I_ARRAY_CMD	0xf1
+#define READ_LD_ARRAY_CMD	0x41
+#define READ_LD_SLICE_CMD	0x42
+#define READ_LI_ARRAY_CMD	0x44
+#define READ_LI_SLICE_CMD	0x45
+#define SLICE_AVAILABLE		1 << 7
+/*
+#define WRITE_I_ARRAY_CMD	0xf3
+#define WRITE_D_ARRAY_CMD	0xf2
+#define WRITE_LD_ARRAY_CMD	0x37
+#define WRITE_LD_SLICE_CMD	0x38
+#define WRITE_LD_END_CMD	0x39
+#define WRITE_LI_ARRAY_CMD	0x3A
+#define WRITE_LI_SLICE_CMD	0x3B
+*/
+
+// drvInfo strings for extra parameters that the XPS controller supports
+#define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
 {
@@ -46,7 +72,7 @@ class epicsShareClass SPiiPlusController : public asynMotorController
 {
 public:
 	SPiiPlusController(const char* ACSPort, const char* asynPort, int numAxes, double moving_poll, double idle_poll);
-	
+	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
 	void report(FILE *fp, int level);
@@ -74,6 +100,12 @@ protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
 	std::string instring;
 	
+	#define FIRST_SPIIPLUS_PARAM SPiiPlusTest_
+	int SPiiPlusTest_;
+	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
+	
+	
+	
 private:
 	double profileAccelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile acceleration point */
 	double profileDecelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile deceleration point */
@@ -89,6 +121,7 @@ private:
 	asynStatus waitMotors();
 	void calculateDataCollectionInterval();
 	asynStatus stopDataCollection();
+	asynStatus test();
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;
@@ -99,3 +132,4 @@ private:
 	
 friend class SPiiPlusAxis;
 };
+#define NUM_SPIIPLUS_PARAMS ((int)(&LAST_SPIIPLUS_PARAM - &FIRST_SPIIPLUS_PARAM + 1))

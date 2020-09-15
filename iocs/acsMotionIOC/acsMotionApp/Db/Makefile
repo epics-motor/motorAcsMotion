@@ -22,13 +22,13 @@ DB_INSTALLS += $(MOTOR)/db/profileMoveController_settings.req
 DB_INSTALLS += $(MOTOR)/db/profileMoveAxis.template
 DB_INSTALLS += $(MOTOR)/db/profileMoveAxis_settings.req
 
-#!ifdef MOTOR_ACSMOTION
+ifdef MOTOR_ACSMOTION
 #!### motorAcsMotion was built outside motor
-#!DB_INSTALLS += $(MOTOR_ACSMOTION)/db/local.db
-#!else
+DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusTest.db
+else
 #!### motorAcsMotion was built inside motor/modules
-#!DB_INSTALLS += $(MOTOR)/db/local.db
-#!endif
+DB_INSTALLS += $(MOTOR)/db/SPiiPlusTest.db
+endif
 
 #----------------------------------------------------
 # If <anyname>.db template is not named <anyname>*.template add

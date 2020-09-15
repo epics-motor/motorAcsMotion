@@ -4,6 +4,7 @@ include $(TOP)/configure/CONFIG
 
 # The following are used for debugging messages.
 #USR_CXXFLAGS += -DDEBUG
+#USR_CXXFLAGS += -std=c++11
 
 DBD += AcsMotionSupport.dbd
 
