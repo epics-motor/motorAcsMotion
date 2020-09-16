@@ -10,6 +10,7 @@ DBD += AcsMotionSupport.dbd
 
 LIBRARY_IOC = AcsMotion
 
+SRCS += SPiiPlusBinComm.cpp
 SRCS += SPiiPlusDriver.cpp
 
 AcsMotion_LIBS += motor asyn

@@ -19,6 +19,7 @@
 #include <epicsExport.h>
 
 #include "SPiiPlusDriver.h"
+#include "SPiiPlusBinComm.h"
 
 static const char *driverName = "SPiiPlusController";
 
@@ -267,6 +268,52 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 	
 	return status;
 }
+
+asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *readBytes)
+{
+	char* packetBuffer;
+	size_t nwrite, nread;
+	int eomReason;
+	asynStatus status;
+	int i, j;
+	
+	lock();
+	
+	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
+	packetBuffer = (char *)calloc(MAX_PACKET_DATA+5, sizeof(char));
+	
+	// Clear the EOS characters
+	pasynOctetSyncIO->setInputEos(pasynUserController_, "", 0);
+	pasynOctetSyncIO->setOutputEos(pasynUserController_, "", 0);
+	
+	// Send the query command
+	memcpy(outString_, output, outBytes);
+	status = pasynOctetSyncIO->write(pasynUserController_, outString_, outBytes, SPIIPLUS_CMD_TIMEOUT, &nwrite);
+	
+	// The reply from the controller has a 4-byte header and a 1-byte suffix
+	status = pasynOctetSyncIO->read(pasynUserController_, packetBuffer, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
+	
+	// Subtract the 5 header bytes to get the number of bytes in the data
+	*readBytes = nread - 5;
+	// Loop over the number of 64-bit values
+	for (i=0; (unsigned)i<(*readBytes/8); i++)
+	{
+		// Loop over the bytes in a 64-bit number
+		for (j=0; j<8; j++)
+		{
+			// Copy the data to the output buffer, switching the from BE to LE at the same time
+			output[(i*8)+j] = packetBuffer[5+(i*8)+(7-j)];
+		}
+	}
+	
+	// Restore the EOS characters
+	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
+	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
+	
+	unlock();
+	
+	return status;
+	}
 
 asynStatus SPiiPlusController::writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes)
 {
@@ -1649,12 +1696,16 @@ asynStatus SPiiPlusController::readbackProfile()
 
 asynStatus SPiiPlusController::test()
 {
-  //char message[MAX_MESSAGE_LEN];
+  char binCmd[MAX_MESSAGE_LEN];
   char* buffer=NULL;
   asynStatus status;
-  //int i; 
-  unsigned int j;
+  int i; 
+  //unsigned int j;
   std::stringstream cmd;
+  int outBytes, inBytes;
+  size_t nread;
+  int numValues;
+  double *valArray;
   //SPiiPlusAxis* pAxis;
   static const char *functionName = "test";
   
@@ -1662,6 +1713,7 @@ asynStatus SPiiPlusController::test()
   
   buffer = (char *)calloc(MAX_BINARY_READ_LEN, sizeof(char));
   
+  /*
   for (j=0; j<profileAxes_.size(); j++)
   {
     //pAxis = getAxis(j);
@@ -1670,7 +1722,25 @@ asynStatus SPiiPlusController::test()
     status = writeReadDoubleArray(cmd, buffer, maxProfilePoints_*sizeof(double)*3);
     //epicsThreadSleep(5.0);
   }
+  */
+  readFloat64ArrayCmd(binCmd, "APOS", 0, 7, &outBytes, &inBytes);
+  status = writeReadBinary((char*)binCmd, outBytes, buffer, inBytes, &nread);
   
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  data bytes request = %i;  read = %li\n", driverName, functionName, inBytes, nread);
+  
+  numValues = nread / 8;
+  valArray = (double *)calloc(numValues, sizeof(double));
+  memcpy(valArray, buffer, nread);
+  
+  for (i=0; i<numValues; i++)
+  {
+      asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  value[%i] = %lf\n", driverName, functionName, i, valArray[i]);
+  }
+  
+  for (i=0; (unsigned)i<nread; i++)
+  {
+      asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  value[%i] = %x\n", driverName, functionName, i, buffer[i]);
+  }
   free(buffer);
   
   return status;

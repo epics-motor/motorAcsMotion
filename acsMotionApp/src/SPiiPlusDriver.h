@@ -12,6 +12,7 @@
 
 // Maximum number of bytes that can be returned by a binary read
 #define MAX_BINARY_READ_LEN 65536
+#define MAX_PACKET_SIZE 1405
 #define MAX_PACKET_DATA 1400
 //
 #define FRAME_START 		0xd3
@@ -80,6 +81,7 @@ public:
 	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
 	asynStatus writeReadAck(std::stringstream& cmd);
 	asynStatus writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes);
+	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *readBytes);
 	
 	/* These are functions for profile moves */
 	asynStatus initializeProfile(size_t maxProfilePoints);
