@@ -275,7 +275,7 @@ asynStatus SPiiPlusController::writeReadDoubleArray(std::stringstream& cmd, char
 	unsigned long asciiCmdSize;
 	unsigned long cmdSize;
 	int errNo;
-	int i;
+	//int i;
 	int remainingBytes;
 	int readBytes;
 	int bytesToRead;
@@ -489,7 +489,7 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 {
 	asynStatus status;
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
-	static const char *functionName = "poll";
+	//static const char *functionName = "poll";
 	std::stringstream cmd;
 	
 	double position;
@@ -675,7 +675,7 @@ void SPiiPlusAxis::report(FILE *fp, int level)
 
 std::string SPiiPlusController::axesToString(std::vector <int> axes)
 {
-  static const char *functionName = "axesToString";
+  //static const char *functionName = "axesToString";
   unsigned int i;
   std::stringstream outputStr;
   
@@ -706,7 +706,7 @@ std::string SPiiPlusController::axesToString(std::vector <int> axes)
 // Create a motor list string to be displayed in a message to the user
 std::string SPiiPlusController::motorsToString(std::vector <int> axes)
 {
-  static const char *functionName = "motorsToString";
+  //static const char *functionName = "motorsToString";
   unsigned int i;
   std::stringstream outputStr;
   
@@ -727,7 +727,7 @@ std::string SPiiPlusController::motorsToString(std::vector <int> axes)
 
 std::string SPiiPlusController::positionsToString(int positionIndex)
 {
-  static const char *functionName = "positionsToString";
+  //static const char *functionName = "positionsToString";
   unsigned int i;
   SPiiPlusAxis *pAxis;
   std::stringstream outputStr;
@@ -939,8 +939,6 @@ asynStatus SPiiPlusController::buildProfile()
     pAxes_[j]->profilePreDistance_  =  0.5 * preVelocity[j]  * preTimeMax;
     pAxes_[j]->profilePostDistance_ =  0.5 * postVelocity[j] * postTimeMax;
     
-    double time;
-    
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
       pAxes_[j]->profileStartPos_ = pAxes_[j]->profilePositions_[0] - pAxes_[j]->profilePreDistance_;
@@ -1003,7 +1001,7 @@ int SPiiPlusController::getNumAccelSegments(double time)
 void SPiiPlusController::createAccDecTimes(double preTimeMax, double postTimeMax)
 {
   int i;
-  static const char *functionName = "createAccDecTimes";
+  //static const char *functionName = "createAccDecTimes";
   
   // Use a constant time for accel/decel segments
   for (i=0; i<numAccelSegments_; i++)
@@ -1020,7 +1018,7 @@ void SPiiPlusController::createAccDecPositions(SPiiPlusAxis* axis, int moveMode,
 {
   int i;
   double time;
-  static const char *functionName = "createAccDecPositions";
+  //static const char *functionName = "createAccDecPositions";
   
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
@@ -1063,7 +1061,7 @@ void SPiiPlusController::assembleFullProfile(int numPoints)
   int i;
   unsigned int j;
   int profileIdx;
-  static const char *functionName = "assembleFullProfile";
+  //static const char *functionName = "assembleFullProfile";
 
   /*
    * Assemble the full profile array from the component arrays.
@@ -1152,7 +1150,8 @@ asynStatus SPiiPlusController::runProfile()
   bool aborted=false;
   int startPulses, endPulses;
   //int lastTime;
-  int numPoints, numElements, numPulses;
+  int numPoints, numPulses;
+  //int numElements;
   int executeStatus;
   //double pulsePeriod;
   double position;
@@ -1225,7 +1224,13 @@ asynStatus SPiiPlusController::runProfile()
   }
   cmd << axesToString(profileAxes_) << ", " << positionStr.str();
   status = writeReadAck(cmd);
-
+  // Should this be done after every command in this method?
+  if (status)
+  {
+    executeOK = false;
+    goto done;
+  }
+  
   // Wait for the motors to get there
   wakeupPoller();
   waitMotors();
@@ -1249,21 +1254,21 @@ asynStatus SPiiPlusController::runProfile()
     axesToRecord = 8;
   else
     axesToRecord = profileAxes_.size();
-  for (j=0; j<axesToRecord; j++)
+  for (i=0; i<axesToRecord; i++)
   {
     // Zero the data array
-    cmd << "FILL(0,DC_DATA_" << (j+1) << ")";
+    cmd << "FILL(0,DC_DATA_" << (i+1) << ")";
     status = writeReadAck(cmd);
     
     // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
-    if (pAxes_[profileAxes_[j]]->dummy_)
+    if (pAxes_[profileAxes_[i]]->dummy_)
       // use the desired position for dummy axes, since FPOS and PE are always zero
       posData = "APOS";
     else
       // use the feedback position for real motors
       posData = "FPOS";
-    cmd << "DC/sw " << profileAxes_[j] << ",DC_DATA_" << (j+1) << "," << maxProfilePoints_ << ",";
-    cmd << nearbyintl(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[j] << "),PE(" << profileAxes_[j] << "),TIME";
+    cmd << "DC/sw " << profileAxes_[i] << ",DC_DATA_" << (i+1) << "," << maxProfilePoints_ << ",";
+    cmd << nearbyintl(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[i] << "),PE(" << profileAxes_[i] << "),TIME";
     status = writeReadAck(cmd);
   }
   
@@ -1519,7 +1524,7 @@ asynStatus SPiiPlusController::stopDataCollection()
 {
   asynStatus status;
   std::stringstream cmd;
-  unsigned int j;
+  int i;
   int axesToRecord;
   // static const char *functionName = "stopDataCollection";  
   
@@ -1527,9 +1532,9 @@ asynStatus SPiiPlusController::stopDataCollection()
     axesToRecord = 8;
   else
     axesToRecord = profileAxes_.size();
-  for (j=0; j<axesToRecord; j++)
+  for (i=0; i<axesToRecord; i++)
   {
-    cmd << "STOPDC/s " << profileAxes_[j];
+    cmd << "STOPDC/s " << profileAxes_[i];
     status = writeReadAck(cmd);
   }
   
@@ -1554,7 +1559,7 @@ asynStatus SPiiPlusController::abortProfile()
     halted_ = true;
   }
   
-  return asynSuccess;
+  return status;
 }
 
 asynStatus SPiiPlusController::readbackProfile()
@@ -1571,7 +1576,8 @@ asynStatus SPiiPlusController::readbackProfile()
   int i; 
   unsigned int j;
   //int nitems;
-  int numRead=0, numInBuffer, numChars;
+  int numRead=0;
+  //int numInBuffer, numChars;
   std::stringstream cmd;
   SPiiPlusAxis* pAxis;
   static const char *functionName = "readbackProfile";
@@ -1608,12 +1614,12 @@ asynStatus SPiiPlusController::readbackProfile()
       goto done;
     }
     
-    for (i=0; i<maxProfilePoints_; i++)
+    for (i=0; (unsigned)i<maxProfilePoints_; i++)
     {
-      pAxes_[j]->profileReadbacks_[i] = (double)buffer[i*sizeof(double)];
-      //pAxes_[j]->profileReadbacks_[i] = swap_endian<double_t>((double)buffer[i*sizeof(double)]);
-      pAxes_[j]->profileFollowingErrors_[i] = (double)buffer[maxProfilePoints_+i*sizeof(double)];
-      //pAxes_[j]->profileFollowingErrors_[i] = swap_endian<double_t>((double)buffer[maxProfilePoints_+i*sizeof(double)]);
+      pAxis->profileReadbacks_[i] = (double)buffer[i*sizeof(double)];
+      //pAxis->profileReadbacks_[i] = swap_endian<double_t>((double)buffer[i*sizeof(double)]);
+      pAxis->profileFollowingErrors_[i] = (double)buffer[maxProfilePoints_+i*sizeof(double)];
+      //pAxis->profileFollowingErrors_[i] = swap_endian<double_t>((double)buffer[maxProfilePoints_+i*sizeof(double)]);
     }
   }
   
@@ -1621,8 +1627,8 @@ asynStatus SPiiPlusController::readbackProfile()
   if (buffer) free(buffer);
   setIntegerParam(profileNumReadbacks_, numRead);
   /* Convert from controller to user units and post the arrays */
-  for (j=0; j<numAxes_; j++) {
-    pAxes_[j]->readbackProfile();
+  for (i=0; i<numAxes_; i++) {
+    pAxes_[i]->readbackProfile();
   }
   readbackStatus = readbackOK ?  PROFILE_STATUS_SUCCESS : PROFILE_STATUS_FAILURE;
   setIntegerParam(profileReadbackStatus_, readbackStatus);
@@ -1643,13 +1649,13 @@ asynStatus SPiiPlusController::readbackProfile()
 
 asynStatus SPiiPlusController::test()
 {
-  char message[MAX_MESSAGE_LEN];
+  //char message[MAX_MESSAGE_LEN];
   char* buffer=NULL;
-  int status;
-  int i; 
+  asynStatus status;
+  //int i; 
   unsigned int j;
   std::stringstream cmd;
-  SPiiPlusAxis* pAxis;
+  //SPiiPlusAxis* pAxis;
   static const char *functionName = "test";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: calling test function\n", driverName, functionName);
@@ -1658,7 +1664,7 @@ asynStatus SPiiPlusController::test()
   
   for (j=0; j<profileAxes_.size(); j++)
   {
-    pAxis = getAxis(j);
+    //pAxis = getAxis(j);
     // Pass the indices of the data array that should be read to the controller
     cmd << "DC_DATA_" << (j+1) << "(0,2)(0," << (maxProfilePoints_-1) << ")";
     status = writeReadDoubleArray(cmd, buffer, maxProfilePoints_*sizeof(double)*3);
@@ -1667,7 +1673,7 @@ asynStatus SPiiPlusController::test()
   
   free(buffer);
   
-  return asynSuccess;
+  return status;
 }
 
 
