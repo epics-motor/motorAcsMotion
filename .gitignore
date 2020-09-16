@@ -7,8 +7,13 @@ O.*
 /dbd/
 /html/
 /include/
+/iocsh/
 /lib/
 /templates/
+/iocs/acsMotionIOC/bin/
+/iocs/acsMotionIOC/db/
+/iocs/acsMotionIOC/dbd/
+/iocs/acsMotionIOC/iocsh/
 cdCommands
 envPaths
 dllPath.bat
