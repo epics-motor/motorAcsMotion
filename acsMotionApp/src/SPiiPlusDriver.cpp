@@ -277,6 +277,7 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	size_t nwrite, nread;
 	int eomReason;
 	asynStatus status;
+	static const char *functionName = "writeReadBinary";
 	
 	lock();
 	
@@ -296,19 +297,43 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	
 	// The reply from the controller has a 4-byte header and a 1-byte suffix
 	status = pasynOctetSyncIO->read(pasynUserController_, packetBuffer, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
-	// Check for an error reply
-	if (status == asynSuccess) status = binaryErrorCheck(packetBuffer);
-	// Check if there are more slices
-	if (packetBuffer[2] && SLICE_AVAILABLE)
-		*sliceAvailable = true;
+	
+	if (status == asynSuccess)
+	{
+		// Check for an error reply
+		status = binaryErrorCheck(packetBuffer);
+		if (status == asynError)
+		{
+			*sliceAvailable = false;
+			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: No more slices due to error\n", driverName, functionName);
+		}
+		else
+		{
+			// Check if there is another slice
+			/*
+			 * Bit 7 of the 3rd byte, which is the most-significant byte of the BE message size, indicates if another slice is available
+			 */
+			if (packetBuffer[3] & SLICE_AVAILABLE)
+			{
+				*sliceAvailable = true;
+			}
+			else
+			{
+				*sliceAvailable = false;
+			}
+			
+			// Subtract the 5 header bytes to get the number of bytes in the data
+			*dataBytes = nread - 5;
+			
+			// The data is already in little-endian format, so just copy it
+			memcpy(input, packetBuffer+4, *dataBytes);
+		}
+	}
 	else
+	{
 		*sliceAvailable = false;
-	
-	// Subtract the 5 header bytes to get the number of bytes in the data
-	*dataBytes = nread - 5;
-	
-	// The data is already in little-endian format, so just copy it
-	memcpy(input, packetBuffer+4, *dataBytes);
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: No more slices due to a failed read: status=%i, nread=%li\n", driverName, functionName, status, nread);
+	}
 	
 	// Restore the EOS characters
 	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
@@ -340,7 +365,7 @@ asynStatus SPiiPlusController::binaryErrorCheck(char *buffer)
 		val_convert << buffer+5;
 		val_convert >> errNo;
 		
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: BINARY COMMAND ERROR #%i\n", driverName, functionName, errNo);
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error #%i\n", driverName, functionName, errNo);
 		status = asynError;
 	}
 	
@@ -370,7 +395,7 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	
 	// Send the command
 	status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
-	asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  initial data bytes request = %i;  read = %li\n", driverName, functionName, inBytes, nread);
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Initial array query: request = %i; read = %li\n", driverName, functionName, inBytes, nread);
 	
 	remainingBytes -= nread;
 	readBytes += nread;
@@ -383,7 +408,7 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 		
 		// Send the command
 		status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  slice(%i) data bytes request = %i;  read = %li\n", driverName, functionName, slice, inBytes, nread);
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Array slice #%i query: expected = %i; read = %li; sliceAvailable = %d\n", driverName, functionName, slice, inBytes, nread, sliceAvailable);
 		
 		remainingBytes -= nread;
 		readBytes += nread;

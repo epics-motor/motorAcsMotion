@@ -101,6 +101,7 @@ int readFloat64SliceCmd(char *output, int slice, const char *var, int idx1start,
 	int asciiVarSize;
 	int cmdSize;
 	int numSlices;
+	int bytesRemaining;
 	char sliceStr[3] = {0, 0, 0};
 	int sliceSize;
 	
@@ -109,10 +110,16 @@ int readFloat64SliceCmd(char *output, int slice, const char *var, int idx1start,
 	
 	numSlices = ceill(*dataBytes / MAX_PACKET_DATA);
 	
-	if (slice < numSlices-1)
+	if (slice < numSlices)
+	{
 		*inBytes = MAX_PACKET_SIZE;
+	}
 	else
-		*inBytes = *dataBytes + 5;
+	{
+		// Calculate the remaining number of bytes to be read
+		bytesRemaining = *dataBytes - numSlices * MAX_PACKET_DATA;
+		*inBytes = bytesRemaining + 5;
+	}
 	
 	// The variable string part of the command
 	varst << var << "(" << idx1start << "," << idx1end << ")(" << idx2start << "," << idx2end << ")";

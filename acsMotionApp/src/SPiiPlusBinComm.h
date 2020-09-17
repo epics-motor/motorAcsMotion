@@ -15,7 +15,7 @@
 #define READ_LD_END_CMD		0x43
 #define READ_LI_ARRAY_CMD	0x44
 #define READ_LI_SLICE_CMD	0x45
-#define SLICE_AVAILABLE		1 << 7
+#define SLICE_AVAILABLE		0x80
 //
 #define WRITE_I_ARRAY_CMD	0xf3
 #define WRITE_D_ARRAY_CMD	0xf2
