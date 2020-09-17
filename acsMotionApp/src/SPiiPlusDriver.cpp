@@ -1730,10 +1730,10 @@ asynStatus SPiiPlusController::readbackProfile()
   int i; 
   unsigned int j;
   //int nitems;
-  int numRead=0;
   //int numInBuffer, numChars;
   std::stringstream cmd;
   char var[MAX_MESSAGE_LEN];
+  int bytesPerDim;
   SPiiPlusAxis* pAxis;
   static const char *functionName = "readbackProfile";
 
@@ -1772,6 +1772,15 @@ asynStatus SPiiPlusController::readbackProfile()
       goto done;
     }
     
+    bytesPerDim = maxProfilePoints_ * sizeof(double);
+    // Position
+    memcpy(pAxis->profileReadbacks_, buffer, bytesPerDim);
+    // Postion error
+    memcpy(pAxis->profileFollowingErrors_, buffer+bytesPerDim, bytesPerDim);
+    // Time
+    //memcpy(pAxis->profileTimes_, buffer+bytesPerDim*2, bytesPerDim);
+    
+    /*
     for (i=0; (unsigned)i<maxProfilePoints_; i++)
     {
       pAxis->profileReadbacks_[i] = (double)buffer[i*sizeof(double)];
@@ -1779,11 +1788,12 @@ asynStatus SPiiPlusController::readbackProfile()
       pAxis->profileFollowingErrors_[i] = (double)buffer[maxProfilePoints_+i*sizeof(double)];
       //pAxis->profileFollowingErrors_[i] = swap_endian<double_t>((double)buffer[maxProfilePoints_+i*sizeof(double)]);
     }
+    */
   }
   
   done:
   if (buffer) free(buffer);
-  setIntegerParam(profileNumReadbacks_, numRead);
+  setIntegerParam(profileNumReadbacks_, maxProfilePoints_);
   /* Convert from controller to user units and post the arrays */
   for (i=0; i<numAxes_; i++) {
     pAxes_[i]->readbackProfile();
