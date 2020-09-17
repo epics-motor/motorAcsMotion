@@ -270,13 +270,13 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 }
 
 // NOTE: readBytes the number of data bytes that were read, excluding the command header and suffix
-asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *readBytes)
+// NOTE: there is no error checking on inBytes and outBytes
+asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool *sliceAvailable)
 {
 	char* packetBuffer;
 	size_t nwrite, nread;
 	int eomReason;
 	asynStatus status;
-	int i, j;
 	
 	lock();
 	
@@ -296,12 +296,19 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	
 	// The reply from the controller has a 4-byte header and a 1-byte suffix
 	status = pasynOctetSyncIO->read(pasynUserController_, packetBuffer, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
+	// Check for an error reply
+	if (status == asynSuccess) status = binaryErrorCheck(packetBuffer);
+	// Check if there are more slices
+	if (packetBuffer[2] && SLICE_AVAILABLE)
+		*sliceAvailable = true;
+	else
+		*sliceAvailable = false;
 	
 	// Subtract the 5 header bytes to get the number of bytes in the data
-	*readBytes = nread - 5;
+	*dataBytes = nread - 5;
 	
 	// The data is already in little-endian format, so just copy it
-	memcpy(input, packetBuffer+4, *readBytes);
+	memcpy(input, packetBuffer+4, *dataBytes);
 	
 	// Restore the EOS characters
 	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
@@ -311,6 +318,84 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	
 	return status;
 	}
+
+asynStatus SPiiPlusController::binaryErrorCheck(char *buffer)
+{
+	asynStatus status=asynSuccess;
+	std::stringstream val_convert;
+	int errNo;
+	static const char *functionName = "binaryErrorCheck";
+	
+	// If the first character of the data is a question mark, the error number follows it
+	if ((buffer[4] == 0x3f) && (buffer[9] == 0x0d))
+	{
+		/*
+		 *  Error response: [E3][XX][06][00]?####[0D][E6]
+		 */
+		 
+		// replace the carriage return with a null byte
+		buffer[9] = 0;
+		
+		// convert the error number bytes into an int
+		val_convert << buffer+5;
+		val_convert >> errNo;
+		
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: BINARY COMMAND ERROR #%i\n", driverName, functionName, errNo);
+		status = asynError;
+	}
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
+{
+	char command[MAX_MESSAGE_LEN];
+	asynStatus status;
+	int remainingBytes;
+	int readBytes;
+	int outBytes, inBytes, dataBytes;
+	size_t nread;
+	int slice=1;
+	bool sliceAvailable;
+	static const char *functionName = "writeReadDoubleArray";
+	
+	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
+	
+	// Create the command to query array data. This could be the only command
+	// that needs to be sent or it could be the first of many.
+	readFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
+	
+	remainingBytes = dataBytes;
+	readBytes = 0;
+	
+	// Send the command
+	status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  initial data bytes request = %i;  read = %li\n", driverName, functionName, inBytes, nread);
+	
+	remainingBytes -= nread;
+	readBytes += nread;
+	
+	// Look at the response to see if there are more slices to read
+	while (sliceAvailable)
+	{
+		// Create the command to query the next slice of the array data
+		readFloat64SliceCmd(command, slice, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
+		
+		// Send the command
+		status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  slice(%i) data bytes request = %i;  read = %li\n", driverName, functionName, slice, inBytes, nread);
+		
+		remainingBytes -= nread;
+		readBytes += nread;
+		slice++;
+	}
+	
+	// Restore the EOS characters
+	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
+	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
+	
+	return status;
+}
 
 asynStatus SPiiPlusController::writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes)
 {
@@ -1623,6 +1708,7 @@ asynStatus SPiiPlusController::readbackProfile()
   int numRead=0;
   //int numInBuffer, numChars;
   std::stringstream cmd;
+  char var[MAX_MESSAGE_LEN];
   SPiiPlusAxis* pAxis;
   static const char *functionName = "readbackProfile";
 
@@ -1650,8 +1736,11 @@ asynStatus SPiiPlusController::readbackProfile()
   {
     pAxis = getAxis(j);
     // Pass the indices of the data array that should be read to the controller
-    cmd << "DC_DATA_" << (j+1) << "(0,2)(0," << (maxProfilePoints_-1) << ")";
-    status = writeReadDoubleArray(cmd, buffer, maxProfilePoints_*sizeof(double)*3);
+    //cmd << "DC_DATA_" << (j+1) << "(0,2)(0," << (maxProfilePoints_-1) << ")";
+    //status = writeReadDoubleArray(cmd, buffer, maxProfilePoints_*sizeof(double)*3);
+    
+    sprintf(var, "DC_DATA_%i", j+1);
+    status = getDoubleArray(buffer, var, 0, 2, 0, (maxProfilePoints_-1));
     if (status != asynSuccess)
     {
       readbackOK = false;
@@ -1693,17 +1782,22 @@ asynStatus SPiiPlusController::readbackProfile()
 
 asynStatus SPiiPlusController::test()
 {
-  char binCmd[MAX_MESSAGE_LEN];
-  char* buffer=NULL;
   asynStatus status;
-  int i; 
+  char* buffer=NULL;
+  
   //unsigned int j;
+  //SPiiPlusAxis* pAxis;
+  
+  /*
+  char binCmd[MAX_MESSAGE_LEN];
+  int i; 
   std::stringstream cmd;
-  int outBytes, inBytes;
+  int outBytes, inBytes, dataBytes;
   size_t nread;
   int numValues;
   double *valArray;
-  //SPiiPlusAxis* pAxis;
+  bool sliceAvailable;
+  */
   static const char *functionName = "test";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: calling test function\n", driverName, functionName);
@@ -1720,8 +1814,12 @@ asynStatus SPiiPlusController::test()
     //epicsThreadSleep(5.0);
   }
   */
-  readFloat64ArrayCmd(binCmd, "APOS", 0, 7, &outBytes, &inBytes);
-  status = writeReadBinary((char*)binCmd, outBytes, buffer, inBytes, &nread);
+  
+  status = getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
+  
+  /*
+  readFloat64ArrayCmd(binCmd, "APOS", 0, 7, &outBytes, &inBytes, &dataBytes);
+  status = writeReadBinary((char*)binCmd, outBytes, buffer, inBytes, &nread, &sliceAvailable);
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  data bytes request = %i;  read = %li\n", driverName, functionName, inBytes, nread);
   
@@ -1733,6 +1831,7 @@ asynStatus SPiiPlusController::test()
   {
       asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  value[%i] = %lf\n", driverName, functionName, i, valArray[i]);
   }
+  */
   
   free(buffer);
   

@@ -77,11 +77,6 @@ public:
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
 	void report(FILE *fp, int level);
-	asynStatus writeReadInt(std::stringstream& cmd, int* val);
-	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
-	asynStatus writeReadAck(std::stringstream& cmd);
-	asynStatus writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes);
-	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *readBytes);
 	
 	/* These are functions for profile moves */
 	asynStatus initializeProfile(size_t maxProfilePoints);
@@ -97,6 +92,13 @@ public:
 	void createAccDecPositions(SPiiPlusAxis* axis, int moveMode, int numPoints, double preTimeMax, double postTimeMax, double preVelocity, double postVelocity);
 	asynStatus runProfile();
 	int getNumAccelSegments(double time);
+	asynStatus writeReadInt(std::stringstream& cmd, int* val);
+	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
+	asynStatus writeReadAck(std::stringstream& cmd);
+	asynStatus writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes);
+	asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
+	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
+	asynStatus binaryErrorCheck(char *buffer);
 	
 protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
