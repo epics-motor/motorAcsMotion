@@ -32,30 +32,6 @@ static void SPiiPlusProfileThreadC(void *pPvt);
 #define MIN(a,b) ((a)<(b)? (a): (b))
 #endif
 
-/*
-// https://stackoverflow.com/questions/105252/how-do-i-convert-between-big-endian-and-little-endian-values-in-c
-#include <climits>
-
-template <typename T>
-T swap_endian(T u)
-{
-    static_assert (CHAR_BIT == 8, "CHAR_BIT != 8");
-
-    union
-    {
-        T u;
-        unsigned char u8[sizeof(T)];
-    } source, dest;
-
-    source.u = u;
-
-    for (size_t k = 0; k < sizeof(T); k++)
-        dest.u8[k] = source.u8[sizeof(T) - k - 1];
-
-    return dest.u;
-}
-*/
-
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
                                              double movingPollPeriod, double idlePollPeriod)
  : asynMotorController(ACSPortName, numAxes, NUM_SPIIPLUS_PARAMS, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0)
@@ -382,7 +358,7 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	size_t nread;
 	int slice=1;
 	bool sliceAvailable;
-	static const char *functionName = "writeReadDoubleArray";
+	static const char *functionName = "getDoubleArray";
 	
 	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
 	
@@ -420,214 +396,6 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
 	
 	return status;
-}
-
-asynStatus SPiiPlusController::writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes)
-{
-	static const char *functionName = "writeReadDoubleArray";
-	std::stringstream val_convert;
-	unsigned long asciiCmdSize;
-	unsigned long cmdSize;
-	int errNo;
-	//int i;
-	int remainingBytes;
-	int readBytes;
-	int bytesToRead;
-	asynStatus status;
-	size_t nwrite, nread;
-	int eomReason;
-	char* packetBuffer;
-	
-	lock();
-	
-	packetBuffer = (char *)calloc(MAX_PACKET_DATA+5, sizeof(char));
-	
-	// Clear the EOS characters
-	pasynOctetSyncIO->setInputEos(pasynUserController_, "", 0);
-	pasynOctetSyncIO->setOutputEos(pasynUserController_, "", 0);
-	
-	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
-	
-	remainingBytes = numBytes;
-	readBytes = 0;
-	
-	/*
-	 * Binary query double array format: 
-	 *   if array < 1400:
-	 *     [D3][F0][XX][XX]%??[08]cmd[D6]
-	 *   else:
-	 *     [D3][41][XX][XX]%??[08]cmd[D6]
-	 *   where XX XX is the command length (little endian)
-	 * 
-	 */
-	
-	asciiCmdSize = cmd.str().size();
-	
-	// header
-	outString_[0] = FRAME_START;
-	if (numBytes > 1400)
-		outString_[1] = READ_LD_ARRAY_CMD;
-	else
-		outString_[1] = READ_D_ARRAY_CMD;
-	cmdSize = asciiCmdSize+4;	// %?? + 0x8 + array-to-read
-	outString_[2] = (cmdSize >> 0) & 0xFF;
-	outString_[3] = (cmdSize >> 8) & 0xFF;
-	// command
-	strncpy(outString_+4, "%??", 3);
-	outString_[7] = DOUBLE_DATA_SIZE;
-	strncpy(outString_+8, cmd.str().c_str(), asciiCmdSize);
-	// end
-	outString_[8+asciiCmdSize] = FRAME_END;
-	
-	// Send the query command
-	status = pasynOctetSyncIO->write(pasynUserController_, outString_, cmdSize+5, SPIIPLUS_CMD_TIMEOUT, &nwrite);
-	
-	// Read the repsonse
-	if (remainingBytes > MAX_PACKET_DATA)
-	{
-		bytesToRead = MAX_PACKET_DATA;
-	}
-	else
-	{
-		bytesToRead = remainingBytes;
-	}
-	// The reply from the controller has a 4-byte header and a 1-byte suffix
-	status = pasynOctetSyncIO->read(pasynUserController_, packetBuffer, bytesToRead+5, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
-	
-	// Parse the response
-	if (nread == (unsigned)bytesToRead+5)
-	{
-		// Copy the data out of the packetBuffer
-		strncpy(buffer+readBytes, packetBuffer+4, bytesToRead);
-		
-		remainingBytes -= bytesToRead;
-		readBytes += bytesToRead;
-		
-		if (remainingBytes > MAX_PACKET_DATA)
-			bytesToRead = MAX_PACKET_DATA;
-		else
-			bytesToRead = remainingBytes;
-	}
-	else
-	{
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: MISMATCH - expected: %i - read: %li\n", driverName, functionName, bytesToRead+5, nread);
-	}
-	
-	/* Assemble the command to read the next slice, if necessary */
-	if (numBytes > MAX_PACKET_DATA)
-	{
-		// header
-		outString_[1] = READ_LD_SLICE_CMD;
-		cmdSize = asciiCmdSize+6;	// %1%?? + 0x8 + array-to-read
-		outString_[2] = (cmdSize >> 0) & 0xFF;
-		outString_[3] = (cmdSize >> 8) & 0xFF;
-		// command
-		strncpy(outString_+4, "%1%??", 5);
-		outString_[9] = DOUBLE_DATA_SIZE;
-		strncpy(outString_+10, cmd.str().c_str(), asciiCmdSize);
-		// end
-		outString_[10+asciiCmdSize] = FRAME_END;
-	}
-	
-	while (packetBuffer[2] && SLICE_AVAILABLE)
-	{
-		// request the next slice
-		status = pasynOctetSyncIO->write(pasynUserController_, outString_, cmdSize+7, SPIIPLUS_CMD_TIMEOUT, &nwrite);
-		
-		// read the next slice
-		status = pasynOctetSyncIO->read(pasynUserController_, packetBuffer, bytesToRead+5, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
-		
-		// Parse the response
-		if (nread == (unsigned)bytesToRead+5)
-		{
-			// Copy the data out of the packetBuffer
-			strncpy(buffer+readBytes, packetBuffer+4, bytesToRead);
-			
-			remainingBytes -= bytesToRead;
-			readBytes += bytesToRead;
-			
-			if (remainingBytes > MAX_PACKET_DATA)
-				bytesToRead = MAX_PACKET_DATA;
-			else
-				bytesToRead = remainingBytes;
-		}
-		else
-		{
-			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: MISMATCH - expected: %i - read: %li\n", driverName, functionName, bytesToRead+5, nread);
-		}
-		
-		//if (packetBuffer[4] == 0x3f)
-		//	break;
-	}
-	
-	// If the first character of the data is a question mark, the error number follows it
-	if (packetBuffer[4] == 0x3f)
-	{
-		/*
-		 *  Error response: [E3][F1][06][00]?####[0D][E6]
-		 */
-		 
-		// replace the carriage return with a null byte
-		packetBuffer[9] = 0;
-		
-		// convert the error number bytes into an int
-		val_convert << packetBuffer+5;
-		val_convert >> errNo;
-		
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
-		status = asynError;
-	}
-	
-	if (readBytes != numBytes)
-	{
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ARRAY READ FAILED - expected:%i - read: %i\n", driverName, functionName, numBytes, readBytes);
-		status = asynError;
-	}
-	else
-	{
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ARRAY READ SUCCESSFUL - read: %i\n", driverName, functionName, readBytes);
-	}
-	
-	// Restore the EOS characters
-	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
-	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
-	
-	// clear the command stringstream
-	cmd.str("");
-	cmd.clear();
-	
-	free(packetBuffer);
-	
-	unlock();
-	
-	return status;
-}
-
-// The following parse methods would be better as a template method, but that might break VxWorks compatibility
-int SPiiPlusController::parseInt()
-{
-	int out_val;
-	std::stringstream val_convert;
-	
-	instring.replace(0,1," ");
-	
-	val_convert << instring;
-	val_convert >> out_val;
-	
-	return out_val;
-}
-
-double SPiiPlusController::parseDouble()
-{
-	double out_val;
-	std::stringstream val_convert;
-	
-	instring.replace(0,1," ");
-	
-	val_convert << instring;
-	val_convert >> out_val;
-	
-	return out_val;
 }
 
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
@@ -707,9 +475,6 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		//in_pos = axis_status & (1<<4);
 		motion = motor_status & (1<<5);
 	}
-	
-	//asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i status: %i\n", driverName, functionName, axisNo_, axis_status);
-	//asynPrint(pC_->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axis %i motion: %i\n", driverName, functionName, axisNo_, motion);
 	
 	setIntegerParam(controller->motorStatusDone_, !motion);
 	setIntegerParam(controller->motorStatusMoving_, motion);
@@ -1314,12 +1079,10 @@ asynStatus SPiiPlusController::runProfile()
   unsigned int j;
   int moveMode;
   char message[MAX_MESSAGE_LEN];
-  //char buffer[MAX_GATHERING_STRING];
   std::string positions;
   std::stringstream positionStr;
   std::stringstream commandStr;
   std::stringstream cmd;
-  //int eventId;
   SPiiPlusAxis *pAxis;
   int ptExecIdx;
   int ptLoadedIdx;
@@ -1472,9 +1235,6 @@ asynStatus SPiiPlusController::runProfile()
     cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
     status = writeReadAck(cmd);
     
-    // DEBUG
-    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  point(%i) = %s\n", driverName, functionName, ptIdx, positionsToString(ptIdx).c_str());
-    
     // Increment the counter of points that have been loaded
     ptLoadedIdx++;
   }
@@ -1512,9 +1272,6 @@ asynStatus SPiiPlusController::runProfile()
         // Create and send the point command (should this be ptIdx+1?)
         cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
         status = writeReadAck(cmd);
-        
-        // DEBUG
-        //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  point(%i) = %s\n", driverName, functionName, ptIdx, positionsToString(ptIdx).c_str());
       }
       
       // Increment the counter of points that have been loaded
@@ -1720,17 +1477,11 @@ asynStatus SPiiPlusController::readbackProfile()
 {
   char message[MAX_MESSAGE_LEN];
   bool readbackOK=true;
-  //int numPulses;
   char* buffer=NULL;
-  //char* bptr, *tptr;
-  //int currentSamples, maxSamples;
-  //double setpointPosition, actualPosition;
   int readbackStatus;
   int status;
   int i; 
   unsigned int j;
-  //int nitems;
-  //int numInBuffer, numChars;
   std::stringstream cmd;
   char var[MAX_MESSAGE_LEN];
   int bytesPerDim;
@@ -1747,8 +1498,6 @@ asynStatus SPiiPlusController::readbackProfile()
   setIntegerParam(profileReadbackStatus_, PROFILE_STATUS_UNDEFINED);
   callParamCallbacks();
   
-  //status = getIntegerParam(profileNumPulses_, &numPulses);
-
   /* Erase the readback and error arrays */
   for (i=0; i<numAxes_; i++) {
     memset(pAxes_[i]->profileReadbacks_,       0, maxProfilePoints_*sizeof(double));
@@ -1760,9 +1509,6 @@ asynStatus SPiiPlusController::readbackProfile()
   for (j=0; j<profileAxes_.size(); j++)
   {
     pAxis = getAxis(j);
-    // Pass the indices of the data array that should be read to the controller
-    //cmd << "DC_DATA_" << (j+1) << "(0,2)(0," << (maxProfilePoints_-1) << ")";
-    //status = writeReadDoubleArray(cmd, buffer, maxProfilePoints_*sizeof(double)*3);
     
     sprintf(var, "DC_DATA_%i", j+1);
     status = getDoubleArray(buffer, var, 0, 2, 0, (maxProfilePoints_-1));
@@ -1779,16 +1525,6 @@ asynStatus SPiiPlusController::readbackProfile()
     memcpy(pAxis->profileFollowingErrors_, buffer+bytesPerDim, bytesPerDim);
     // Time
     //memcpy(pAxis->profileTimes_, buffer+bytesPerDim*2, bytesPerDim);
-    
-    /*
-    for (i=0; (unsigned)i<maxProfilePoints_; i++)
-    {
-      pAxis->profileReadbacks_[i] = (double)buffer[i*sizeof(double)];
-      //pAxis->profileReadbacks_[i] = swap_endian<double_t>((double)buffer[i*sizeof(double)]);
-      pAxis->profileFollowingErrors_[i] = (double)buffer[maxProfilePoints_+i*sizeof(double)];
-      //pAxis->profileFollowingErrors_[i] = swap_endian<double_t>((double)buffer[maxProfilePoints_+i*sizeof(double)]);
-    }
-    */
   }
   
   done:
@@ -1820,53 +1556,13 @@ asynStatus SPiiPlusController::test()
   asynStatus status;
   char* buffer=NULL;
   
-  //unsigned int j;
-  //SPiiPlusAxis* pAxis;
-  
-  /*
-  char binCmd[MAX_MESSAGE_LEN];
-  int i; 
-  std::stringstream cmd;
-  int outBytes, inBytes, dataBytes;
-  size_t nread;
-  int numValues;
-  double *valArray;
-  bool sliceAvailable;
-  */
   static const char *functionName = "test";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: calling test function\n", driverName, functionName);
   
   buffer = (char *)calloc(MAX_BINARY_READ_LEN, sizeof(char));
   
-  /*
-  for (j=0; j<profileAxes_.size(); j++)
-  {
-    //pAxis = getAxis(j);
-    // Pass the indices of the data array that should be read to the controller
-    cmd << "DC_DATA_" << (j+1) << "(0,2)(0," << (maxProfilePoints_-1) << ")";
-    status = writeReadDoubleArray(cmd, buffer, maxProfilePoints_*sizeof(double)*3);
-    //epicsThreadSleep(5.0);
-  }
-  */
-  
   status = getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
-  
-  /*
-  readFloat64ArrayCmd(binCmd, "APOS", 0, 7, &outBytes, &inBytes, &dataBytes);
-  status = writeReadBinary((char*)binCmd, outBytes, buffer, inBytes, &nread, &sliceAvailable);
-  
-  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  data bytes request = %i;  read = %li\n", driverName, functionName, inBytes, nread);
-  
-  numValues = nread / 8;
-  valArray = (double *)calloc(numValues, sizeof(double));
-  memcpy(valArray, buffer, nread);
-  
-  for (i=0; i<numValues; i++)
-  {
-      asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  value[%i] = %lf\n", driverName, functionName, i, valArray[i]);
-  }
-  */
   
   free(buffer);
   

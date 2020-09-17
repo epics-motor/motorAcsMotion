@@ -95,7 +95,6 @@ public:
 	asynStatus writeReadInt(std::stringstream& cmd, int* val);
 	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
 	asynStatus writeReadAck(std::stringstream& cmd);
-	asynStatus writeReadDoubleArray(std::stringstream& cmd, char* buffer, int numBytes);
 	asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
 	asynStatus binaryErrorCheck(char *buffer);
@@ -120,8 +119,6 @@ private:
 	std::string positionsToString(int positionIndex);
 	std::string accelPositionsToString(int positionIndex);
 	std::string decelPositionsToString(int positionIndex);
-	int parseInt();
-	double parseDouble();
 	asynStatus waitMotors();
 	void calculateDataCollectionInterval();
 	asynStatus stopDataCollection();
