@@ -269,6 +269,7 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 	return status;
 }
 
+// NOTE: readBytes the number of data bytes that were read, excluding the command header and suffix
 asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *readBytes)
 {
 	char* packetBuffer;
@@ -286,6 +287,9 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	pasynOctetSyncIO->setInputEos(pasynUserController_, "", 0);
 	pasynOctetSyncIO->setOutputEos(pasynUserController_, "", 0);
 	
+	// Flush the receive buffer
+	status = pasynOctetSyncIO->flush(pasynUserController_);
+	
 	// Send the query command
 	memcpy(outString_, output, outBytes);
 	status = pasynOctetSyncIO->write(pasynUserController_, outString_, outBytes, SPIIPLUS_CMD_TIMEOUT, &nwrite);
@@ -295,16 +299,9 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	
 	// Subtract the 5 header bytes to get the number of bytes in the data
 	*readBytes = nread - 5;
-	// Loop over the number of 64-bit values
-	for (i=0; (unsigned)i<(*readBytes/8); i++)
-	{
-		// Loop over the bytes in a 64-bit number
-		for (j=0; j<8; j++)
-		{
-			// Copy the data to the output buffer, switching the from BE to LE at the same time
-			output[(i*8)+j] = packetBuffer[5+(i*8)+(7-j)];
-		}
-	}
+	
+	// The data is already in little-endian format, so just copy it
+	memcpy(input, packetBuffer+4, *readBytes);
 	
 	// Restore the EOS characters
 	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
@@ -1737,10 +1734,6 @@ asynStatus SPiiPlusController::test()
       asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  value[%i] = %lf\n", driverName, functionName, i, valArray[i]);
   }
   
-  for (i=0; (unsigned)i<nread; i++)
-  {
-      asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:  value[%i] = %x\n", driverName, functionName, i, buffer[i]);
-  }
   free(buffer);
   
   return status;

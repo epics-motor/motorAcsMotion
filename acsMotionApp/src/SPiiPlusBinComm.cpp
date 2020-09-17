@@ -28,6 +28,10 @@ int readFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1en
 }
 
 // readFloat64ArrayCmd(buffer, "MFLAGS", 0, 7, 0, 0, false)
+/*
+ * Create a binary read command to read a 64-bit real array from the controller
+ * Note: outBytes and inBytes are the number of bytes including the command header and suffix
+ */
 int readFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, bool checksum, int *outBytes, int *inBytes)
 {
 	std::stringstream varst;
