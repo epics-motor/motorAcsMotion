@@ -794,6 +794,7 @@ asynStatus SPiiPlusController::buildProfile()
   postTimeMax = 0.;
   getIntegerParam(profileNumPoints_, &numPoints);
   getDoubleParam(profileAcceleration_, &accelTime);
+  getIntegerParam(profileMoveMode_, &moveMode);
   
   for (j=0; j<profileAxes_.size(); j++)
   {
@@ -818,7 +819,14 @@ asynStatus SPiiPlusController::buildProfile()
      * Reduce acceleration 10% to account for this. */
     maxAcceleration *= 0.9;
     
-    preDistance = pAxes_[j]->profilePositions_[1] - pAxes_[j]->profilePositions_[0];
+    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+    {
+      preDistance = pAxes_[j]->profilePositions_[1] - pAxes_[j]->profilePositions_[0];
+    }
+    else
+    {
+      preDistance = pAxes_[j]->profilePositions_[0];
+    }
     // Use the 2nd element of the times array instead of the 1st; the 1st will be used for the preDistance move.
     preVelocity[j] = preDistance/profileTimes_[1];
     preTime = fabs(preVelocity[j]) / maxAcceleration;
@@ -826,7 +834,14 @@ asynStatus SPiiPlusController::buildProfile()
     // Use the acceleration specified by the user, if it is less than the max acceleration
     preTimeMax = MAX(preTimeMax, accelTime);
     
-    postDistance = pAxes_[j]->profilePositions_[numPoints-1] - pAxes_[j]->profilePositions_[numPoints-2];
+    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+    {
+      postDistance = pAxes_[j]->profilePositions_[numPoints-1] - pAxes_[j]->profilePositions_[numPoints-2];
+    }
+    else
+    {
+      postDistance = pAxes_[j]->profilePositions_[numPoints-1];
+    }
     postVelocity[j] = postDistance/profileTimes_[numPoints-1];
     postTime = fabs(postVelocity[j]) / maxAcceleration;
     postTimeMax = MAX(postTimeMax, postTime);
@@ -937,6 +952,8 @@ void SPiiPlusController::createAccDecPositions(SPiiPlusAxis* axis, int moveMode,
 {
   int i;
   double time;
+  double time2;
+  double time1;
   //static const char *functionName = "createAccDecPositions";
   
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
@@ -959,18 +976,22 @@ void SPiiPlusController::createAccDecPositions(SPiiPlusAxis* axis, int moveMode,
   }
   else
   {
-    // Acceleration (relative) -- FIXME
+    // Acceleration (relative)
     for (i=0; i<numAccelSegments_; i++)
     {
-      // position during accel period = -acceleration distance + distance traveled in i acceleration segments
-      axis->profileAccelPositions_[i] = -axis->profilePreDistance_ + 0.5 * (preVelocity / preTimeMax) * pow((preTimeMax * (i+1) / numAccelSegments_), 2);
+      // position during accel period = 0.5 * a * (t2^2 - t1^2)
+      time2 = preTimeMax*(i+1)/numAccelSegments_;
+      time1 = preTimeMax*i/numAccelSegments_;
+      axis->profileAccelPositions_[i] = 0.5 * (preVelocity / preTimeMax) * (pow(time2, 2) - pow(time1, 2));
     }
     
-    // Deceleration (relative) -- FIXME
+    // Deceleration (relative)
     for (i=0; i<numDecelSegments_; i++)
     {
-      // position during decel period = distance traveled in i deceleration segments
-      axis->profileDecelPositions_[i] = 0.5 * (postVelocity / postTimeMax) * pow((postTimeMax * (i+1) / numDecelSegments_), 2);
+      // position during decel period = vf * (t2 - t1) - 0.5 * a * (t2^2 - t1^2)
+      time2 = postTimeMax*(i+1)/numDecelSegments_;
+      time1 = postTimeMax*i/numDecelSegments_;
+      axis->profileDecelPositions_[i] = postVelocity * (time2 - time1) - 0.5 * (postVelocity / postTimeMax) * (pow(time2, 2) - pow(time1, 2));
     }
   }
 }
