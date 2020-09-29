@@ -908,6 +908,12 @@ asynStatus SPiiPlusController::buildProfile()
               "%s:%s: %s\n",
               driverName, functionName, message);
   }
+  else
+  {
+    // Set the execute and readback status to undefined so that users know those haven't occurred since the build was done
+    setIntegerParam(profileExecuteStatus_, PROFILE_STATUS_UNDEFINED);
+    setIntegerParam(profileReadbackStatus_, PROFILE_STATUS_UNDEFINED);
+  }
   /* Clear build command.  This is a "busy" record, don't want to do this until build is complete. */
   setIntegerParam(profileBuild_, 0);
   setIntegerParam(profileBuildState_, PROFILE_BUILD_DONE);
@@ -1131,6 +1137,10 @@ asynStatus SPiiPlusController::runProfile()
   setStringParam(profileExecuteMessage_, message);
   setIntegerParam(profileExecuteState_, PROFILE_EXECUTE_MOVE_START);
   setIntegerParam(profileExecuteStatus_, PROFILE_STATUS_UNDEFINED);
+  
+  // Set the readback status to undefined so the user can see that a new read should be done when this move is done executing
+  setIntegerParam(profileReadbackStatus_, PROFILE_STATUS_UNDEFINED);
+  
   callParamCallbacks();
   unlock();
   
@@ -1517,6 +1527,18 @@ asynStatus SPiiPlusController::readbackProfile()
   setStringParam(profileReadbackMessage_, message);
   setIntegerParam(profileReadbackState_, PROFILE_READBACK_BUSY);
   setIntegerParam(profileReadbackStatus_, PROFILE_STATUS_UNDEFINED);
+  callParamCallbacks();
+  
+  if (profileAxes_.size() == 0)
+  {
+    strcpy(message, "No axes selected");
+    readbackOK = false;
+    goto done;
+  }
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisList = %s\n", driverName, functionName, axesToString(profileAxes_).c_str());
+  sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
+  setStringParam(profileReadbackMessage_, message);
   callParamCallbacks();
   
   /* Erase the readback and error arrays */
