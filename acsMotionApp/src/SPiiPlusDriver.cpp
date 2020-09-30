@@ -653,11 +653,11 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
     
     if (profileAxes_[i] == profileAxes_.front())
     {
-      outputStr << nearbyintl(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << lround(pAxis->fullProfilePositions_[positionIndex]);
     }
     else 
     {
-      outputStr << ',' << nearbyintl(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << ',' << lround(pAxis->fullProfilePositions_[positionIndex]);
     }
   }
   
@@ -925,7 +925,7 @@ int SPiiPlusController::getNumAccelSegments(double time)
   // The following value was chosen somewhat arbitrarily -- it gives MAX_ACCEL_SEGMENTS at an acceleration time of 0.2s
   double minPeriod = 0.01;
   
-  numSegments = nearbyintl(time / minPeriod);
+  numSegments = lround(time / minPeriod);
   
   if (numSegments > MAX_ACCEL_SEGMENTS)
   {
@@ -1213,7 +1213,7 @@ asynStatus SPiiPlusController::runProfile()
       // use the feedback position for real motors
       posData = "FPOS";
     cmd << "DC/sw " << profileAxes_[i] << ",DC_DATA_" << (i+1) << "," << maxProfilePoints_ << ",";
-    cmd << nearbyintl(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[i] << "),PE(" << profileAxes_[i] << "),TIME";
+    cmd << lround(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[i] << "),PE(" << profileAxes_[i] << "),TIME";
     status = writeReadAck(cmd);
   }
   
@@ -1260,7 +1260,7 @@ asynStatus SPiiPlusController::runProfile()
   for (ptIdx = 0; ptIdx < MIN(50, fullProfileSize_); ptIdx++)
   {
     // Create and send the point command (should this be ptIdx+1?)
-    cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
+    cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
     status = writeReadAck(cmd);
     
     // Increment the counter of points that have been loaded
@@ -1298,7 +1298,7 @@ asynStatus SPiiPlusController::runProfile()
       for (ptIdx=ptLoadedIdx; ptIdx<(ptLoadedIdx+ptFree); ptIdx++)
       {
         // Create and send the point command (should this be ptIdx+1?)
-        cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << nearbyintl(fullProfileTimes_[ptIdx] * 1000.0);
+        cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
         status = writeReadAck(cmd);
       }
       
