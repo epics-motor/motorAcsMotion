@@ -108,7 +108,7 @@ int readFloat64SliceCmd(char *output, int slice, const char *var, int idx1start,
 	// The number of bytes to be read from the specified variable, plus the header and suffix
 	*dataBytes = (idx1end - idx1start + 1) * (idx2end - idx2start + 1) * 8;
 	
-	numSlices = ceill(*dataBytes / MAX_PACKET_DATA);
+	numSlices = (int)ceil(*dataBytes / MAX_PACKET_DATA);
 	
 	if (slice < numSlices)
 	{
