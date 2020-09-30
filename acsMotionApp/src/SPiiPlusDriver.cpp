@@ -72,10 +72,6 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		epicsThreadPriorityLow,
 		epicsThreadGetStackSize(epicsThreadStackMedium),
 		(EPICSTHREADFUNC)SPiiPlusProfileThreadC, (void *)this);
-	
-	// TODO: should this be an arg to the controller creation call or a separate call like it is in the XPS driver
-	// hard-code the max number of points for now
-	initializeProfile(2000);
 }
 
 asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
@@ -667,6 +663,7 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
   
   return outputStr.str();
 }
+
 
 asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
 {
@@ -1649,6 +1646,37 @@ static void AcsMotionConfig(const char* acs_port, const char* asyn_port, int num
 extern "C"
 {
 
+asynStatus SPiiPlusCreateProfile(const char *SPiiPlusName,         /* specify which controller by port name */
+                            int maxPoints)               /* maximum number of profile points */
+{
+  SPiiPlusController *pC;
+  static const char *functionName = "SPiiPlusCreateProfile";
+
+  pC = (SPiiPlusController*) findAsynPortDriver(SPiiPlusName);
+  if (!pC) {
+    printf("%s:%s: Error port %s not found\n",
+           driverName, functionName, SPiiPlusName);
+    return asynError;
+  }
+  pC->lock();
+  pC->initializeProfile(maxPoints);
+  pC->unlock();
+  return asynSuccess;
+}
+
+// Profile Setup arguments
+static const iocshArg SPiiPlusCreateProfileArg0 = {"ACS port name", iocshArgString};
+static const iocshArg SPiiPlusCreateProfileArg1 = {"Max points", iocshArgInt};
+
+static const iocshArg * const SPiiPlusCreateProfileArgs[2] = {&SPiiPlusCreateProfileArg0, &SPiiPlusCreateProfileArg1};
+
+static const iocshFuncDef configSPiiPlusProfile = {"SPiiPlusCreateProfile", 2, SPiiPlusCreateProfileArgs};
+
+static void configSPiiPlusProfileCallFunc(const iocshArgBuf *args)
+{
+    SPiiPlusCreateProfile(args[0].sval, args[1].ival);
+}
+
 // ACS Setup arguments
 static const iocshArg configArg0 = {"ACS port name", iocshArgString};
 static const iocshArg configArg1 = {"asyn port name", iocshArgString};
@@ -1665,9 +1693,11 @@ static void AcsMotionCallFunc(const iocshArgBuf *args)
     AcsMotionConfig(args[0].sval, args[1].sval, args[2].ival, args[3].dval, args[4].dval);
 }
 
+// Register all the commands users can call from the command line
 static void AcsMotionRegister(void)
 {
 	iocshRegister(&configAcsMotion, AcsMotionCallFunc);
+	iocshRegister(&configSPiiPlusProfile, configSPiiPlusProfileCallFunc);
 }
 
 epicsExportRegistrar(AcsMotionRegister);
