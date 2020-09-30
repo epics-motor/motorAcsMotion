@@ -1,0 +1,8 @@
+record(bo,"$(P)$(R)test") {
+    field(DESC,"Do test")
+    field(VAL,"0")
+    field(DTYP, "asynInt32")
+    field(OUT,"@asyn($(PORT),0)SPIIPLUS_TEST")
+    field(ZNAM,"Done")
+    field(ONAM,"Test")
+}
