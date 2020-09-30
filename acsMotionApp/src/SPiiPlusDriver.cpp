@@ -691,6 +691,10 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
   // Create the arrays in the controller to hold the data that is recorded during profile moves
   for (i=0; i<SPIIPLUS_MAX_DC_AXES; i++)
   {
+    // Delete the array, if it exists, in case maxProfilePoints changed
+    cmd << "#VGV DC_DATA_" << (i+1);
+    writeReadAck(cmd);
+    
     // Data recorded with the DC command will reside in DC_DATA_{1,2,3,4,5,6,7,8} 2D arrays
     cmd << "GLOBAL REAL DC_DATA_" << (i+1) << " (3)(" << maxProfilePoints << ")";
     writeReadAck(cmd);
