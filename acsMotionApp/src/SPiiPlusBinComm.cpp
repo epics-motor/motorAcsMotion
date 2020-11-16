@@ -5,6 +5,11 @@
 
 #include "SPiiPlusBinComm.h"
 
+/*
+ * The following functions create the commands necessary to read array data from ACS controllers.
+ * The SPiiPlusDriver uses its writeReadBinary method to send the commands.
+ */
+
 // readFloat64ArrayCmd(buffer, "MFLAGS", 0, 7)
 int readFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int *outBytes, int *inBytes, int *dataBytes)
 {

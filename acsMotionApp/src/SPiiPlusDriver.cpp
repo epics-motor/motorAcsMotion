@@ -394,6 +394,12 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	return status;
 }
 
+/*
+asynStatus SPiiPlusController::poll()
+{
+}
+*/
+
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 : asynMotorAxis(pC, axisNo),
   pC_(pC)
