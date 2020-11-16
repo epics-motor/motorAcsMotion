@@ -41,6 +41,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	std::stringstream cmd;
 	
 	// Create parameters
+	createParam(SPiiPlusHomingMethodString,               asynParamInt32, &SPiiPlusHomingMethod_);
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	if (status)
@@ -79,7 +80,7 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
   int function = pasynUser->reason;
   int status = asynSuccess;
   SPiiPlusAxis *pAxis;
-  //static const char *functionName = "writeInt32";
+  static const char *functionName = "writeInt32";
 
   pAxis = this->getAxis(pasynUser);
   if (!pAxis) return asynError;
@@ -87,7 +88,13 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
   /* Set the parameter and readback in the parameter library.  This may be overwritten when we read back the
    * status at the end, but that's OK */
   status = pAxis->setIntegerParam(function, value);
-
+  
+  if (function == SPiiPlusHomingMethod_)
+  {
+    //
+    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: homingMethod = %i\n", driverName, functionName, value);
+  }
+  
   if (function == SPiiPlusTest_) {
     /* Do something helpful during development */
     status = test();
@@ -569,6 +576,89 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 	return status;
 }
 
+/** Move the motor to the home position.
+  * \param[in] minVelocity The initial velocity, often called the base velocity. Units=steps/sec.
+  * \param[in] maxVelocity The maximum velocity, often called the slew velocity. Units=steps/sec.
+  * \param[in] acceleration The acceleration value. Units=steps/sec/sec.
+  * \param[in] forwards  Flag indicating to move the motor in the forward direction(1) or reverse direction(0).
+  *                      Some controllers need to be told the direction, others know which way to go to home. */
+asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acceleration, int forwards)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status=asynSuccess;
+	epicsInt32 mbboHomingMethod;
+	epicsInt32 homingMethod=0;
+	
+	controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &mbboHomingMethod);
+	
+	switch(mbboHomingMethod)
+	{
+		case MBBO_HOME_NONE:
+			/* Do nothing */
+			break;
+	
+		case MBBO_HOME_LIMIT_INDEX:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_LIMIT_INDEX;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_LIMIT_INDEX;
+			break;
+
+		case MBBO_HOME_LIMIT:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_LIMIT;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_LIMIT;
+			break;
+
+		case MBBO_HOME_INDEX:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_INDEX;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_INDEX;
+			break;
+
+		case MBBO_HOME_CURRENT_POS:
+			homingMethod = SPIIPLUS_HOME_CURRENT_POS;
+			break;
+
+		case MBBO_HOME_HARDSTOP_INDEX:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_HARDSTOP_INDEX;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_HARDSTOP_INDEX;
+			break;
+
+		case MBBO_HOME_HARDSTOP:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_HARDSTOP;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_HARDSTOP;
+			break;
+
+		case MBBO_HOME_CUSTOM:
+			//if (forwards == 0)
+			//	???
+			//else
+			//	???
+			break;
+		
+		default:
+			/* Do nothing */
+			break;
+	}
+	
+	//
+	printf("homing method = %i\n", homingMethod);
+	
+	return asynSuccess;
+}
+
+
+
+
+
+
 /** Reports on status of the axis
   * \param[in] fp The file pointer on which report information will be written
   * \param[in] level The level of report detail desired
@@ -578,10 +668,16 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
   */
 void SPiiPlusAxis::report(FILE *fp, int level)
 {
+  SPiiPlusController* controller = (SPiiPlusController*) pC_;
+  epicsInt32 homingMethod;
+  
+  controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &homingMethod);
+  
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
   fprintf(fp, "  mflags: %i\n", mflags_);
   fprintf(fp, "  dummy:  %i\n", dummy_);
   fprintf(fp, "  moving: %i\n", moving_);
+  fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "\n");
   
   // Call the base class method
