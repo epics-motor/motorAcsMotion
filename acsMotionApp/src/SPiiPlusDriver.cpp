@@ -652,12 +652,19 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 			break;
 	}
 	
-	// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
-	cmd << "HOME " << axisNo_ << "," << homingMethod << "," << maxVelocity;
-	asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
-	//status = controller->writeReadAck(cmd);
-	
-	return asynSuccess;
+	if (homingMethod == SPIIPLUS_HOME_NONE)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: No homing method selected for axis %i\n", driverName, functionName, axisNo_);
+		// Should status be set to asynError here?
+	}
+	else
+	{
+		// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
+		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << maxVelocity;
+		//asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
+		status = controller->writeReadAck(cmd);
+	}
+	return status;
 }
 
 /** Reports on status of the axis
