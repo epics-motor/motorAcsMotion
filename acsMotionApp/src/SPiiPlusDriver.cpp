@@ -586,78 +586,79 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	asynStatus status=asynSuccess;
+	std::stringstream cmd;
 	epicsInt32 mbboHomingMethod;
-	epicsInt32 homingMethod=0;
+	epicsInt32 homingMethod;
+	static const char *functionName = "home";
 	
 	controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &mbboHomingMethod);
 	
 	switch(mbboHomingMethod)
 	{
 		case MBBO_HOME_NONE:
-			/* Do nothing */
+			homingMethod = SPIIPLUS_HOME_NONE;
 			break;
-	
+		
 		case MBBO_HOME_LIMIT_INDEX:
 			if (forwards == 0)
 				homingMethod = SPIIPLUS_HOME_NEG_LIMIT_INDEX;
 			else
 				homingMethod = SPIIPLUS_HOME_POS_LIMIT_INDEX;
 			break;
-
+		
 		case MBBO_HOME_LIMIT:
 			if (forwards == 0)
 				homingMethod = SPIIPLUS_HOME_NEG_LIMIT;
 			else
 				homingMethod = SPIIPLUS_HOME_POS_LIMIT;
 			break;
-
+		
 		case MBBO_HOME_INDEX:
 			if (forwards == 0)
 				homingMethod = SPIIPLUS_HOME_NEG_INDEX;
 			else
 				homingMethod = SPIIPLUS_HOME_POS_INDEX;
 			break;
-
+		
 		case MBBO_HOME_CURRENT_POS:
 			homingMethod = SPIIPLUS_HOME_CURRENT_POS;
 			break;
-
+		
 		case MBBO_HOME_HARDSTOP_INDEX:
 			if (forwards == 0)
 				homingMethod = SPIIPLUS_HOME_NEG_HARDSTOP_INDEX;
 			else
 				homingMethod = SPIIPLUS_HOME_POS_HARDSTOP_INDEX;
 			break;
-
+		
 		case MBBO_HOME_HARDSTOP:
 			if (forwards == 0)
 				homingMethod = SPIIPLUS_HOME_NEG_HARDSTOP;
 			else
 				homingMethod = SPIIPLUS_HOME_POS_HARDSTOP;
 			break;
-
+		
 		case MBBO_HOME_CUSTOM:
 			//if (forwards == 0)
 			//	???
 			//else
 			//	???
+			// Do nothing for now
+			homingMethod = SPIIPLUS_HOME_NONE;
 			break;
 		
 		default:
-			/* Do nothing */
+			homingMethod = SPIIPLUS_HOME_NONE;
 			break;
 	}
 	
-	//
-	printf("homing method = %i\n", homingMethod);
+	// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
+	cmd << "HOME " << axisNo_ << "," << homingMethod << "," << maxVelocity;
+	asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
+	//status = controller->writeReadAck(cmd);
 	
 	return asynSuccess;
 }
-
-
-
-
-
 
 /** Reports on status of the axis
   * \param[in] fp The file pointer on which report information will be written
