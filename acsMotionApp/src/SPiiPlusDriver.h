@@ -36,7 +36,31 @@
 #define WRITE_LI_SLICE_CMD	0x3B
 */
 
+// The following values need to match the homingMethod mbbo record
+#define MBBO_HOME_NONE			0
+#define MBBO_HOME_LIMIT_INDEX		1
+#define MBBO_HOME_LIMIT			2
+#define MBBO_HOME_INDEX			3
+#define MBBO_HOME_CURRENT_POS		4
+#define MBBO_HOME_HARDSTOP_INDEX	5
+#define MBBO_HOME_HARDSTOP		6
+#define MBBO_HOME_CUSTOM		7
+//
+#define SPIIPLUS_HOME_NONE			0
+#define SPIIPLUS_HOME_NEG_LIMIT_INDEX		1
+#define SPIIPLUS_HOME_POS_LIMIT_INDEX		2
+#define SPIIPLUS_HOME_NEG_LIMIT			17
+#define SPIIPLUS_HOME_POS_LIMIT			18
+#define SPIIPLUS_HOME_NEG_INDEX			33
+#define SPIIPLUS_HOME_POS_INDEX			34
+#define SPIIPLUS_HOME_CURRENT_POS		37
+#define SPIIPLUS_HOME_NEG_HARDSTOP_INDEX	50
+#define SPIIPLUS_HOME_POS_HARDSTOP_INDEX	51
+#define SPIIPLUS_HOME_NEG_HARDSTOP		52
+#define SPIIPLUS_HOME_POS_HARDSTOP		53
+
 // drvInfo strings for extra parameters that the XPS controller supports
+#define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
@@ -46,6 +70,7 @@ public:
 	void report(FILE *fp, int level);
 	
 	asynStatus move(double position, int relative, double min_velocity, double max_velocity, double acceleration);
+	asynStatus home(double minVelocity, double maxVelocity, double acceleration, int forwards);
 	asynStatus stop(double acceleration);
 	asynStatus poll(bool *moving);
 	asynStatus setPosition(double position);
@@ -103,7 +128,8 @@ protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
 	std::string instring;
 	
-	#define FIRST_SPIIPLUS_PARAM SPiiPlusTest_
+	#define FIRST_SPIIPLUS_PARAM SPiiPlusHomingMethod_
+	int SPiiPlusHomingMethod_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
