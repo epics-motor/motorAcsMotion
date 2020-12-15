@@ -61,6 +61,17 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		writeReadInt(cmd, &(pAxes_[index]->mflags_));
 		// Bit 0 is #DUMMY
 		pAxes_[index]->dummy_ = (pAxes_[index]->mflags_) & (1 << 0);
+		
+		// Query the axis resolution (used to convert motor record steps into controller EGU)
+		cmd << "?STEPF(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->resolution_));
+		
+		// Query the encoder resolution (not currently used for anything)
+		cmd << "?EFAC(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->encoderResolution_));
+		// Query the encoder offset (not currently used for anything)
+		cmd << "?EOFFS(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->encoderOffset_));
 	}
 	
 	this->startPoller(movingPollPeriod, idlePollPeriod, 2);
@@ -685,6 +696,9 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "  mflags: %i\n", mflags_);
   fprintf(fp, "  dummy:  %i\n", dummy_);
   fprintf(fp, "  moving: %i\n", moving_);
+  fprintf(fp, "  resolution: %lf\n", resolution_);
+  fprintf(fp, "  encoder resolution: %lf\n", encoderResolution_);
+  fprintf(fp, "  encoder offset: %lf\n", encoderOffset_);
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "\n");
   

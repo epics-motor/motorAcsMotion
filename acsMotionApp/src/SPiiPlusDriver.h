@@ -88,8 +88,11 @@ private:
 	double profileStartPos_;
 	double profileFlybackPos_;
 	int moving_;
-	int mflags_;
+	int mflags_;			// MFLAGS
 	int dummy_;
+	double resolution_;		// STEPF
+	double encoderResolution_;	// EFAC
+	double encoderOffset_;		// EOFFS
 	
 friend class SPiiPlusController;
 };
