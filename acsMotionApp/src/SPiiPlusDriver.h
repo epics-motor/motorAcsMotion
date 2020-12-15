@@ -89,7 +89,10 @@ private:
 	double profileFlybackPos_;
 	int moving_;
 	int mflags_;			// MFLAGS
-	int dummy_;
+	int dummy_;			// MFLAGS, bit 0
+	int stepper_;			// MFLAGS, bit 4
+	int encloop_;			// MFLAGS, bit 5
+	int stepenc_;			// MFLAGS, bit 6
 	double resolution_;		// STEPF
 	double encoderResolution_;	// EFAC
 	double encoderOffset_;		// EOFFS

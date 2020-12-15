@@ -61,6 +61,12 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		writeReadInt(cmd, &(pAxes_[index]->mflags_));
 		// Bit 0 is #DUMMY
 		pAxes_[index]->dummy_ = (pAxes_[index]->mflags_) & (1 << 0);
+		// Bit 4 is #STEPPER
+		pAxes_[index]->stepper_ = (pAxes_[index]->mflags_) & (1 << 4);
+		// Bit 5 is #ENCLOOP
+		pAxes_[index]->encloop_ = (pAxes_[index]->mflags_) & (1 << 5);
+		// Bit 6 is #STEPENC
+		pAxes_[index]->stepenc_ = (pAxes_[index]->mflags_) & (1 << 6);
 		
 		// Query the axis resolution (used to convert motor record steps into controller EGU)
 		cmd << "?STEPF(" << index << ")";
@@ -694,7 +700,10 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
   fprintf(fp, "  mflags: %i\n", mflags_);
-  fprintf(fp, "  dummy:  %i\n", dummy_);
+  fprintf(fp, "    dummy:  %i\n", dummy_);
+  fprintf(fp, "    stepper:  %i\n", stepper_);
+  fprintf(fp, "    encloop:  %i\n", encloop_);
+  fprintf(fp, "    stepenc:  %i\n", stepenc_);
   fprintf(fp, "  moving: %i\n", moving_);
   fprintf(fp, "  resolution: %lf\n", resolution_);
   fprintf(fp, "  encoder resolution: %lf\n", encoderResolution_);
