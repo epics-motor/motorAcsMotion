@@ -705,8 +705,8 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
   fprintf(fp, "  moving: %i\n", moving_);
-  fprintf(fp, "  resolution: %lf\n", resolution_);
-  fprintf(fp, "  encoder resolution: %lf\n", encoderResolution_);
+  fprintf(fp, "  resolution: %.6e\n", resolution_);
+  fprintf(fp, "  encoder resolution: %.6e\n", encoderResolution_);
   fprintf(fp, "  encoder offset: %lf\n", encoderOffset_);
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "\n");
