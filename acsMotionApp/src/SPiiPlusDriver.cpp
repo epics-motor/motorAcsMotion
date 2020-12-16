@@ -438,11 +438,11 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	cmd << "?APOS(" << axisNo_ << ")";
 	status = controller->writeReadDouble(cmd, &position);
 	if (status != asynSuccess) return status;
-	setDoubleParam(controller->motorPosition_, position);
+	setDoubleParam(controller->motorPosition_, (position / resolution_));
 	
 	if (dummy_)
 	{
-		setDoubleParam(controller->motorEncoderPosition_, position);
+		setDoubleParam(controller->motorEncoderPosition_, (position / resolution_));
 		// Faults are disabled for dummy axes
 		setIntegerParam(controller->motorStatusLowLimit_, 0);
 		setIntegerParam(controller->motorStatusHighLimit_, 0);
@@ -453,7 +453,9 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		cmd << "?FPOS(" << axisNo_ << ")";
 		status = controller->writeReadDouble(cmd, &enc_position);
 		if (status != asynSuccess) return status;
-		setDoubleParam(controller->motorEncoderPosition_, enc_position);
+		// FPOS = FP * EFAC + EOFFS
+		// TODO: detect when there is no encoder and fix the encoder position at zero
+		setDoubleParam(controller->motorEncoderPosition_, enc_position / encoderResolution_);
 		
 		int left_limit, right_limit;
 		cmd << "?FAULT(" << axisNo_ << ").#LL";
@@ -514,28 +516,30 @@ asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity,
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	asynStatus status;
+	double deviceUnits;
 	std::stringstream cmd;
 	
-	cmd << "XACC(" << axisNo_ << ")=" << (acceleration + 10);
+	// Should accelerations be multiplied by resolution_ squared?
+	//cmd << "XACC(" << axisNo_ << ")=" << ((acceleration + 10) * resolution_);
+	//status = controller->writeReadAck(cmd);
+	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->writeReadAck(cmd);
-	cmd << "ACC(" << axisNo_ << ")=" << acceleration;
-	status = controller->writeReadAck(cmd);
-	cmd << "DEC(" << axisNo_ << ")=" << acceleration;
+	cmd << "DEC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->writeReadAck(cmd);
 	
-	cmd << "XVEL(" << axisNo_ << ")=" << (maxVelocity + 10);
-	status = controller->writeReadAck(cmd);
-	cmd << "VEL(" << axisNo_ << ")=" << maxVelocity;
+	//cmd << "XVEL(" << axisNo_ << ")=" << ((maxVelocity + 10) * resolution_);
+	//status = controller->writeReadAck(cmd);
+	cmd << "VEL(" << axisNo_ << ")=" << (maxVelocity * resolution_);
 	status = controller->writeReadAck(cmd);
 	
 	if (relative)
 	{
-		cmd << "PTP/r " << axisNo_ << ", " << position;
+		cmd << "PTP/r " << axisNo_ << ", " << (position * resolution_);
 		status = controller->writeReadAck(cmd);
 	}
 	else
 	{
-		cmd << "PTP " << axisNo_ << ", " << position;
+		cmd << "PTP " << axisNo_ << ", " << (position * resolution_);
 		status = controller->writeReadAck(cmd);
 	}
 	
@@ -548,7 +552,7 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	asynStatus status;
 	std::stringstream cmd;
 	
-	cmd << "SET APOS(" << axisNo_ << ")=" << position;
+	cmd << "SET APOS(" << axisNo_ << ")=" << (position * resolution_);
 	status = controller->writeReadAck(cmd);
 	
 	return status;
@@ -677,7 +681,7 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 	else
 	{
 		// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
-		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << maxVelocity;
+		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_);
 		//asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
 		status = controller->writeReadAck(cmd);
 	}
