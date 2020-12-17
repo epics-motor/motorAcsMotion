@@ -808,11 +808,11 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
     
     if (profileAxes_[i] == profileAxes_.front())
     {
-      outputStr << lround(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << pAxis->fullProfilePositions_[positionIndex];
     }
     else 
     {
-      outputStr << ',' << lround(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << ',' << pAxis->fullProfilePositions_[positionIndex];
     }
   }
   
