@@ -688,6 +688,30 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 	return status;
 }
 
+/** Function to define the motor positions for a profile move. 
+  * Called by asynMotorController::writeFloat64Array
+  * This calls the base class defineProfile method to convert to steps, but since the
+  * SPiiPlus works in user-units we need to do an additional conversion by resolution_. 
+  * \param[in] positions Array of profile positions for this axis in user units.
+  * \param[in] numPoints The number of positions in the array.
+  */
+asynStatus SPiiPlusAxis::defineProfile(double *positions, size_t numPoints)
+{
+  size_t i;
+  asynStatus status;
+  //static const char *functionName = "defineProfile";
+  
+  // Call the base class function (converts from EGU to steps)
+  status = asynMotorAxis::defineProfile(positions, numPoints);
+  if (status) return status;
+  
+  // Convert from steps to SPiiPlus user units
+  for (i=0; i<numPoints; i++) {
+    profilePositions_[i] = profilePositions_[i]*resolution_;
+  }
+  return asynSuccess;
+}
+
 /** Reports on status of the axis
   * \param[in] fp The file pointer on which report information will be written
   * \param[in] level The level of report detail desired
@@ -872,6 +896,7 @@ asynStatus SPiiPlusController::buildProfile()
             "%s:%s: entry\n",
             driverName, functionName);
             
+
   // Call the base class method which will build the time array if needed
   asynMotorController::buildProfile();
   
