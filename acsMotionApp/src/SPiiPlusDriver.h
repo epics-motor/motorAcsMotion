@@ -75,7 +75,7 @@ public:
 	asynStatus poll(bool *moving);
 	asynStatus setPosition(double position);
 	asynStatus setClosedLoop(bool closedLoop);
-	
+	asynStatus defineProfile(double *positions, size_t numPoints);
 	
 private:
 	SPiiPlusController *pC_;	/**< Pointer to the asynMotorController to which this axis belongs.
@@ -88,8 +88,14 @@ private:
 	double profileStartPos_;
 	double profileFlybackPos_;
 	int moving_;
-	int mflags_;
-	int dummy_;
+	int mflags_;			// MFLAGS
+	int dummy_;			// MFLAGS, bit 0
+	int stepper_;			// MFLAGS, bit 4
+	int encloop_;			// MFLAGS, bit 5
+	int stepenc_;			// MFLAGS, bit 6
+	double resolution_;		// STEPF
+	double encoderResolution_;	// EFAC
+	double encoderOffset_;		// EOFFS
 	
 friend class SPiiPlusController;
 };

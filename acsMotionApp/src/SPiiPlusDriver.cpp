@@ -61,6 +61,23 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		writeReadInt(cmd, &(pAxes_[index]->mflags_));
 		// Bit 0 is #DUMMY
 		pAxes_[index]->dummy_ = (pAxes_[index]->mflags_) & (1 << 0);
+		// Bit 4 is #STEPPER
+		pAxes_[index]->stepper_ = (pAxes_[index]->mflags_) & (1 << 4);
+		// Bit 5 is #ENCLOOP
+		pAxes_[index]->encloop_ = (pAxes_[index]->mflags_) & (1 << 5);
+		// Bit 6 is #STEPENC
+		pAxes_[index]->stepenc_ = (pAxes_[index]->mflags_) & (1 << 6);
+		
+		// Query the axis resolution (used to convert motor record steps into controller EGU)
+		cmd << "?STEPF(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->resolution_));
+		
+		// Query the encoder resolution (not currently used for anything)
+		cmd << "?EFAC(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->encoderResolution_));
+		// Query the encoder offset (not currently used for anything)
+		cmd << "?EOFFS(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->encoderOffset_));
 	}
 	
 	this->startPoller(movingPollPeriod, idlePollPeriod, 2);
@@ -421,11 +438,11 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	cmd << "?APOS(" << axisNo_ << ")";
 	status = controller->writeReadDouble(cmd, &position);
 	if (status != asynSuccess) return status;
-	setDoubleParam(controller->motorPosition_, position);
+	setDoubleParam(controller->motorPosition_, (position / resolution_));
 	
 	if (dummy_)
 	{
-		setDoubleParam(controller->motorEncoderPosition_, position);
+		setDoubleParam(controller->motorEncoderPosition_, (position / resolution_));
 		// Faults are disabled for dummy axes
 		setIntegerParam(controller->motorStatusLowLimit_, 0);
 		setIntegerParam(controller->motorStatusHighLimit_, 0);
@@ -436,7 +453,9 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		cmd << "?FPOS(" << axisNo_ << ")";
 		status = controller->writeReadDouble(cmd, &enc_position);
 		if (status != asynSuccess) return status;
-		setDoubleParam(controller->motorEncoderPosition_, enc_position);
+		// FPOS = FP * EFAC + EOFFS
+		// TODO: detect when there is no encoder and fix the encoder position at zero
+		setDoubleParam(controller->motorEncoderPosition_, enc_position / encoderResolution_);
 		
 		int left_limit, right_limit;
 		cmd << "?FAULT(" << axisNo_ << ").#LL";
@@ -497,28 +516,30 @@ asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity,
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	asynStatus status;
+	double deviceUnits;
 	std::stringstream cmd;
 	
-	cmd << "XACC(" << axisNo_ << ")=" << (acceleration + 10);
+	// Should accelerations be multiplied by resolution_ squared?
+	//cmd << "XACC(" << axisNo_ << ")=" << ((acceleration + 10) * resolution_);
+	//status = controller->writeReadAck(cmd);
+	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->writeReadAck(cmd);
-	cmd << "ACC(" << axisNo_ << ")=" << acceleration;
-	status = controller->writeReadAck(cmd);
-	cmd << "DEC(" << axisNo_ << ")=" << acceleration;
+	cmd << "DEC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->writeReadAck(cmd);
 	
-	cmd << "XVEL(" << axisNo_ << ")=" << (maxVelocity + 10);
-	status = controller->writeReadAck(cmd);
-	cmd << "VEL(" << axisNo_ << ")=" << maxVelocity;
+	//cmd << "XVEL(" << axisNo_ << ")=" << ((maxVelocity + 10) * resolution_);
+	//status = controller->writeReadAck(cmd);
+	cmd << "VEL(" << axisNo_ << ")=" << (maxVelocity * resolution_);
 	status = controller->writeReadAck(cmd);
 	
 	if (relative)
 	{
-		cmd << "PTP/r " << axisNo_ << ", " << position;
+		cmd << "PTP/r " << axisNo_ << ", " << (position * resolution_);
 		status = controller->writeReadAck(cmd);
 	}
 	else
 	{
-		cmd << "PTP " << axisNo_ << ", " << position;
+		cmd << "PTP " << axisNo_ << ", " << (position * resolution_);
 		status = controller->writeReadAck(cmd);
 	}
 	
@@ -531,7 +552,7 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	asynStatus status;
 	std::stringstream cmd;
 	
-	cmd << "SET APOS(" << axisNo_ << ")=" << position;
+	cmd << "SET APOS(" << axisNo_ << ")=" << (position * resolution_);
 	status = controller->writeReadAck(cmd);
 	
 	return status;
@@ -660,11 +681,35 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 	else
 	{
 		// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
-		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << maxVelocity;
+		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_);
 		//asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
 		status = controller->writeReadAck(cmd);
 	}
 	return status;
+}
+
+/** Function to define the motor positions for a profile move. 
+  * Called by asynMotorController::writeFloat64Array
+  * This calls the base class defineProfile method to convert to steps, but since the
+  * SPiiPlus works in user-units we need to do an additional conversion by resolution_. 
+  * \param[in] positions Array of profile positions for this axis in user units.
+  * \param[in] numPoints The number of positions in the array.
+  */
+asynStatus SPiiPlusAxis::defineProfile(double *positions, size_t numPoints)
+{
+  size_t i;
+  asynStatus status;
+  //static const char *functionName = "defineProfile";
+  
+  // Call the base class function (converts from EGU to steps)
+  status = asynMotorAxis::defineProfile(positions, numPoints);
+  if (status) return status;
+  
+  // Convert from steps to SPiiPlus user units
+  for (i=0; i<numPoints; i++) {
+    profilePositions_[i] = profilePositions_[i]*resolution_;
+  }
+  return asynSuccess;
 }
 
 /** Reports on status of the axis
@@ -683,8 +728,14 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
   fprintf(fp, "  mflags: %i\n", mflags_);
-  fprintf(fp, "  dummy:  %i\n", dummy_);
+  fprintf(fp, "    dummy:  %i\n", dummy_);
+  fprintf(fp, "    stepper:  %i\n", stepper_);
+  fprintf(fp, "    encloop:  %i\n", encloop_);
+  fprintf(fp, "    stepenc:  %i\n", stepenc_);
   fprintf(fp, "  moving: %i\n", moving_);
+  fprintf(fp, "  resolution: %.6e\n", resolution_);
+  fprintf(fp, "  encoder resolution: %.6e\n", encoderResolution_);
+  fprintf(fp, "  encoder offset: %lf\n", encoderOffset_);
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "\n");
   
@@ -757,11 +808,11 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
     
     if (profileAxes_[i] == profileAxes_.front())
     {
-      outputStr << lround(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << pAxis->fullProfilePositions_[positionIndex];
     }
     else 
     {
-      outputStr << ',' << lround(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << ',' << pAxis->fullProfilePositions_[positionIndex];
     }
   }
   
@@ -845,6 +896,7 @@ asynStatus SPiiPlusController::buildProfile()
             "%s:%s: entry\n",
             driverName, functionName);
             
+
   // Call the base class method which will build the time array if needed
   asynMotorController::buildProfile();
   
