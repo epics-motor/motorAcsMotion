@@ -42,6 +42,8 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	
 	// Create parameters
 	createParam(SPiiPlusHomingMethodString,               asynParamInt32, &SPiiPlusHomingMethod_);
+	createParam(SPiiPlusMaxVelocityString,                asynParamFloat64, &SPiiPlusMaxVelocity_);
+	createParam(SPiiPlusMaxAccelerationString,            asynParamFloat64, &SPiiPlusMaxAcceleration_);
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	if (status)
@@ -125,6 +127,41 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
 
   return (asynStatus)status;
 
+}
+
+/** Called when asyn clients call pasynFloat64->write().
+  * \param[in] pasynUser asynUser structure that encodes the reason and address.
+  * \param[in] value Value to write. */
+asynStatus SPiiPlusController::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
+{
+  int function = pasynUser->reason;
+  SPiiPlusAxis *pAxis;
+  asynStatus status = asynError;
+  //static const char *functionName = "writeFloat64";
+
+  pAxis = getAxis(pasynUser);
+  if (!pAxis) return asynError;
+
+  /* Set the parameter and readback in the parameter library. */
+  status = pAxis->setDoubleParam(function, value);
+
+  if (function == SPiiPlusMaxVelocity_)
+  {
+    status = pAxis->setMaxVelocity(value);
+  }
+  else if (function == SPiiPlusMaxAcceleration_)
+  {
+    status = pAxis->setMaxAcceleration(value);
+  }
+  else
+  {
+    /* Call base class method */
+    status = asynMotorController::writeFloat64(pasynUser, value);
+  }
+  /* Do callbacks so higher layers see any changes */
+  pAxis->callParamCallbacks();
+  
+  return status;
 }
 
 SPiiPlusAxis* SPiiPlusController::getAxis(asynUser *pasynUser)
@@ -468,6 +505,10 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		setIntegerParam(controller->motorStatusHighLimit_, right_limit);
 	}
 	
+	// TODO: only get max values when idle polling
+	// Get max velo and accel
+	getMaxParams();
+	
 	// Read the axis status
 	int axis_status;
 	cmd << "?D/AST(" << axisNo_ << ")";
@@ -512,6 +553,69 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	return status;
 }
 
+asynStatus SPiiPlusAxis::getMaxParams()
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	double motorRecResolution;
+	double maxVelocity, maxAcceleration;
+	std::stringstream cmd;
+	
+	// motorRecResolution (EGU/step)
+	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
+	
+	// Query the max velocity (SPiiPlus-units/sec)
+	cmd << "?XVEL(" << axisNo_ << ")";
+	status = controller->writeReadDouble(cmd, &maxVelocity);
+	if (status != asynSuccess) return status;
+	
+	// Query the max acceleration (SPiiPlus-units/sec^2)
+	cmd << "?XACC(" << axisNo_ << ")";
+	status = controller->writeReadDouble(cmd, &maxAcceleration);
+	
+	// (SPiiPlus-units/time-unit) / (SPiiPlus-units/step) * (EGU/step) = (EGU/time-unit)
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxVelocity_, (maxVelocity / resolution_ * motorRecResolution));
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxAcceleration_, (maxAcceleration / resolution_ * motorRecResolution));
+	
+	// Assume the calling method will call callParamCallbacks()
+	
+	return status;
+}
+
+asynStatus SPiiPlusAxis::setMaxVelocity(double maxVelocity)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	double motorRecResolution;
+	std::stringstream cmd;
+	
+	// motorRecResolution is in EGU / step
+	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
+	
+	// (EGU/s) / (EGU/step) * (SPiiPlus-units/step) = (SPiiPlus-units/s)
+	cmd << "XVEL(" << axisNo_ << ")=" << (maxVelocity / motorRecResolution * resolution_);
+	status = controller->writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusAxis::setMaxAcceleration(double maxAcceleration)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	double motorRecResolution;
+	std::stringstream cmd;
+	
+	// motorRecResolution is in EGU / step
+	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
+	
+	// (EGU/s^2) / (EGU/step) * (SPiiPlus-units/step) = (SPiiPlus-units/s^2)
+	cmd << "XACC(" << axisNo_ << ")=" << (maxAcceleration / motorRecResolution * resolution_);
+	status = controller->writeReadAck(cmd);
+	
+	return status;
+}
+
 asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity, double maxVelocity, double acceleration)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
@@ -519,7 +623,6 @@ asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity,
 	double deviceUnits;
 	std::stringstream cmd;
 	
-	// Should accelerations be multiplied by resolution_ squared?
 	//cmd << "XACC(" << axisNo_ << ")=" << ((acceleration + 10) * resolution_);
 	//status = controller->writeReadAck(cmd);
 	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);

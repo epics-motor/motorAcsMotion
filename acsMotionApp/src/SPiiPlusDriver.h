@@ -61,6 +61,8 @@
 
 // drvInfo strings for extra parameters that the XPS controller supports
 #define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
+#define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
+#define SPiiPlusMaxAccelerationString              "SPIIPLUS_MAX_ACCELERATION"
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
@@ -76,6 +78,11 @@ public:
 	asynStatus setPosition(double position);
 	asynStatus setClosedLoop(bool closedLoop);
 	asynStatus defineProfile(double *positions, size_t numPoints);
+	
+	asynStatus getMaxParams();
+	asynStatus setMaxVelocity(double maxVelocity);
+	asynStatus setMaxAcceleration(double maxAcceleration);
+	
 	
 private:
 	SPiiPlusController *pC_;	/**< Pointer to the asynMotorController to which this axis belongs.
@@ -105,6 +112,7 @@ class epicsShareClass SPiiPlusController : public asynMotorController
 public:
 	SPiiPlusController(const char* ACSPort, const char* asynPort, int numAxes, double moving_poll, double idle_poll);
 	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
+	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
 	void report(FILE *fp, int level);
@@ -136,6 +144,8 @@ protected:
 	
 	#define FIRST_SPIIPLUS_PARAM SPiiPlusHomingMethod_
 	int SPiiPlusHomingMethod_;
+	int SPiiPlusMaxVelocity_;
+	int SPiiPlusMaxAcceleration_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
