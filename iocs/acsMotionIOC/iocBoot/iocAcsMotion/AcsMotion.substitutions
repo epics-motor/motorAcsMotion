@@ -70,7 +70,7 @@ pattern
 {acsMotion:, m8,  ACS1,    7,     200.0,    1000.0,      4}
 }
 
-file "$(TOP)/db/SPiiPlusMaxParamsRBV.db"
+file "$(TOP)/db/SPiiPlusMaxParamsRbv.db"
 {
 pattern
 {P,          M,   PORT, ADDR, PREC}
