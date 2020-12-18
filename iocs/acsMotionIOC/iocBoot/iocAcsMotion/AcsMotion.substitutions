@@ -55,6 +55,34 @@ pattern
 {acsMotion:, m8,  ACS1,    7,     2.0,    0}
 }
 
+file "$(TOP)/db/SPiiPlusMaxParams.db"
+{
+pattern
+{P,          M,   PORT, ADDR,  MAX_VELO,  MAX_ACCL,   PREC}
+{acsMotion:, m1,  ACS1,    0,       5.0,      20.0,      4}
+{acsMotion:, m2,  ACS1,    1,     200.0,    1000.0,      4}
+{acsMotion:, m3,  ACS1,    2,     200.0,    1000.0,      4}
+{acsMotion:, m4,  ACS1,    3,     200.0,    1000.0,      4}
+{acsMotion:, m5,  ACS1,    4,     200.0,    1000.0,      4}
+{acsMotion:, m6,  ACS1,    5,     200.0,    1000.0,      4}
+{acsMotion:, m7,  ACS1,    6,     200.0,    1000.0,      4}
+{acsMotion:, m8,  ACS1,    7,     200.0,    1000.0,      4}
+}
+
+file "$(TOP)/db/SPiiPlusMaxParamsRBV.db"
+{
+pattern
+{P,          M,   PORT, ADDR, PREC}
+{acsMotion:, m1,  ACS1,    0,    4}
+{acsMotion:, m2,  ACS1,    1,    4}
+{acsMotion:, m3,  ACS1,    2,    4}
+{acsMotion:, m4,  ACS1,    3,    4}
+{acsMotion:, m5,  ACS1,    4,    4}
+{acsMotion:, m6,  ACS1,    5,    4}
+{acsMotion:, m7,  ACS1,    6,    4}
+{acsMotion:, m8,  ACS1,    7,    4}
+}
+
 file "$(TOP)/db/SPiiPlusTest.db"
 {
 pattern
