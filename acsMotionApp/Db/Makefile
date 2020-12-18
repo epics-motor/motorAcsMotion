@@ -12,6 +12,8 @@ include $(TOP)/configure/CONFIG
 # databases, templates, substitutions like this
 #DB += xxx.db
 DB += SPiiPlusHoming.db
+DB += SPiiPlusMaxParams.db
+DB += SPiiPlusMaxParamsRbv.db
 DB += SPiiPlusTest.db
 
 #----------------------------------------------------

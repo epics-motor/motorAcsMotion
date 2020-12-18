@@ -1,0 +1,16 @@
+# These records work, but the initial values are all zero.  Maybe HOPR/LOPR/DRVH/DRVL need to be set?
+record(ao,"$(P)$(M):maxVelocity") {
+    field(DESC, "Max Velocity")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_MAX_VELOCITY")
+    field(VAL,  "$(MAX_VELO)")
+    field(PREC, "$(PREC=4)")
+}
+
+record(ao,"$(P)$(M):maxAcceleration") {
+    field(DESC, "Max Acceleration")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_MAX_ACCELERATION")
+    field(VAL,  "$(MAX_ACCL)")
+    field(PREC, "$(PREC=4)")
+}

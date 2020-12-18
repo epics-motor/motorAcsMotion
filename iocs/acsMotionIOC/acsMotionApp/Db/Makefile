@@ -25,10 +25,14 @@ DB_INSTALLS += $(MOTOR)/db/profileMoveAxis_settings.req
 ifdef MOTOR_ACSMOTION
 #!### motorAcsMotion was built outside motor
 DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusHoming.db
+DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusMaxParams.db
+DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusMaxParamsRbv.db
 DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusTest.db
 else
 #!### motorAcsMotion was built inside motor/modules
 DB_INSTALLS += $(MOTOR)/db/SPiiPlusHoming.db
+DB_INSTALLS += $(MOTOR)/db/SPiiPlusMaxParams.db
+DB_INSTALLS += $(MOTOR)/db/SPiiPlusMaxParamsRbv.db
 DB_INSTALLS += $(MOTOR)/db/SPiiPlusTest.db
 endif
 
