@@ -1,3 +1,4 @@
+# These records work, but the initial values are all zero.  Maybe HOPR/LOPR/DRVH/DRVL need to be set?
 record(ao,"$(P)$(M):maxVelocity") {
     field(DESC, "Max Velocity")
     field(DTYP, "asynFloat64")
