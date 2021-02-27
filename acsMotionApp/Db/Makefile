@@ -14,6 +14,8 @@ include $(TOP)/configure/CONFIG
 DB += SPiiPlusHoming.db
 DB += SPiiPlusMaxParams.db
 DB += SPiiPlusMaxParamsRbv.db
+DB += SPiiPlusIntVar.db
+DB += SPiiPlusRealVar.db
 DB += SPiiPlusTest.db
 
 #----------------------------------------------------

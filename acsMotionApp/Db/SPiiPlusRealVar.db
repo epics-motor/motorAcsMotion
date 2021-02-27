@@ -1,0 +1,19 @@
+# 
+record(ao, "$(P)$(R)")
+{
+    field(DESC, "$(DESC)")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),$(TAG),$(TIMEOUT=1))SPIIPLUS_WRITE_REAL_VAR")
+    field(FLNK, "$(P)$(R)_RBV")
+    field(PREC, "$(PREC=4)")
+}
+
+record(ai, "$(P)$(R)_RBV")
+{
+    field(DESC, "$(DESC) readback")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(TAG),$(TIMEOUT=1))SPIIPLUS_READ_REAL_VAR")
+    field(SCAN, "Passive")
+    field(PINI, "YES")
+    field(PREC, "$(PREC=4)")
+}

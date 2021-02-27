@@ -63,6 +63,10 @@
 #define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
 #define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
 #define SPiiPlusMaxAccelerationString              "SPIIPLUS_MAX_ACCELERATION"
+#define SPiiPlusReadIntVarString               "SPIIPLUS_READ_INT_VAR"
+#define SPiiPlusWriteIntVarString              "SPIIPLUS_WRITE_INT_VAR"
+#define SPiiPlusReadRealVarString              "SPIIPLUS_READ_REAL_VAR"
+#define SPiiPlusWriteRealVarString             "SPIIPLUS_WRITE_REAL_VAR"
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
@@ -111,8 +115,12 @@ class epicsShareClass SPiiPlusController : public asynMotorController
 {
 public:
 	SPiiPlusController(const char* ACSPort, const char* asynPort, int numAxes, double moving_poll, double idle_poll);
+	asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
 	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
+	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
 	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus getAddress(asynUser *pasynUser, int *address);
+	//asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, const char **pptypeName, size_t *psize);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
 	void report(FILE *fp, int level);
@@ -137,6 +145,10 @@ public:
 	asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
 	asynStatus binaryErrorCheck(char *buffer);
+	asynStatus readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value);
+	asynStatus writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value);
+	asynStatus readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value);
+	asynStatus writeGlobalRealVar(asynUser *pasynUser, epicsFloat64 value);
 	
 protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
@@ -146,6 +158,10 @@ protected:
 	int SPiiPlusHomingMethod_;
 	int SPiiPlusMaxVelocity_;
 	int SPiiPlusMaxAcceleration_;
+	int SPiiPlusReadIntVar_;
+	int SPiiPlusWriteIntVar_;
+	int SPiiPlusReadRealVar_;
+	int SPiiPlusWriteRealVar_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	

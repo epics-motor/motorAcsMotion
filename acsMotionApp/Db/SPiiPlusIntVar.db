@@ -1,0 +1,17 @@
+# 
+record(longout, "$(P)$(R)")
+{
+    field(DESC, "$(DESC)")
+    field(DTYP, "asynInt32")
+    field(OUT,  "@asyn($(PORT),$(TAG),$(TIMEOUT=1))SPIIPLUS_WRITE_INT_VAR")
+    field(FLNK, "$(P)$(R)_RBV")
+}
+
+record(longin, "$(P)$(R)_RBV")
+{
+    field(DESC, "$(DESC) readback")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(TAG),$(TIMEOUT=1))SPIIPLUS_READ_INT_VAR")
+    field(SCAN, "Passive")
+    field(PINI, "YES")
+}
