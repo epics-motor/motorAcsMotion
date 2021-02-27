@@ -119,6 +119,7 @@ public:
 	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
 	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus getAddress(asynUser *pasynUser, int *address);
 	//asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, const char **pptypeName, size_t *psize);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);

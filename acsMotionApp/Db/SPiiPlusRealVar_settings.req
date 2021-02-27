@@ -1,0 +1,6 @@
+$(P)$(R).VAL
+$(P)$(R).DESC
+$(P)$(R).PREC
+$(P)$(R)_RBV.SCAN
+$(P)$(R)_RBV.DESC
+$(P)$(R)_RBV.PREC

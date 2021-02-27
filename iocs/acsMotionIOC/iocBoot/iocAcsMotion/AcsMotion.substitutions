@@ -88,15 +88,15 @@ pattern
 file "$(TOP)/db/SPiiPlusIntVar.db"
 {
 pattern
-{P,          R,           DESC,     PORT,  TAG}
-{acsMotion:, Int:1001,  "Int 1",    ACS1,  1001}
+{P,          R,        DESC,     PORT,  TAG}
+{acsMotion:, 1001I,  "Int 1",    ACS1,  1001}
 }
 
 file "$(TOP)/db/SPiiPlusRealVar.db"
 {
 pattern
-{P,          R,            DESC,      PORT,  TAG}
-{acsMotion:, Real:1002,  "Real 1",    ACS1,  1002}
+{P,          R,        DESC,      PORT,  TAG,   PREC}
+{acsMotion:, 1002R,  "Real 1",    ACS1,  1002,     5}
 }
 
 file "$(TOP)/db/SPiiPlusTest.db"

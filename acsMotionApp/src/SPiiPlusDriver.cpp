@@ -104,26 +104,12 @@ asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
                                        const char *drvInfo,
                                        const char **pptypeName, size_t *psize)
 {
-    static const char *functionName = "drvUserCreate";
+    //static const char *functionName = "drvUserCreate";
     asynStatus status=asynSuccess;
-    int index;
-    int addr;
     
-    if (epicsStrCaseCmp(drvInfo, SPiiPlusReadIntVarString) == 0)
+    if (epicsStrCaseCmp(drvInfo, something) == 0)
     {
-        pasynUser->reason = SPiiPlusReadIntVar_;
-    }
-    else if (epicsStrCaseCmp(drvInfo, SPiiPlusWriteIntVarString) == 0)
-    {
-        pasynUser->reason = SPiiPlusWriteIntVar_;
-    }
-    else if (epicsStrCaseCmp(drvInfo, SPiiPlusReadRealVarString) == 0)
-    {
-        pasynUser->reason = SPiiPlusReadRealVar_;
-    }
-    else if (epicsStrCaseCmp(drvInfo, SPiiPlusWriteRealVarString) == 0)
-    {
-        pasynUser->reason = SPiiPlusWriteRealVar_;
+        pasynUser->reason = a_good_value;
     }
     else
     {
@@ -134,16 +120,31 @@ asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
 }
 */
 
+// It is necessary to implement getAddress to avoid the maxAddr checks from the base class
+asynStatus SPiiPlusController::getAddress(asynUser *pasynUser, int *address)
+{
+    pasynManager->getAddr(pasynUser, address);
+    
+    if (*address > this->maxAddr-1)
+    {
+        // A larger address corresponds to a global variable tag
+        *address = 0;
+    }
+    else
+    {
+        // asynMotorController doesn't implement get address, so asynPortDriver::getAddress is called
+        asynMotorController::getAddress(pasynUser, address);
+    } 
+    
+    return asynSuccess;
+}
+
 asynStatus SPiiPlusController::readInt32(asynUser *pasynUser, epicsInt32 *value)
 {
   int function = pasynUser->reason;
   int status = asynSuccess;
-  SPiiPlusAxis *pAxis;
   //static const char *functionName = "readInt32";
 
-  pAxis = this->getAxis(pasynUser);
-  if (!pAxis) return asynError;
-  
   *value = 0;
   
   if (function == SPiiPlusReadIntVar_)
@@ -155,9 +156,6 @@ asynStatus SPiiPlusController::readInt32(asynUser *pasynUser, epicsInt32 *value)
     /* Call base class method */
     status = asynMotorController::readInt32(pasynUser, value);
   }
-
-  /* Do callbacks so higher layers see any changes */
-  pAxis->callParamCallbacks();
 
   return (asynStatus)status;
 }
@@ -207,12 +205,8 @@ asynStatus SPiiPlusController::readFloat64(asynUser *pasynUser, epicsFloat64 *va
 {
   int function = pasynUser->reason;
   int status = asynSuccess;
-  SPiiPlusAxis *pAxis;
   //static const char *functionName = "readFloat64";
 
-  pAxis = this->getAxis(pasynUser);
-  if (!pAxis) return asynError;
-  
   *value = 0;
   
   if (function == SPiiPlusReadRealVar_)
@@ -224,9 +218,6 @@ asynStatus SPiiPlusController::readFloat64(asynUser *pasynUser, epicsFloat64 *va
     /* Call base class method */
     status = asynMotorController::readFloat64(pasynUser, value);
   }
-
-  /* Do callbacks so higher layers see any changes */
-  pAxis->callParamCallbacks();
 
   return (asynStatus)status;
 }
@@ -569,7 +560,7 @@ asynStatus SPiiPlusController::readGlobalIntVar(asynUser *pasynUser, epicsInt32 
 	int tag;
 	
 	// Get the address, which is the tag of the global integer, rather than an axis index
-	getAddress(pasynUser, &tag);
+	pasynManager->getAddr(pasynUser, &tag);
 	
 	// ?GETVAR(tag)
 	cmd << "?GETVAR(" << tag << ")";
@@ -585,7 +576,7 @@ asynStatus SPiiPlusController::writeGlobalIntVar(asynUser *pasynUser, epicsInt32
 	int tag;
 	
 	// Get the address, which is the tag of the global integer, rather than an axis index
-	getAddress(pasynUser, &tag);
+	pasynManager->getAddr(pasynUser, &tag);
 	
 	// SETVAR(value, tag)
 	cmd << "SETVAR(" << value << "," << tag << ")";
@@ -601,7 +592,7 @@ asynStatus SPiiPlusController::readGlobalRealVar(asynUser *pasynUser, epicsFloat
 	int tag;
 	
 	// Get the address, which is the tag of the global integer, rather than an axis index
-	getAddress(pasynUser, &tag);
+	pasynManager->getAddr(pasynUser, &tag);
 	
 	// ?GETVAR(tag)
 	cmd << "?GETVAR(" << tag << ")";
@@ -617,7 +608,7 @@ asynStatus SPiiPlusController::writeGlobalRealVar(asynUser *pasynUser, epicsFloa
 	int tag;
 	
 	// Get the address, which is the tag of the global integer, rather than an axis index
-	getAddress(pasynUser, &tag);
+	pasynManager->getAddr(pasynUser, &tag);
 	
 	// SETVAR(value, tag)
 	cmd << "SETVAR(" << value << "," << tag << ")";
