@@ -29,6 +29,7 @@ DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusMaxParams.db
 DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusMaxParamsRbv.db
 DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusIntVar.db
 DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusRealVar.db
+DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusProgram.db
 DB_INSTALLS += $(MOTOR_ACSMOTION)/db/SPiiPlusTest.db
 else
 #!### motorAcsMotion was built inside motor/modules
@@ -37,6 +38,7 @@ DB_INSTALLS += $(MOTOR)/db/SPiiPlusMaxParams.db
 DB_INSTALLS += $(MOTOR)/db/SPiiPlusMaxParamsRbv.db
 DB_INSTALLS += $(MOTOR)/db/SPiiPlusIntVar.db
 DB_INSTALLS += $(MOTOR)/db/SPiiPlusRealVar.db
+DB_INSTALLS += $(MOTOR)/db/SPiiPlusProgram.db
 DB_INSTALLS += $(MOTOR)/db/SPiiPlusTest.db
 endif
 

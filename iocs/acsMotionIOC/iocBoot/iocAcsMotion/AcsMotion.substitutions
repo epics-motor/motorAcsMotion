@@ -99,6 +99,14 @@ pattern
 {acsMotion:, 1002R,  "Real 1",    ACS1,  1002,     5}
 }
 
+file "$(TOP)/db/SPiiPlusProgram.db"
+{
+pattern
+{P,          R,    PORT,  BUFF,   NAME}
+{acsMotion:, c0:,  ACS1,   1,     Test}
+}
+
+
 file "$(TOP)/db/SPiiPlusTest.db"
 {
 pattern
