@@ -157,6 +157,8 @@ public:
 	asynStatus writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value);
 	asynStatus writeGlobalRealVar(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus startProgram(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus stopProgram(asynUser *pasynUser, epicsFloat64 value);
 	
 protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */

@@ -146,7 +146,7 @@ asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
         else if (strlen(drvInfo) > 14 && !epicsStrnCaseCmp(drvInfo, SPiiPlusStopProgramString, 14))
         {
             SPiiPlusDrvUser_t *drvUser = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
-            drvUser->programName = epicsStrDup(drvInfo+15);
+            drvUser->programName = epicsStrDup(drvInfo+14);
             drvUser->len = strlen(drvUser->programName);
             pasynUser->drvUser = drvUser;
             drvInfo = SPiiPlusStopProgramString;
@@ -241,13 +241,11 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
   }
   else if (function == SPiiPlusStartProgram_)
   {
-    //status = startProgram(pasynUser, value);
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+    status = startProgram(pasynUser, value);
   }
   else if (function == SPiiPlusStopProgram_)
   {
-    //status = stopProgram(pasynUser, value);
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+    status = stopProgram(pasynUser, value);
   }
   else
   {
@@ -676,6 +674,44 @@ asynStatus SPiiPlusController::writeGlobalRealVar(asynUser *pasynUser, epicsFloa
 	
 	return status;
 }
+
+asynStatus SPiiPlusController::startProgram(asynUser *pasynUser, epicsFloat64 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int buffer;
+	static const char *functionName = "startProgram";
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+	
+	// Get the address, which is the buffer # containing the program, rather than an axis index
+	pasynManager->getAddr(pasynUser, &buffer);
+	
+	// START buffer,label -or- START buffer,line_no
+	cmd << "START " << buffer << "," << ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName;
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::stopProgram(asynUser *pasynUser, epicsFloat64 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int buffer;
+	static const char *functionName = "stopProgram";
+	
+	// Get the address, which is the buffer # containing the program, rather than an axis index
+	pasynManager->getAddr(pasynUser, &buffer);
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+	// STOP buffer
+	cmd << "STOP " << buffer;
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
 
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 : asynMotorAxis(pC, axisNo),

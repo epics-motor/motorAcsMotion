@@ -103,9 +103,8 @@ file "$(TOP)/db/SPiiPlusProgram.db"
 {
 pattern
 {P,          R,    PORT,  BUFF,   NAME}
-{acsMotion:, c0:,  ACS1,   1,     Test}
+{acsMotion:, c0:,  ACS1,   0,     Test}
 }
-
 
 file "$(TOP)/db/SPiiPlusTest.db"
 {
