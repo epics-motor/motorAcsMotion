@@ -682,10 +682,10 @@ asynStatus SPiiPlusController::startProgram(asynUser *pasynUser, epicsFloat64 va
 	int buffer;
 	static const char *functionName = "startProgram";
 	
-	asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
-	
 	// Get the address, which is the buffer # containing the program, rather than an axis index
 	pasynManager->getAddr(pasynUser, &buffer);
+
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
 	
 	// START buffer,label -or- START buffer,line_no
 	cmd << "START " << buffer << "," << ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName;
@@ -704,7 +704,7 @@ asynStatus SPiiPlusController::stopProgram(asynUser *pasynUser, epicsFloat64 val
 	// Get the address, which is the buffer # containing the program, rather than an axis index
 	pasynManager->getAddr(pasynUser, &buffer);
 	
-	asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
 	// STOP buffer
 	cmd << "STOP " << buffer;
 	status = writeReadAck(cmd);
