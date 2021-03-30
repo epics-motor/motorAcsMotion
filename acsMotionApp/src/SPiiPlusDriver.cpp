@@ -132,7 +132,7 @@ asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
     // findParam returns 0 if drvInfo matches a parameter string
     if (findParam(drvInfo, &index))
     {
-        printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, (const char*) pasynUser->drvUser);
+        //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, (const char*) pasynUser->drvUser);
         
         if (strlen(drvInfo) > 15 && !epicsStrnCaseCmp(drvInfo, SPiiPlusStartProgramString, 15))
         {
@@ -141,7 +141,7 @@ asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
             drvUser->len = strlen(drvUser->programName);
             pasynUser->drvUser = drvUser;
             drvInfo = SPiiPlusStartProgramString;
-            printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
+            //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
         }
         else if (strlen(drvInfo) > 14 && !epicsStrnCaseCmp(drvInfo, SPiiPlusStopProgramString, 14))
         {
@@ -150,7 +150,7 @@ asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
             drvUser->len = strlen(drvUser->programName);
             pasynUser->drvUser = drvUser;
             drvInfo = SPiiPlusStopProgramString;
-            printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
+            //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
         }
     }
     
