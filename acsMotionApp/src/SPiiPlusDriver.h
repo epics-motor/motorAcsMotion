@@ -67,7 +67,14 @@
 #define SPiiPlusWriteIntVarString              "SPIIPLUS_WRITE_INT_VAR"
 #define SPiiPlusReadRealVarString              "SPIIPLUS_READ_REAL_VAR"
 #define SPiiPlusWriteRealVarString             "SPIIPLUS_WRITE_REAL_VAR"
+#define SPiiPlusStartProgramString             "SPIIPLUS_START_"
+#define SPiiPlusStopProgramString              "SPIIPLUS_STOP_"
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
+
+struct SPiiPlusDrvUser_t {
+    const char *programName;
+    int              len;
+};
 
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
 {
@@ -120,7 +127,8 @@ public:
 	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
 	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
 	asynStatus getAddress(asynUser *pasynUser, int *address);
-	//asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, const char **pptypeName, size_t *psize);
+	asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, const char **pptypeName, size_t *psize);
+	asynStatus drvUserDestroy(asynUser *pasynUser);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
 	void report(FILE *fp, int level);
@@ -149,6 +157,8 @@ public:
 	asynStatus writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value);
 	asynStatus writeGlobalRealVar(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus startProgram(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus stopProgram(asynUser *pasynUser, epicsFloat64 value);
 	
 protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
@@ -162,12 +172,16 @@ protected:
 	int SPiiPlusWriteIntVar_;
 	int SPiiPlusReadRealVar_;
 	int SPiiPlusWriteRealVar_;
+	int SPiiPlusStartProgram_;
+	int SPiiPlusStopProgram_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
 	
 	
 private:
+	SPiiPlusDrvUser_t *drvUser_;                          /** Drv user structure */
+	bool initialized_;                                    /** If initialized successfully */
 	double profileAccelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile acceleration point */
 	double profileDecelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile deceleration point */
 	double *fullProfileTimes_;                            /**< Array of times per profile point */

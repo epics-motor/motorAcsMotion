@@ -18,6 +18,7 @@
 
 #include <epicsExport.h>
 #include <epicsString.h>
+#include <cantProceed.h>
 
 #include "SPiiPlusDriver.h"
 #include "SPiiPlusBinComm.h"
@@ -35,11 +36,14 @@ static void SPiiPlusProfileThreadC(void *pPvt);
 
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
                                              double movingPollPeriod, double idlePollPeriod)
- : asynMotorController(ACSPortName, numAxes, NUM_SPIIPLUS_PARAMS, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0)
+ : asynMotorController(ACSPortName, numAxes, NUM_SPIIPLUS_PARAMS, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0),
+ drvUser_(NULL),
+ initialized_(false)
 {
 	asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
 	pAxes_ = (SPiiPlusAxis **)(asynMotorController::pAxes_);
 	std::stringstream cmd;
+	static const char *functionName="SPiiPlusController";
 	
 	// Create parameters
 	createParam(SPiiPlusHomingMethodString,               asynParamInt32, &SPiiPlusHomingMethod_);
@@ -49,6 +53,8 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusWriteIntVarString,                asynParamInt32,   &SPiiPlusWriteIntVar_);
 	createParam(SPiiPlusReadRealVarString,                asynParamFloat64, &SPiiPlusReadRealVar_);
 	createParam(SPiiPlusWriteRealVarString,               asynParamFloat64, &SPiiPlusWriteRealVar_);
+	createParam(SPiiPlusStartProgramString,               asynParamInt32,   &SPiiPlusStartProgram_);
+	createParam(SPiiPlusStopProgramString,                asynParamInt32,   &SPiiPlusStopProgram_);
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	if (status)
@@ -87,6 +93,10 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		writeReadDouble(cmd, &(pAxes_[index]->encoderOffset_));
 	}
 	
+	drvUser_ = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
+	drvUser_->programName = "undefined";
+	drvUser_->len = -1;
+	
 	this->startPoller(movingPollPeriod, idlePollPeriod, 2);
 	
 	// Create the event that wakes up the thread for profile moves
@@ -97,28 +107,68 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		epicsThreadPriorityLow,
 		epicsThreadGetStackSize(epicsThreadStackMedium),
 		(EPICSTHREADFUNC)SPiiPlusProfileThreadC, (void *)this);
+	
+	initialized_ = true;
 }
 
-/*
+
 asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
                                        const char *drvInfo,
                                        const char **pptypeName, size_t *psize)
 {
-    //static const char *functionName = "drvUserCreate";
-    asynStatus status=asynSuccess;
+    static const char *functionName = "drvUserCreate";
+    int index;
+    const char *drvInfoNew;
     
-    if (epicsStrCaseCmp(drvInfo, something) == 0)
-    {
-        pasynUser->reason = a_good_value;
+    pasynUser->drvUser = drvUser_;
+    if (initialized_ == false) {
+       pasynManager->enable(pasynUser, 0);
+       return asynDisabled;
     }
-    else
+    
+    // drvUserCreate(pasynUser=0x23e29e8, drvInfo=SPIIPLUS_READ_REAL_VAR, pptypeName=(nil), psize=(nil))
+    //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p)\n", pasynUser, drvInfo, pptypeName, psize);
+    
+    // findParam returns 0 if drvInfo matches a parameter string
+    if (findParam(drvInfo, &index))
     {
-        status = asynPortDriver::drvUserCreate(pasynUser, drvInfo, pptypeName, psize);
+        //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, (const char*) pasynUser->drvUser);
+        
+        if (strlen(drvInfo) > 15 && !epicsStrnCaseCmp(drvInfo, SPiiPlusStartProgramString, 15))
+        {
+            SPiiPlusDrvUser_t *drvUser = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
+            drvUser->programName = epicsStrDup(drvInfo+15);
+            drvUser->len = strlen(drvUser->programName);
+            pasynUser->drvUser = drvUser;
+            drvInfo = SPiiPlusStartProgramString;
+            //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
+        }
+        else if (strlen(drvInfo) > 14 && !epicsStrnCaseCmp(drvInfo, SPiiPlusStopProgramString, 14))
+        {
+            SPiiPlusDrvUser_t *drvUser = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
+            drvUser->programName = epicsStrDup(drvInfo+14);
+            drvUser->len = strlen(drvUser->programName);
+            pasynUser->drvUser = drvUser;
+            drvInfo = SPiiPlusStopProgramString;
+            //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
+        }
+    }
+    
+    return asynPortDriver::drvUserCreate(pasynUser, drvInfo, pptypeName, psize);
+}
+
+
+asynStatus SPiiPlusController::drvUserDestroy(asynUser *pasynUser)
+{
+    if (pasynUser->drvUser != drvUser_) {
+        free(pasynUser->drvUser);
     }
 
-    return status;
+    pasynUser->drvUser = NULL;
+
+    return asynSuccess;
 }
-*/
+
 
 // It is necessary to implement getAddress to avoid the maxAddr checks from the base class
 asynStatus SPiiPlusController::getAddress(asynUser *pasynUser, int *address)
@@ -166,7 +216,7 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
   int status = asynSuccess;
   SPiiPlusAxis *pAxis;
   static const char *functionName = "writeInt32";
-
+  
   pAxis = this->getAxis(pasynUser);
   if (!pAxis) return asynError;
   
@@ -188,6 +238,14 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
   else if (function == SPiiPlusWriteIntVar_)
   {
     status = writeGlobalIntVar(pasynUser, value);
+  }
+  else if (function == SPiiPlusStartProgram_)
+  {
+    status = startProgram(pasynUser, value);
+  }
+  else if (function == SPiiPlusStopProgram_)
+  {
+    status = stopProgram(pasynUser, value);
   }
   else
   {
@@ -616,6 +674,44 @@ asynStatus SPiiPlusController::writeGlobalRealVar(asynUser *pasynUser, epicsFloa
 	
 	return status;
 }
+
+asynStatus SPiiPlusController::startProgram(asynUser *pasynUser, epicsFloat64 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int buffer;
+	static const char *functionName = "startProgram";
+	
+	// Get the address, which is the buffer # containing the program, rather than an axis index
+	pasynManager->getAddr(pasynUser, &buffer);
+
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+	
+	// START buffer,label -or- START buffer,line_no
+	cmd << "START " << buffer << "," << ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName;
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::stopProgram(asynUser *pasynUser, epicsFloat64 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int buffer;
+	static const char *functionName = "stopProgram";
+	
+	// Get the address, which is the buffer # containing the program, rather than an axis index
+	pasynManager->getAddr(pasynUser, &buffer);
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+	// STOP buffer
+	cmd << "STOP " << buffer;
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
 
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 : asynMotorAxis(pC, axisNo),
