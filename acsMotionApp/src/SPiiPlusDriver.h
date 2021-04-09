@@ -36,8 +36,45 @@
 #define WRITE_LI_SLICE_CMD	0x3B
 */
 
+// The following values need to match the homingMethod mbbo record
+#define MBBO_HOME_NONE			0
+#define MBBO_HOME_LIMIT_INDEX		1
+#define MBBO_HOME_LIMIT			2
+#define MBBO_HOME_INDEX			3
+#define MBBO_HOME_CURRENT_POS		4
+#define MBBO_HOME_HARDSTOP_INDEX	5
+#define MBBO_HOME_HARDSTOP		6
+#define MBBO_HOME_CUSTOM		7
+//
+#define SPIIPLUS_HOME_NONE			0
+#define SPIIPLUS_HOME_NEG_LIMIT_INDEX		1
+#define SPIIPLUS_HOME_POS_LIMIT_INDEX		2
+#define SPIIPLUS_HOME_NEG_LIMIT			17
+#define SPIIPLUS_HOME_POS_LIMIT			18
+#define SPIIPLUS_HOME_NEG_INDEX			33
+#define SPIIPLUS_HOME_POS_INDEX			34
+#define SPIIPLUS_HOME_CURRENT_POS		37
+#define SPIIPLUS_HOME_NEG_HARDSTOP_INDEX	50
+#define SPIIPLUS_HOME_POS_HARDSTOP_INDEX	51
+#define SPIIPLUS_HOME_NEG_HARDSTOP		52
+#define SPIIPLUS_HOME_POS_HARDSTOP		53
+
 // drvInfo strings for extra parameters that the XPS controller supports
+#define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
+#define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
+#define SPiiPlusMaxAccelerationString              "SPIIPLUS_MAX_ACCELERATION"
+#define SPiiPlusReadIntVarString               "SPIIPLUS_READ_INT_VAR"
+#define SPiiPlusWriteIntVarString              "SPIIPLUS_WRITE_INT_VAR"
+#define SPiiPlusReadRealVarString              "SPIIPLUS_READ_REAL_VAR"
+#define SPiiPlusWriteRealVarString             "SPIIPLUS_WRITE_REAL_VAR"
+#define SPiiPlusStartProgramString             "SPIIPLUS_START_"
+#define SPiiPlusStopProgramString              "SPIIPLUS_STOP_"
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
+
+struct SPiiPlusDrvUser_t {
+    const char *programName;
+    int              len;
+};
 
 class epicsShareClass SPiiPlusAxis : public asynMotorAxis
 {
@@ -46,10 +83,16 @@ public:
 	void report(FILE *fp, int level);
 	
 	asynStatus move(double position, int relative, double min_velocity, double max_velocity, double acceleration);
+	asynStatus home(double minVelocity, double maxVelocity, double acceleration, int forwards);
 	asynStatus stop(double acceleration);
 	asynStatus poll(bool *moving);
 	asynStatus setPosition(double position);
 	asynStatus setClosedLoop(bool closedLoop);
+	asynStatus defineProfile(double *positions, size_t numPoints);
+	
+	asynStatus getMaxParams();
+	asynStatus setMaxVelocity(double maxVelocity);
+	asynStatus setMaxAcceleration(double maxAcceleration);
 	
 	
 private:
@@ -63,8 +106,14 @@ private:
 	double profileStartPos_;
 	double profileFlybackPos_;
 	int moving_;
-	int mflags_;
-	int dummy_;
+	int mflags_;			// MFLAGS
+	int dummy_;			// MFLAGS, bit 0
+	int stepper_;			// MFLAGS, bit 4
+	int encloop_;			// MFLAGS, bit 5
+	int stepenc_;			// MFLAGS, bit 6
+	double resolution_;		// STEPF
+	double encoderResolution_;	// EFAC
+	double encoderOffset_;		// EOFFS
 	
 friend class SPiiPlusController;
 };
@@ -73,7 +122,13 @@ class epicsShareClass SPiiPlusController : public asynMotorController
 {
 public:
 	SPiiPlusController(const char* ACSPort, const char* asynPort, int numAxes, double moving_poll, double idle_poll);
+	asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
 	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
+	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
+	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus getAddress(asynUser *pasynUser, int *address);
+	asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, const char **pptypeName, size_t *psize);
+	asynStatus drvUserDestroy(asynUser *pasynUser);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
 	void report(FILE *fp, int level);
@@ -98,18 +153,35 @@ public:
 	asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
 	asynStatus binaryErrorCheck(char *buffer);
+	asynStatus readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value);
+	asynStatus writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value);
+	asynStatus readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value);
+	asynStatus writeGlobalRealVar(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus startProgram(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus stopProgram(asynUser *pasynUser, epicsFloat64 value);
 	
 protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
 	std::string instring;
 	
-	#define FIRST_SPIIPLUS_PARAM SPiiPlusTest_
+	#define FIRST_SPIIPLUS_PARAM SPiiPlusHomingMethod_
+	int SPiiPlusHomingMethod_;
+	int SPiiPlusMaxVelocity_;
+	int SPiiPlusMaxAcceleration_;
+	int SPiiPlusReadIntVar_;
+	int SPiiPlusWriteIntVar_;
+	int SPiiPlusReadRealVar_;
+	int SPiiPlusWriteRealVar_;
+	int SPiiPlusStartProgram_;
+	int SPiiPlusStopProgram_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
 	
 	
 private:
+	SPiiPlusDrvUser_t *drvUser_;                          /** Drv user structure */
+	bool initialized_;                                    /** If initialized successfully */
 	double profileAccelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile acceleration point */
 	double profileDecelTimes_[MAX_ACCEL_SEGMENTS];        /**< Array of times per profile deceleration point */
 	double *fullProfileTimes_;                            /**< Array of times per profile point */

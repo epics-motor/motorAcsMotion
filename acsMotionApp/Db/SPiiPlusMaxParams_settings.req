@@ -1,0 +1,4 @@
+(P)$(R):maxVelocity.VAL
+(P)$(R):maxVelocity.PREC
+(P)$(R):maxAcceleration.VAL
+(P)$(R):maxAcceleration.PREC

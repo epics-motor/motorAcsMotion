@@ -17,6 +17,8 @@
 #include "asynMotorAxis.h"
 
 #include <epicsExport.h>
+#include <epicsString.h>
+#include <cantProceed.h>
 
 #include "SPiiPlusDriver.h"
 #include "SPiiPlusBinComm.h"
@@ -34,13 +36,25 @@ static void SPiiPlusProfileThreadC(void *pPvt);
 
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
                                              double movingPollPeriod, double idlePollPeriod)
- : asynMotorController(ACSPortName, numAxes, NUM_SPIIPLUS_PARAMS, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0)
+ : asynMotorController(ACSPortName, numAxes, NUM_SPIIPLUS_PARAMS, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0),
+ drvUser_(NULL),
+ initialized_(false)
 {
 	asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
 	pAxes_ = (SPiiPlusAxis **)(asynMotorController::pAxes_);
 	std::stringstream cmd;
+	static const char *functionName="SPiiPlusController";
 	
 	// Create parameters
+	createParam(SPiiPlusHomingMethodString,               asynParamInt32, &SPiiPlusHomingMethod_);
+	createParam(SPiiPlusMaxVelocityString,                asynParamFloat64, &SPiiPlusMaxVelocity_);
+	createParam(SPiiPlusMaxAccelerationString,            asynParamFloat64, &SPiiPlusMaxAcceleration_);
+	createParam(SPiiPlusReadIntVarString,                 asynParamInt32,   &SPiiPlusReadIntVar_);
+	createParam(SPiiPlusWriteIntVarString,                asynParamInt32,   &SPiiPlusWriteIntVar_);
+	createParam(SPiiPlusReadRealVarString,                asynParamFloat64, &SPiiPlusReadRealVar_);
+	createParam(SPiiPlusWriteRealVarString,               asynParamFloat64, &SPiiPlusWriteRealVar_);
+	createParam(SPiiPlusStartProgramString,               asynParamInt32,   &SPiiPlusStartProgram_);
+	createParam(SPiiPlusStopProgramString,                asynParamInt32,   &SPiiPlusStopProgram_);
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	if (status)
@@ -60,7 +74,28 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		writeReadInt(cmd, &(pAxes_[index]->mflags_));
 		// Bit 0 is #DUMMY
 		pAxes_[index]->dummy_ = (pAxes_[index]->mflags_) & (1 << 0);
+		// Bit 4 is #STEPPER
+		pAxes_[index]->stepper_ = (pAxes_[index]->mflags_) & (1 << 4);
+		// Bit 5 is #ENCLOOP
+		pAxes_[index]->encloop_ = (pAxes_[index]->mflags_) & (1 << 5);
+		// Bit 6 is #STEPENC
+		pAxes_[index]->stepenc_ = (pAxes_[index]->mflags_) & (1 << 6);
+		
+		// Query the axis resolution (used to convert motor record steps into controller EGU)
+		cmd << "?STEPF(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->resolution_));
+		
+		// Query the encoder resolution (not currently used for anything)
+		cmd << "?EFAC(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->encoderResolution_));
+		// Query the encoder offset (not currently used for anything)
+		cmd << "?EOFFS(" << index << ")";
+		writeReadDouble(cmd, &(pAxes_[index]->encoderOffset_));
 	}
+	
+	drvUser_ = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
+	drvUser_->programName = "undefined";
+	drvUser_->len = -1;
 	
 	this->startPoller(movingPollPeriod, idlePollPeriod, 2);
 	
@@ -72,6 +107,107 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		epicsThreadPriorityLow,
 		epicsThreadGetStackSize(epicsThreadStackMedium),
 		(EPICSTHREADFUNC)SPiiPlusProfileThreadC, (void *)this);
+	
+	initialized_ = true;
+}
+
+
+asynStatus SPiiPlusController::drvUserCreate(asynUser *pasynUser,
+                                       const char *drvInfo,
+                                       const char **pptypeName, size_t *psize)
+{
+    static const char *functionName = "drvUserCreate";
+    int index;
+    const char *drvInfoNew;
+    
+    pasynUser->drvUser = drvUser_;
+    if (initialized_ == false) {
+       pasynManager->enable(pasynUser, 0);
+       return asynDisabled;
+    }
+    
+    // drvUserCreate(pasynUser=0x23e29e8, drvInfo=SPIIPLUS_READ_REAL_VAR, pptypeName=(nil), psize=(nil))
+    //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p)\n", pasynUser, drvInfo, pptypeName, psize);
+    
+    // findParam returns 0 if drvInfo matches a parameter string
+    if (findParam(drvInfo, &index))
+    {
+        //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, (const char*) pasynUser->drvUser);
+        
+        if (strlen(drvInfo) > 15 && !epicsStrnCaseCmp(drvInfo, SPiiPlusStartProgramString, 15))
+        {
+            SPiiPlusDrvUser_t *drvUser = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
+            drvUser->programName = epicsStrDup(drvInfo+15);
+            drvUser->len = strlen(drvUser->programName);
+            pasynUser->drvUser = drvUser;
+            drvInfo = SPiiPlusStartProgramString;
+            //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
+        }
+        else if (strlen(drvInfo) > 14 && !epicsStrnCaseCmp(drvInfo, SPiiPlusStopProgramString, 14))
+        {
+            SPiiPlusDrvUser_t *drvUser = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
+            drvUser->programName = epicsStrDup(drvInfo+14);
+            drvUser->len = strlen(drvUser->programName);
+            pasynUser->drvUser = drvUser;
+            drvInfo = SPiiPlusStopProgramString;
+            //printf("drvUserCreate(pasynUser=%p, drvInfo=%s, pptypeName=%p, psize=%p, drvUser=%p)\n", pasynUser, drvInfo, pptypeName, psize, pasynUser->drvUser);
+        }
+    }
+    
+    return asynPortDriver::drvUserCreate(pasynUser, drvInfo, pptypeName, psize);
+}
+
+
+asynStatus SPiiPlusController::drvUserDestroy(asynUser *pasynUser)
+{
+    if (pasynUser->drvUser != drvUser_) {
+        free(pasynUser->drvUser);
+    }
+
+    pasynUser->drvUser = NULL;
+
+    return asynSuccess;
+}
+
+
+// It is necessary to implement getAddress to avoid the maxAddr checks from the base class
+asynStatus SPiiPlusController::getAddress(asynUser *pasynUser, int *address)
+{
+    pasynManager->getAddr(pasynUser, address);
+    
+    if (*address > this->maxAddr-1)
+    {
+        // A larger address corresponds to a global variable tag
+        *address = 0;
+    }
+    else
+    {
+        // asynMotorController doesn't implement get address, so asynPortDriver::getAddress is called
+        asynMotorController::getAddress(pasynUser, address);
+    } 
+    
+    return asynSuccess;
+}
+
+asynStatus SPiiPlusController::readInt32(asynUser *pasynUser, epicsInt32 *value)
+{
+  int function = pasynUser->reason;
+  int status = asynSuccess;
+  //static const char *functionName = "readInt32";
+
+  *value = 0;
+  
+  if (function == SPiiPlusReadIntVar_)
+  {
+    status = readGlobalIntVar(pasynUser, value);
+  }
+  else
+  {
+    /* Call base class method */
+    status = asynMotorController::readInt32(pasynUser, value);
+  }
+
+  return (asynStatus)status;
 }
 
 asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
@@ -79,19 +215,40 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
   int function = pasynUser->reason;
   int status = asynSuccess;
   SPiiPlusAxis *pAxis;
-  //static const char *functionName = "writeInt32";
-
+  static const char *functionName = "writeInt32";
+  
   pAxis = this->getAxis(pasynUser);
   if (!pAxis) return asynError;
   
   /* Set the parameter and readback in the parameter library.  This may be overwritten when we read back the
    * status at the end, but that's OK */
   status = pAxis->setIntegerParam(function, value);
-
-  if (function == SPiiPlusTest_) {
+  
+  if (function == SPiiPlusHomingMethod_)
+  {
+    //
+    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: homingMethod = %i\n", driverName, functionName, value);
+  }
+  
+  if (function == SPiiPlusTest_)
+  {
     /* Do something helpful during development */
     status = test();
-  } else {
+  }
+  else if (function == SPiiPlusWriteIntVar_)
+  {
+    status = writeGlobalIntVar(pasynUser, value);
+  }
+  else if (function == SPiiPlusStartProgram_)
+  {
+    status = startProgram(pasynUser, value);
+  }
+  else if (function == SPiiPlusStopProgram_)
+  {
+    status = stopProgram(pasynUser, value);
+  }
+  else
+  {
     /* Call base class method */
     status = asynMotorController::writeInt32(pasynUser, value);
   }
@@ -100,7 +257,67 @@ asynStatus SPiiPlusController::writeInt32(asynUser *pasynUser, epicsInt32 value)
   pAxis->callParamCallbacks();
 
   return (asynStatus)status;
+}
 
+asynStatus SPiiPlusController::readFloat64(asynUser *pasynUser, epicsFloat64 *value)
+{
+  int function = pasynUser->reason;
+  int status = asynSuccess;
+  //static const char *functionName = "readFloat64";
+
+  *value = 0;
+  
+  if (function == SPiiPlusReadRealVar_)
+  {
+    status = readGlobalRealVar(pasynUser, value);
+  }
+  else
+  {
+    /* Call base class method */
+    status = asynMotorController::readFloat64(pasynUser, value);
+  }
+
+  return (asynStatus)status;
+}
+
+/** Called when asyn clients call pasynFloat64->write().
+  * \param[in] pasynUser asynUser structure that encodes the reason and address.
+  * \param[in] value Value to write. */
+asynStatus SPiiPlusController::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
+{
+  int function = pasynUser->reason;
+  SPiiPlusAxis *pAxis;
+  asynStatus status = asynError;
+  //static const char *functionName = "writeFloat64";
+
+  pAxis = getAxis(pasynUser);
+  if (!pAxis) return asynError;
+
+  /* Set the parameter and readback in the parameter library. */
+  status = pAxis->setDoubleParam(function, value);
+
+  if (function == SPiiPlusMaxVelocity_)
+  {
+    status = pAxis->setMaxVelocity(value);
+  }
+  else if (function == SPiiPlusMaxAcceleration_)
+  {
+    status = pAxis->setMaxAcceleration(value);
+  } 
+  else if (function == SPiiPlusWriteRealVar_) 
+  {
+    status = writeGlobalRealVar(pasynUser, value);
+  }
+  else
+  {
+    /* Call base class method */
+    status = asynMotorController::writeFloat64(pasynUser, value);
+  }
+  
+  /* Do callbacks so higher layers see any changes */
+  pAxis->callParamCallbacks();
+  
+  return status;
 }
 
 SPiiPlusAxis* SPiiPlusController::getAxis(asynUser *pasynUser)
@@ -394,11 +611,115 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	return status;
 }
 
+
 /*
 asynStatus SPiiPlusController::poll()
 {
 }
 */
+
+
+asynStatus SPiiPlusController::readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int tag;
+	
+	// Get the address, which is the tag of the global integer, rather than an axis index
+	pasynManager->getAddr(pasynUser, &tag);
+	
+	// ?GETVAR(tag)
+	cmd << "?GETVAR(" << tag << ")";
+	status = writeReadInt(cmd, value);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int tag;
+	
+	// Get the address, which is the tag of the global integer, rather than an axis index
+	pasynManager->getAddr(pasynUser, &tag);
+	
+	// SETVAR(value, tag)
+	cmd << "SETVAR(" << value << "," << tag << ")";
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int tag;
+	
+	// Get the address, which is the tag of the global integer, rather than an axis index
+	pasynManager->getAddr(pasynUser, &tag);
+	
+	// ?GETVAR(tag)
+	cmd << "?GETVAR(" << tag << ")";
+	status = writeReadDouble(cmd, value);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::writeGlobalRealVar(asynUser *pasynUser, epicsFloat64 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int tag;
+	
+	// Get the address, which is the tag of the global integer, rather than an axis index
+	pasynManager->getAddr(pasynUser, &tag);
+	
+	// SETVAR(value, tag)
+	cmd << "SETVAR(" << value << "," << tag << ")";
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::startProgram(asynUser *pasynUser, epicsFloat64 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int buffer;
+	static const char *functionName = "startProgram";
+	
+	// Get the address, which is the buffer # containing the program, rather than an axis index
+	pasynManager->getAddr(pasynUser, &buffer);
+
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+	
+	// START buffer,label -or- START buffer,line_no
+	cmd << "START " << buffer << "," << ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName;
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::stopProgram(asynUser *pasynUser, epicsFloat64 value)
+{
+	asynStatus status;
+	std::stringstream cmd;
+	int buffer;
+	static const char *functionName = "stopProgram";
+	
+	// Get the address, which is the buffer # containing the program, rather than an axis index
+	pasynManager->getAddr(pasynUser, &buffer);
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
+	// STOP buffer
+	cmd << "STOP " << buffer;
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
 
 SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 : asynMotorAxis(pC, axisNo),
@@ -420,11 +741,11 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	cmd << "?APOS(" << axisNo_ << ")";
 	status = controller->writeReadDouble(cmd, &position);
 	if (status != asynSuccess) return status;
-	setDoubleParam(controller->motorPosition_, position);
+	setDoubleParam(controller->motorPosition_, (position / resolution_));
 	
 	if (dummy_)
 	{
-		setDoubleParam(controller->motorEncoderPosition_, position);
+		setDoubleParam(controller->motorEncoderPosition_, (position / resolution_));
 		// Faults are disabled for dummy axes
 		setIntegerParam(controller->motorStatusLowLimit_, 0);
 		setIntegerParam(controller->motorStatusHighLimit_, 0);
@@ -435,7 +756,9 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		cmd << "?FPOS(" << axisNo_ << ")";
 		status = controller->writeReadDouble(cmd, &enc_position);
 		if (status != asynSuccess) return status;
-		setDoubleParam(controller->motorEncoderPosition_, enc_position);
+		// FPOS = FP * EFAC + EOFFS
+		// TODO: detect when there is no encoder and fix the encoder position at zero
+		setDoubleParam(controller->motorEncoderPosition_, enc_position / encoderResolution_);
 		
 		int left_limit, right_limit;
 		cmd << "?FAULT(" << axisNo_ << ").#LL";
@@ -447,6 +770,10 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		if (status != asynSuccess) return status;
 		setIntegerParam(controller->motorStatusHighLimit_, right_limit);
 	}
+	
+	// TODO: only get max values when idle polling
+	// Get max velo and accel
+	getMaxParams();
 	
 	// Read the axis status
 	int axis_status;
@@ -492,32 +819,96 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	return status;
 }
 
+asynStatus SPiiPlusAxis::getMaxParams()
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	double motorRecResolution;
+	double maxVelocity, maxAcceleration;
+	std::stringstream cmd;
+	
+	// motorRecResolution (EGU/step)
+	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
+	
+	// Query the max velocity (SPiiPlus-units/sec)
+	cmd << "?XVEL(" << axisNo_ << ")";
+	status = controller->writeReadDouble(cmd, &maxVelocity);
+	if (status != asynSuccess) return status;
+	
+	// Query the max acceleration (SPiiPlus-units/sec^2)
+	cmd << "?XACC(" << axisNo_ << ")";
+	status = controller->writeReadDouble(cmd, &maxAcceleration);
+	
+	// (SPiiPlus-units/time-unit) / (SPiiPlus-units/step) * (EGU/step) = (EGU/time-unit)
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxVelocity_, (maxVelocity / resolution_ * motorRecResolution));
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxAcceleration_, (maxAcceleration / resolution_ * motorRecResolution));
+	
+	// Assume the calling method will call callParamCallbacks()
+	
+	return status;
+}
+
+asynStatus SPiiPlusAxis::setMaxVelocity(double maxVelocity)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	double motorRecResolution;
+	std::stringstream cmd;
+	
+	// motorRecResolution is in EGU / step
+	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
+	
+	// (EGU/s) / (EGU/step) * (SPiiPlus-units/step) = (SPiiPlus-units/s)
+	cmd << "XVEL(" << axisNo_ << ")=" << (maxVelocity / motorRecResolution * resolution_);
+	status = controller->writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusAxis::setMaxAcceleration(double maxAcceleration)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	double motorRecResolution;
+	std::stringstream cmd;
+	
+	// motorRecResolution is in EGU / step
+	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
+	
+	// (EGU/s^2) / (EGU/step) * (SPiiPlus-units/step) = (SPiiPlus-units/s^2)
+	cmd << "XACC(" << axisNo_ << ")=" << (maxAcceleration / motorRecResolution * resolution_);
+	status = controller->writeReadAck(cmd);
+	
+	return status;
+}
+
 asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity, double maxVelocity, double acceleration)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	asynStatus status;
+	double deviceUnits;
 	std::stringstream cmd;
 	
-	cmd << "XACC(" << axisNo_ << ")=" << (acceleration + 10);
+	//cmd << "XACC(" << axisNo_ << ")=" << ((acceleration + 10) * resolution_);
+	//status = controller->writeReadAck(cmd);
+	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->writeReadAck(cmd);
-	cmd << "ACC(" << axisNo_ << ")=" << acceleration;
-	status = controller->writeReadAck(cmd);
-	cmd << "DEC(" << axisNo_ << ")=" << acceleration;
+	cmd << "DEC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->writeReadAck(cmd);
 	
-	cmd << "XVEL(" << axisNo_ << ")=" << (maxVelocity + 10);
-	status = controller->writeReadAck(cmd);
-	cmd << "VEL(" << axisNo_ << ")=" << maxVelocity;
+	//cmd << "XVEL(" << axisNo_ << ")=" << ((maxVelocity + 10) * resolution_);
+	//status = controller->writeReadAck(cmd);
+	cmd << "VEL(" << axisNo_ << ")=" << (maxVelocity * resolution_);
 	status = controller->writeReadAck(cmd);
 	
 	if (relative)
 	{
-		cmd << "PTP/r " << axisNo_ << ", " << position;
+		cmd << "PTP/r " << axisNo_ << ", " << (position * resolution_);
 		status = controller->writeReadAck(cmd);
 	}
 	else
 	{
-		cmd << "PTP " << axisNo_ << ", " << position;
+		cmd << "PTP " << axisNo_ << ", " << (position * resolution_);
 		status = controller->writeReadAck(cmd);
 	}
 	
@@ -530,7 +921,7 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	asynStatus status;
 	std::stringstream cmd;
 	
-	cmd << "SET APOS(" << axisNo_ << ")=" << position;
+	cmd << "SET APOS(" << axisNo_ << ")=" << (position * resolution_);
 	status = controller->writeReadAck(cmd);
 	
 	return status;
@@ -575,6 +966,121 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 	return status;
 }
 
+/** Move the motor to the home position.
+  * \param[in] minVelocity The initial velocity, often called the base velocity. Units=steps/sec.
+  * \param[in] maxVelocity The maximum velocity, often called the slew velocity. Units=steps/sec.
+  * \param[in] acceleration The acceleration value. Units=steps/sec/sec.
+  * \param[in] forwards  Flag indicating to move the motor in the forward direction(1) or reverse direction(0).
+  *                      Some controllers need to be told the direction, others know which way to go to home. */
+asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acceleration, int forwards)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status=asynSuccess;
+	std::stringstream cmd;
+	epicsInt32 mbboHomingMethod;
+	epicsInt32 homingMethod;
+	static const char *functionName = "home";
+	
+	controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &mbboHomingMethod);
+	
+	switch(mbboHomingMethod)
+	{
+		case MBBO_HOME_NONE:
+			homingMethod = SPIIPLUS_HOME_NONE;
+			break;
+		
+		case MBBO_HOME_LIMIT_INDEX:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_LIMIT_INDEX;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_LIMIT_INDEX;
+			break;
+		
+		case MBBO_HOME_LIMIT:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_LIMIT;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_LIMIT;
+			break;
+		
+		case MBBO_HOME_INDEX:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_INDEX;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_INDEX;
+			break;
+		
+		case MBBO_HOME_CURRENT_POS:
+			homingMethod = SPIIPLUS_HOME_CURRENT_POS;
+			break;
+		
+		case MBBO_HOME_HARDSTOP_INDEX:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_HARDSTOP_INDEX;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_HARDSTOP_INDEX;
+			break;
+		
+		case MBBO_HOME_HARDSTOP:
+			if (forwards == 0)
+				homingMethod = SPIIPLUS_HOME_NEG_HARDSTOP;
+			else
+				homingMethod = SPIIPLUS_HOME_POS_HARDSTOP;
+			break;
+		
+		case MBBO_HOME_CUSTOM:
+			//if (forwards == 0)
+			//	???
+			//else
+			//	???
+			// Do nothing for now
+			homingMethod = SPIIPLUS_HOME_NONE;
+			break;
+		
+		default:
+			homingMethod = SPIIPLUS_HOME_NONE;
+			break;
+	}
+	
+	if (homingMethod == SPIIPLUS_HOME_NONE)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: No homing method selected for axis %i\n", driverName, functionName, axisNo_);
+		// Should status be set to asynError here?
+	}
+	else
+	{
+		// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
+		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_);
+		//asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
+		status = controller->writeReadAck(cmd);
+	}
+	return status;
+}
+
+/** Function to define the motor positions for a profile move. 
+  * Called by asynMotorController::writeFloat64Array
+  * This calls the base class defineProfile method to convert to steps, but since the
+  * SPiiPlus works in user-units we need to do an additional conversion by resolution_. 
+  * \param[in] positions Array of profile positions for this axis in user units.
+  * \param[in] numPoints The number of positions in the array.
+  */
+asynStatus SPiiPlusAxis::defineProfile(double *positions, size_t numPoints)
+{
+  size_t i;
+  asynStatus status;
+  //static const char *functionName = "defineProfile";
+  
+  // Call the base class function (converts from EGU to steps)
+  status = asynMotorAxis::defineProfile(positions, numPoints);
+  if (status) return status;
+  
+  // Convert from steps to SPiiPlus user units
+  for (i=0; i<numPoints; i++) {
+    profilePositions_[i] = profilePositions_[i]*resolution_;
+  }
+  return asynSuccess;
+}
+
 /** Reports on status of the axis
   * \param[in] fp The file pointer on which report information will be written
   * \param[in] level The level of report detail desired
@@ -584,10 +1090,22 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
   */
 void SPiiPlusAxis::report(FILE *fp, int level)
 {
+  SPiiPlusController* controller = (SPiiPlusController*) pC_;
+  epicsInt32 homingMethod;
+  
+  controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &homingMethod);
+  
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
   fprintf(fp, "  mflags: %i\n", mflags_);
-  fprintf(fp, "  dummy:  %i\n", dummy_);
+  fprintf(fp, "    dummy:  %i\n", dummy_);
+  fprintf(fp, "    stepper:  %i\n", stepper_);
+  fprintf(fp, "    encloop:  %i\n", encloop_);
+  fprintf(fp, "    stepenc:  %i\n", stepenc_);
   fprintf(fp, "  moving: %i\n", moving_);
+  fprintf(fp, "  resolution: %.6e\n", resolution_);
+  fprintf(fp, "  encoder resolution: %.6e\n", encoderResolution_);
+  fprintf(fp, "  encoder offset: %lf\n", encoderOffset_);
+  fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "\n");
   
   // Call the base class method
@@ -659,11 +1177,11 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
     
     if (profileAxes_[i] == profileAxes_.front())
     {
-      outputStr << lround(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << pAxis->fullProfilePositions_[positionIndex];
     }
     else 
     {
-      outputStr << ',' << lround(pAxis->fullProfilePositions_[positionIndex]);
+      outputStr << ',' << pAxis->fullProfilePositions_[positionIndex];
     }
   }
   
@@ -747,6 +1265,7 @@ asynStatus SPiiPlusController::buildProfile()
             "%s:%s: entry\n",
             driverName, functionName);
             
+
   // Call the base class method which will build the time array if needed
   asynMotorController::buildProfile();
   

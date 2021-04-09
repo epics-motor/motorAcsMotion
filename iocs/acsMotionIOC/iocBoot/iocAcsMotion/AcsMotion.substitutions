@@ -1,23 +1,24 @@
 file "$(TOP)/db/asyn_motor.db"
 {
 pattern
-{P,           N,   M,       DTYP,         PORT,  ADDR,  DESC,          EGU, DIR,  VELO,  VBAS,  ACCL,  BDST,  BVEL,  BACC,  MRES,  PREC,  DHLM,  DLLM,  INIT}
-{acsMotion:,  1,  "m$(N)",  "asynMotor",  ACS1,  0,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-{acsMotion:,  2,  "m$(N)",  "asynMotor",  ACS1,  1,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-{acsMotion:,  3,  "m$(N)",  "asynMotor",  ACS1,  2,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-{acsMotion:,  4,  "m$(N)",  "asynMotor",  ACS1,  3,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-{acsMotion:,  5,  "m$(N)",  "asynMotor",  ACS1,  4,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-{acsMotion:,  6,  "m$(N)",  "asynMotor",  ACS1,  5,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-{acsMotion:,  7,  "m$(N)",  "asynMotor",  ACS1,  6,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-{acsMotion:,  8,  "m$(N)",  "asynMotor",  ACS1,  7,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:,  9,  "m$(N)",  "asynMotor",  ACS1,  8,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:, 10,  "m$(N)",  "asynMotor",  ACS1,  9,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:, 11,  "m$(N)",  "asynMotor",  ACS1, 10,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:, 12,  "m$(N)",  "asynMotor",  ACS1, 11,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:, 13,  "m$(N)",  "asynMotor",  ACS1, 12,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:, 14,  "m$(N)",  "asynMotor",  ACS1, 13,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:, 15,  "m$(N)",  "asynMotor",  ACS1, 14,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
-#!{acsMotion:, 16,  "m$(N)",  "asynMotor",  ACS1, 15,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,  4,     100,   -100,  ""}
+{P,           N,   M,       DTYP,         PORT,  ADDR,  DESC,          EGU, DIR,  VELO,  VBAS,  ACCL,  BDST,  BVEL,  BACC,  MRES,         PREC,  DHLM,  DLLM,  INIT}
+# 2.54 mm/rev, 200 steps/rev, 1024 microsteps/step
+{acsMotion:,  1,  "m$(N)",  "asynMotor",  ACS1,  0,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    1.240234375e-05,  6,      10,    -10,  ""}
+{acsMotion:,  2,  "m$(N)",  "asynMotor",  ACS1,  1,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{acsMotion:,  3,  "m$(N)",  "asynMotor",  ACS1,  2,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{acsMotion:,  4,  "m$(N)",  "asynMotor",  ACS1,  3,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{acsMotion:,  5,  "m$(N)",  "asynMotor",  ACS1,  4,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{acsMotion:,  6,  "m$(N)",  "asynMotor",  ACS1,  5,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{acsMotion:,  7,  "m$(N)",  "asynMotor",  ACS1,  6,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{acsMotion:,  8,  "m$(N)",  "asynMotor",  ACS1,  7,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:,  9,  "m$(N)",  "asynMotor",  ACS1,  8,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:, 10,  "m$(N)",  "asynMotor",  ACS1,  9,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:, 11,  "m$(N)",  "asynMotor",  ACS1, 10,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:, 12,  "m$(N)",  "asynMotor",  ACS1, 11,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:, 13,  "m$(N)",  "asynMotor",  ACS1, 12,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:, 14,  "m$(N)",  "asynMotor",  ACS1, 13,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:, 15,  "m$(N)",  "asynMotor",  ACS1, 14,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{acsMotion:, 16,  "m$(N)",  "asynMotor",  ACS1, 15,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
 }
 
 file "$(TOP)/db/profileMoveController.template"
@@ -41,9 +42,75 @@ pattern
 {acsMotion:, pm1:,  8,    2000,      2000, ACS1,    7,     2.0,    4}
 }
 
-file "$(TOP)/db/SPiiPlusTest.db"
+file "$(TOP)/db/SPiiPlusHoming.db"
 {
 pattern
-{P,       R,     PORT}
-{acsMotion:, pm1:,  ACS1}
+{P,       M,   PORT, ADDR, TIMEOUT,    VAL}
+{acsMotion:, m1,  ACS1,    0,     2.0,    0}
+{acsMotion:, m2,  ACS1,    1,     2.0,    0}
+{acsMotion:, m3,  ACS1,    2,     2.0,    0}
+{acsMotion:, m4,  ACS1,    3,     2.0,    0}
+{acsMotion:, m5,  ACS1,    4,     2.0,    0}
+{acsMotion:, m6,  ACS1,    5,     2.0,    0}
+{acsMotion:, m7,  ACS1,    6,     2.0,    0}
+{acsMotion:, m8,  ACS1,    7,     2.0,    0}
 }
+
+# These records work, but the initial values are all zero.  Maybe HOPR/LOPR/DRVH/DRVL need to be set?
+file "$(TOP)/db/SPiiPlusMaxParams.db"
+{
+pattern
+{P,          M,   PORT, ADDR,  MAX_VELO,  MAX_ACCL,   PREC}
+{acsMotion:, m1,  ACS1,    0,       5.0,      20.0,      4}
+{acsMotion:, m2,  ACS1,    1,     200.0,    1000.0,      4}
+{acsMotion:, m3,  ACS1,    2,     200.0,    1000.0,      4}
+{acsMotion:, m4,  ACS1,    3,     200.0,    1000.0,      4}
+{acsMotion:, m5,  ACS1,    4,     200.0,    1000.0,      4}
+{acsMotion:, m6,  ACS1,    5,     200.0,    1000.0,      4}
+{acsMotion:, m7,  ACS1,    6,     200.0,    1000.0,      4}
+{acsMotion:, m8,  ACS1,    7,     200.0,    1000.0,      4}
+}
+
+file "$(TOP)/db/SPiiPlusMaxParamsRbv.db"
+{
+pattern
+{P,          M,   PORT, ADDR, PREC}
+{acsMotion:, m1,  ACS1,    0,    4}
+{acsMotion:, m2,  ACS1,    1,    4}
+{acsMotion:, m3,  ACS1,    2,    4}
+{acsMotion:, m4,  ACS1,    3,    4}
+{acsMotion:, m5,  ACS1,    4,    4}
+{acsMotion:, m6,  ACS1,    5,    4}
+{acsMotion:, m7,  ACS1,    6,    4}
+{acsMotion:, m8,  ACS1,    7,    4}
+}
+
+### The following databases are useful if programs are running on the ACS controller
+#file "$(TOP)/db/SPiiPlusIntVar.db"
+#{
+#pattern
+#{P,          R,         DESC,     PORT,  TAG}
+#{acsMotion:, c0:1001I,  "Int 1",    ACS1,  1001}
+#}
+#
+#file "$(TOP)/db/SPiiPlusRealVar.db"
+#{
+#pattern
+#{P,          R,         DESC,      PORT,  TAG,   PREC}
+#{acsMotion:, c0:1002R,  "Real 1",    ACS1,  1002,     5}
+#}
+#
+#file "$(TOP)/db/SPiiPlusProgram.db"
+#{
+#pattern
+#{P,          R,    PORT,  BUFF,   NAME}
+#{acsMotion:, c0:,  ACS1,   0,     Test}
+#}
+
+### This is only used for during development and will be removed in the near future
+#file "$(TOP)/db/SPiiPlusTest.db"
+#{
+#pattern
+#{P,       R,     PORT}
+#{acsMotion:, pm1:,  ACS1}
+#}

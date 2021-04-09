@@ -1,0 +1,32 @@
+AUTOEXEC:
+
+! Initialize global variables at controller startup
+
+GLOBAL INT TAG 1001 VAR_A
+GLOBAL REAL TAG 1002 VAR_B
+
+VAR_A = 42
+VAR_B = 3.14159
+! End of Autoexec
+STOP
+
+Test:
+INT DO_VAR
+DO_VAR = 1
+
+WHILE (DO_VAR)
+! Display values in the MMI Application Studio when "Show Messages" is "On"
+DISP GETVAR(1001)
+DISP GETVAR(1002)
+
+! Set VAR_A to 13 to test stopping a program from EPICS
+IF (VAR_A=13)
+  WAIT 3000
+ELSE
+  DO_VAR=0
+END
+! End of while
+END
+! End of Test
+STOP
+

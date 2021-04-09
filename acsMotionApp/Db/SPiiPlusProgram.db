@@ -1,0 +1,18 @@
+# 
+record(bo, "$(P)$(R)START_$(NAME)")
+{
+    field(DESC, "Start $(NAME)")
+    field(DTYP, "asynInt32")
+    field(OUT,  "@asyn($(PORT),$(BUFF),$(TIMEOUT=1))SPIIPLUS_START_$(NAME)")
+    field(ZNAM, "Done")
+    field(ONAM, "Start")
+}
+
+record(bo, "$(P)$(R)STOP_$(NAME)")
+{
+    field(DESC, "Stop $(NAME)")
+    field(DTYP, "asynInt32")
+    field(OUT,  "@asyn($(PORT),$(BUFF),$(TIMEOUT=1))SPIIPLUS_STOP_$(NAME)")
+    field(ZNAM, "Done")
+    field(ONAM, "Stop")
+}
