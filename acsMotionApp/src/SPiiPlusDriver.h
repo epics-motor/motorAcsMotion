@@ -89,6 +89,7 @@
 #define SPiiPlusWriteRealVarString             "SPIIPLUS_WRITE_REAL_VAR"
 #define SPiiPlusStartProgramString             "SPIIPLUS_START_"
 #define SPiiPlusStopProgramString              "SPIIPLUS_STOP_"
+#define SPiiPlusSafeTorqueOffString            "SPIIPLUS_SAFE_TORQUE_OFF"
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -194,6 +195,7 @@ protected:
 	int SPiiPlusWriteRealVar_;
 	int SPiiPlusStartProgram_;
 	int SPiiPlusStopProgram_;
+	int SPiiPlusSafeTorqueOff_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
