@@ -752,14 +752,15 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		// TODO: detect when there is no encoder and fix the encoder position at zero
 		setDoubleParam(controller->motorEncoderPosition_, enc_position / encoderResolution_);
 		
+		int fault;
+		cmd << "?D/FAULT(" << axisNo_ << ")";
+		status = controller->writeReadInt(cmd, &fault);
+		if (status != asynSuccess) return status;
+		
 		int left_limit, right_limit;
-		cmd << "?FAULT(" << axisNo_ << ").#LL";
-		status = controller->writeReadInt(cmd, &left_limit);
-		if (status != asynSuccess) return status;
+		left_limit = fault & SPIIPLUS_FAULT_HARD_LEFT_LIMIT;
 		setIntegerParam(controller->motorStatusLowLimit_, left_limit);
-		cmd << "?FAULT(" << axisNo_ << ").#RL";
-		status = controller->writeReadInt(cmd, &right_limit);
-		if (status != asynSuccess) return status;
+		right_limit = fault & SPIIPLUS_FAULT_HARD_RIGHT_LIMIT;
 		setIntegerParam(controller->motorStatusHighLimit_, right_limit);
 	}
 	
