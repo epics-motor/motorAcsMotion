@@ -32,3 +32,11 @@ int readFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1en
 
 int readFloat64SliceCmd(char *output, int slice, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *outBytes, int *inBytes, int *dataBytes);
 int readFloat64SliceCmd(char *output, int slice, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, bool checksum, int *outBytes, int *inBytes, int *dataBytes);
+
+int readInt32ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int *outBytes, int *inBytes, int *dataBytes);
+int readInt32ArrayCmd(char *output, const char *var, int idx1start, int idx1end, bool checksum, int *outBytes, int *inBytes, int *dataBytes);
+int readInt32ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *outBytes, int *inBytes, int *dataBytes);
+int readInt32ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, bool checksum, int *outBytes, int *inBytes, int *dataBytes);
+
+int readInt32SliceCmd(char *output, int slice, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *outBytes, int *inBytes, int *dataBytes);
+int readInt32SliceCmd(char *output, int slice, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, bool checksum, int *outBytes, int *inBytes, int *dataBytes);

@@ -621,6 +621,55 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	return status;
 }
 
+asynStatus SPiiPlusController::getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
+{
+	char command[MAX_MESSAGE_LEN];
+	asynStatus status;
+	int remainingBytes;
+	int readBytes;
+	int outBytes, inBytes, dataBytes;
+	size_t nread;
+	int slice=1;
+	bool sliceAvailable;
+	static const char *functionName = "getIntegerArray";
+	
+	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
+	
+	// Create the command to query array data. This could be the only command
+	// that needs to be sent or it could be the first of many.
+	readInt32ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
+	
+	remainingBytes = dataBytes;
+	readBytes = 0;
+	
+	// Send the command
+	status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Initial array query: request = %i; read = %li\n", driverName, functionName, inBytes, nread);
+	
+	remainingBytes -= nread;
+	readBytes += nread;
+	
+	// Look at the response to see if there are more slices to read
+	while (sliceAvailable)
+	{
+		// Create the command to query the next slice of the array data
+		readInt32SliceCmd(command, slice, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
+		
+		// Send the command
+		status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Array slice #%i query: expected = %i; read = %li; sliceAvailable = %d\n", driverName, functionName, slice, inBytes, nread, sliceAvailable);
+		
+		remainingBytes -= nread;
+		readBytes += nread;
+		slice++;
+	}
+	
+	// Restore the EOS characters
+	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
+	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
+	
+	return status;
+}
 
 /*
 asynStatus SPiiPlusController::poll()

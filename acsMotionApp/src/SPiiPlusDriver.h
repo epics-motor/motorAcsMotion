@@ -171,6 +171,7 @@ public:
 	asynStatus writeReadInt(std::stringstream& cmd, int* val);
 	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
 	asynStatus writeReadAck(std::stringstream& cmd);
+	asynStatus getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 	asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
 	asynStatus binaryErrorCheck(char *buffer);
