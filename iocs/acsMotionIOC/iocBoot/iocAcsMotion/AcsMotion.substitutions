@@ -42,6 +42,20 @@ pattern
 {acsMotion:, pm1:,  8,    2000,      2000, ACS1,    7,     2.0,    4}
 }
 
+file "$(TOP)/db/SPiiPlusAxisExtra.db"
+{
+pattern
+{P,       M,   PORT, ADDR}
+{acsMotion:, m1,  ACS1,    0}
+{acsMotion:, m2,  ACS1,    1}
+{acsMotion:, m3,  ACS1,    2}
+{acsMotion:, m4,  ACS1,    3}
+{acsMotion:, m5,  ACS1,    4}
+{acsMotion:, m6,  ACS1,    5}
+{acsMotion:, m7,  ACS1,    6}
+{acsMotion:, m8,  ACS1,    7}
+}
+
 file "$(TOP)/db/SPiiPlusHoming.db"
 {
 pattern

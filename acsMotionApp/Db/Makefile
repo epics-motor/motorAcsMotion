@@ -17,6 +17,7 @@ DB += SPiiPlusMaxParamsRbv.db
 DB += SPiiPlusIntVar.db
 DB += SPiiPlusRealVar.db
 DB += SPiiPlusProgram.db
+DB += SPiiPlusAxisExtra.db
 DB += SPiiPlusTest.db
 
 #----------------------------------------------------
