@@ -671,12 +671,38 @@ asynStatus SPiiPlusController::getIntegerArray(char *output, const char *var, in
 	return status;
 }
 
-/*
 asynStatus SPiiPlusController::poll()
 {
+	asynStatus status;
+	//static const char *functionName = "poll";
+	
+	/*
+	 * Read position and status using binary queries here and parse the replies in the axis poll method
+	 */
+	
+	status = getDoubleArray((char *)axisPosition_, "APOS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getDoubleArray((char *)feedbackPosition_, "FPOS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getIntegerArray((char *)motorStatus_, "MST", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	// TODO: only get max values when idle polling
+	status = getDoubleArray((char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	status = getDoubleArray((char *)maxAcceleration_, "XACC", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	return status;
 }
-*/
-
 
 asynStatus SPiiPlusController::readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value)
 {
@@ -796,77 +822,57 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	//static const char *functionName = "poll";
 	std::stringstream cmd;
 	
-	double position;
-	cmd << "?APOS(" << axisNo_ << ")";
-	status = controller->writeReadDouble(cmd, &position);
-	if (status != asynSuccess) return status;
-	setDoubleParam(controller->motorPosition_, (position / resolution_));
+	// APOS (queried in controller poll method)
+	setDoubleParam(controller->motorPosition_, (controller->axisPosition_[axisNo_] / resolution_));
 	
 	if (dummy_)
 	{
-		setDoubleParam(controller->motorEncoderPosition_, (position / resolution_));
+		// APOS (queried in controller poll method)
+		setDoubleParam(controller->motorEncoderPosition_, (controller->axisPosition_[axisNo_] / resolution_));
 		// Faults are disabled for dummy axes
 		setIntegerParam(controller->motorStatusLowLimit_, 0);
 		setIntegerParam(controller->motorStatusHighLimit_, 0);
 	}
 	else
 	{
-		double enc_position;
-		cmd << "?FPOS(" << axisNo_ << ")";
-		status = controller->writeReadDouble(cmd, &enc_position);
-		if (status != asynSuccess) return status;
-		// FPOS = FP * EFAC + EOFFS
+		// FPOS (queried in controller poll method) = FP * EFAC + EOFFS
 		// TODO: detect when there is no encoder and fix the encoder position at zero
-		setDoubleParam(controller->motorEncoderPosition_, enc_position / encoderResolution_);
+		setDoubleParam(controller->motorEncoderPosition_, controller->feedbackPosition_[axisNo_] / encoderResolution_);
 		
-		int fault;
-		cmd << "?D/FAULT(" << axisNo_ << ")";
-		status = controller->writeReadInt(cmd, &fault);
-		if (status != asynSuccess) return status;
-		
+		// FAULT (queried in controller poll method)
 		int left_limit, right_limit, sto;
-		left_limit = fault & SPIIPLUS_FAULT_HARD_LEFT_LIMIT;
+		left_limit = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_HARD_LEFT_LIMIT;
 		setIntegerParam(controller->motorStatusLowLimit_, left_limit);
 		
-		right_limit = fault & SPIIPLUS_FAULT_HARD_RIGHT_LIMIT;
+		right_limit = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_HARD_RIGHT_LIMIT;
 		setIntegerParam(controller->motorStatusHighLimit_, right_limit);
 		
-		sto = fault & SPIIPLUS_FAULT_SAFE_TORQUE_OFF;
+		sto = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_SAFE_TORQUE_OFF;
 		setIntegerParam(controller->SPiiPlusSafeTorqueOff_, sto);
 	}
 	
-	// TODO: only get max values when idle polling
-	// Get max velo and accel
 	getMaxParams();
 	
-	// Read the axis status
-	int axis_status;
-	cmd << "?D/AST(" << axisNo_ << ")";
-	status = controller->writeReadInt(cmd, &axis_status);
-	if (status != asynSuccess) return status;
+	// AST (queried in controller poll method)
 	
 	int enabled;
+	int motion;
 	//int open_loop;
 	//int in_pos;
-	int motion;
 	
 	if (dummy_)
 	{
 		enabled = 0;
-		motion = axis_status & (1<<5);
+		motion = controller->axisStatus_[axisNo_] & (1<<5);
 	}
 	else
 	{
-		// Read the entire motor status and parse the relevant bits
-		int motor_status;
-		cmd << "?D/MST(" << axisNo_ << ")";
-		status = controller->writeReadInt(cmd, &motor_status);
-		if (status != asynSuccess) return status;
-	
-		enabled = motor_status & (1<<0);
-		//open_loop = axis_status & (1<<1);
-		//in_pos = axis_status & (1<<4);
-		motion = motor_status & (1<<5);
+		// MST (queried in controller poll method)
+		
+		enabled = controller->motorStatus_[axisNo_] & (1<<0);
+		motion = controller->motorStatus_[axisNo_] & (1<<5);
+		//open_loop = controller->axisStatus_[axisNo_] & (1<<1);
+		//in_pos = controller->axisStatus_[axisNo_] & (1<<4);
 	}
 	
 	setIntegerParam(controller->motorStatusDone_, !motion);
@@ -894,18 +900,15 @@ asynStatus SPiiPlusAxis::getMaxParams()
 	// motorRecResolution (EGU/step)
 	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
 	
-	// Query the max velocity (SPiiPlus-units/sec)
-	cmd << "?XVEL(" << axisNo_ << ")";
-	status = controller->writeReadDouble(cmd, &maxVelocity);
-	if (status != asynSuccess) return status;
+	// XVEL [SPiiPlus-units/sec] (queried in controller poll method)
+	maxVelocity = controller->maxVelocity_[axisNo_] / resolution_ * motorRecResolution;
 	
-	// Query the max acceleration (SPiiPlus-units/sec^2)
-	cmd << "?XACC(" << axisNo_ << ")";
-	status = controller->writeReadDouble(cmd, &maxAcceleration);
+	// XACC [SPiiPlus-units/sec^2] (queried in controller poll method)
+	maxAcceleration = controller->maxAcceleration_[axisNo_] / resolution_ * motorRecResolution;
 	
 	// (SPiiPlus-units/time-unit) / (SPiiPlus-units/step) * (EGU/step) = (EGU/time-unit)
-	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxVelocity_, (maxVelocity / resolution_ * motorRecResolution));
-	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxAcceleration_, (maxAcceleration / resolution_ * motorRecResolution));
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxVelocity_, maxVelocity);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxAcceleration_, maxAcceleration);
 	
 	// Assume the calling method will call callParamCallbacks()
 	

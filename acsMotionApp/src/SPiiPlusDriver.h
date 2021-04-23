@@ -152,6 +152,7 @@ public:
 	asynStatus drvUserDestroy(asynUser *pasynUser);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
+	asynStatus poll();
 	void report(FILE *fp, int level);
 	
 	/* These are functions for profile moves */
@@ -225,6 +226,13 @@ private:
 	int numDecelSegments_;
 	double dataCollectionInterval_;
 	bool halted_;
+	epicsFloat64 axisPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 feedbackPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 maxVelocity_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 maxAcceleration_[SPIIPLUS_MAX_AXES];
+	epicsInt32 faultStatus_[SPIIPLUS_MAX_AXES];
+	epicsInt32 axisStatus_[SPIIPLUS_MAX_AXES];
+	epicsInt32 motorStatus_[SPIIPLUS_MAX_AXES];
 	
 friend class SPiiPlusAxis;
 };
