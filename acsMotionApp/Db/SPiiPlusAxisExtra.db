@@ -1,0 +1,9 @@
+record(bi,"$(P)$(M):STO") {
+    field(DESC, "Safe Torque Off")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_SAFE_TORQUE_OFF")
+    field(ZNAM, "OK")
+    field(ONAM, "Fault")
+    field(SCAN, "I/O Intr")
+}
+

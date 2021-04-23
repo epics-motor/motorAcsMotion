@@ -55,6 +55,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusWriteRealVarString,               asynParamFloat64, &SPiiPlusWriteRealVar_);
 	createParam(SPiiPlusStartProgramString,               asynParamInt32,   &SPiiPlusStartProgram_);
 	createParam(SPiiPlusStopProgramString,                asynParamInt32,   &SPiiPlusStopProgram_);
+	createParam(SPiiPlusSafeTorqueOffString,              asynParamInt32,   &SPiiPlusSafeTorqueOff_);
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	if (status)
@@ -201,6 +202,15 @@ asynStatus SPiiPlusController::readInt32(asynUser *pasynUser, epicsInt32 *value)
   {
     status = readGlobalIntVar(pasynUser, value);
   }
+  /*else if (function == SPiiPlusSafeTorqueOff_) 
+  {
+    // Is this necessary? Would the default method do the same thing?
+    int axisNo_;
+    // Get the addr, which is the axis number
+    pasynManager->getAddr(pasynUser, &axisNo_);
+    // The poller queries the STO value; return the latest value
+    getIntegerParam(axisNo_, SPiiPlusSafeTorqueOff_, value);
+  }*/
   else
   {
     /* Call base class method */
@@ -752,15 +762,20 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		// TODO: detect when there is no encoder and fix the encoder position at zero
 		setDoubleParam(controller->motorEncoderPosition_, enc_position / encoderResolution_);
 		
-		int left_limit, right_limit;
-		cmd << "?FAULT(" << axisNo_ << ").#LL";
-		status = controller->writeReadInt(cmd, &left_limit);
+		int fault;
+		cmd << "?D/FAULT(" << axisNo_ << ")";
+		status = controller->writeReadInt(cmd, &fault);
 		if (status != asynSuccess) return status;
+		
+		int left_limit, right_limit, sto;
+		left_limit = fault & SPIIPLUS_FAULT_HARD_LEFT_LIMIT;
 		setIntegerParam(controller->motorStatusLowLimit_, left_limit);
-		cmd << "?FAULT(" << axisNo_ << ").#RL";
-		status = controller->writeReadInt(cmd, &right_limit);
-		if (status != asynSuccess) return status;
+		
+		right_limit = fault & SPIIPLUS_FAULT_HARD_RIGHT_LIMIT;
 		setIntegerParam(controller->motorStatusHighLimit_, right_limit);
+		
+		sto = fault & SPIIPLUS_FAULT_SAFE_TORQUE_OFF;
+		setIntegerParam(controller->SPiiPlusSafeTorqueOff_, sto);
 	}
 	
 	// TODO: only get max values when idle polling
