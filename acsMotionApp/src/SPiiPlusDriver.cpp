@@ -66,32 +66,28 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		return;
 	}
 	
+	// Query setup parameters
+	getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
+	getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
+	getDoubleArray((char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
+	getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	
 	for (int index = 0; index < numAxes; index += 1)
 	{
 		new SPiiPlusAxis(this, index);
 		
-		// Query the MFLAGS
-		cmd << "?D/MFLAGS(" << index << ")";
-		writeReadInt(cmd, &(pAxes_[index]->mflags_));
+		// Parse the setup parameters
 		// Bit 0 is #DUMMY
-		pAxes_[index]->dummy_ = (pAxes_[index]->mflags_) & (1 << 0);
+		pAxes_[index]->dummy_ = motorFlags_[index] & (1 << 0);
 		// Bit 4 is #STEPPER
-		pAxes_[index]->stepper_ = (pAxes_[index]->mflags_) & (1 << 4);
+		pAxes_[index]->stepper_ = motorFlags_[index] & (1 << 4);
 		// Bit 5 is #ENCLOOP
-		pAxes_[index]->encloop_ = (pAxes_[index]->mflags_) & (1 << 5);
+		pAxes_[index]->encloop_ = motorFlags_[index] & (1 << 5);
 		// Bit 6 is #STEPENC
-		pAxes_[index]->stepenc_ = (pAxes_[index]->mflags_) & (1 << 6);
+		pAxes_[index]->stepenc_ = motorFlags_[index] & (1 << 6);
 		
-		// Query the axis resolution (used to convert motor record steps into controller EGU)
-		cmd << "?STEPF(" << index << ")";
-		writeReadDouble(cmd, &(pAxes_[index]->resolution_));
-		
-		// Query the encoder resolution (not currently used for anything)
-		cmd << "?EFAC(" << index << ")";
-		writeReadDouble(cmd, &(pAxes_[index]->encoderResolution_));
-		// Query the encoder offset (not currently used for anything)
-		cmd << "?EOFFS(" << index << ")";
-		writeReadDouble(cmd, &(pAxes_[index]->encoderOffset_));
+		// axis resolution (used to convert motor record steps into controller EGU)
+		pAxes_[index]->resolution_ = stepperFactor_[index];
 	}
 	
 	drvUser_ = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
@@ -621,6 +617,89 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	return status;
 }
 
+asynStatus SPiiPlusController::getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
+{
+	char command[MAX_MESSAGE_LEN];
+	asynStatus status;
+	int remainingBytes;
+	int readBytes;
+	int outBytes, inBytes, dataBytes;
+	size_t nread;
+	int slice=1;
+	bool sliceAvailable;
+	static const char *functionName = "getIntegerArray";
+	
+	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
+	
+	// Create the command to query array data. This could be the only command
+	// that needs to be sent or it could be the first of many.
+	readInt32ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
+	
+	remainingBytes = dataBytes;
+	readBytes = 0;
+	
+	// Send the command
+	status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Initial array query: request = %i; read = %li\n", driverName, functionName, inBytes, nread);
+	
+	remainingBytes -= nread;
+	readBytes += nread;
+	
+	// Look at the response to see if there are more slices to read
+	while (sliceAvailable)
+	{
+		// Create the command to query the next slice of the array data
+		readInt32SliceCmd(command, slice, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
+		
+		// Send the command
+		status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Array slice #%i query: expected = %i; read = %li; sliceAvailable = %d\n", driverName, functionName, slice, inBytes, nread, sliceAvailable);
+		
+		remainingBytes -= nread;
+		readBytes += nread;
+		slice++;
+	}
+	
+	// Restore the EOS characters
+	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
+	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
+	
+	return status;
+}
+
+asynStatus SPiiPlusController::poll()
+{
+	asynStatus status;
+	//static const char *functionName = "poll";
+	
+	/*
+	 * Read position and status using binary queries here and parse the replies in the axis poll method
+	 */
+	
+	status = getDoubleArray((char *)axisPosition_, "APOS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getDoubleArray((char *)feedbackPosition_, "FPOS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = getIntegerArray((char *)motorStatus_, "MST", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	// TODO: only get max values when idle polling
+	status = getDoubleArray((char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	status = getDoubleArray((char *)maxAcceleration_, "XACC", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	return status;
+}
+
 asynStatus SPiiPlusController::readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value)
 {
 	asynStatus status;
@@ -739,77 +818,57 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	//static const char *functionName = "poll";
 	std::stringstream cmd;
 	
-	double position;
-	cmd << "?APOS(" << axisNo_ << ")";
-	status = controller->writeReadDouble(cmd, &position);
-	if (status != asynSuccess) return status;
-	setDoubleParam(controller->motorPosition_, (position / resolution_));
+	// APOS (queried in controller poll method)
+	setDoubleParam(controller->motorPosition_, (controller->axisPosition_[axisNo_] / resolution_));
 	
 	if (dummy_)
 	{
-		setDoubleParam(controller->motorEncoderPosition_, (position / resolution_));
+		// APOS (queried in controller poll method)
+		setDoubleParam(controller->motorEncoderPosition_, (controller->axisPosition_[axisNo_] / resolution_));
 		// Faults are disabled for dummy axes
 		setIntegerParam(controller->motorStatusLowLimit_, 0);
 		setIntegerParam(controller->motorStatusHighLimit_, 0);
 	}
 	else
 	{
-		double enc_position;
-		cmd << "?FPOS(" << axisNo_ << ")";
-		status = controller->writeReadDouble(cmd, &enc_position);
-		if (status != asynSuccess) return status;
-		// FPOS = FP * EFAC + EOFFS
+		// FPOS (queried in controller poll method) = FP * EFAC + EOFFS
 		// TODO: detect when there is no encoder and fix the encoder position at zero
-		setDoubleParam(controller->motorEncoderPosition_, enc_position / encoderResolution_);
+		setDoubleParam(controller->motorEncoderPosition_, controller->feedbackPosition_[axisNo_] / controller->encoderFactor_[axisNo_]);
 		
-		int fault;
-		cmd << "?D/FAULT(" << axisNo_ << ")";
-		status = controller->writeReadInt(cmd, &fault);
-		if (status != asynSuccess) return status;
-		
+		// FAULT (queried in controller poll method)
 		int left_limit, right_limit, sto;
-		left_limit = fault & SPIIPLUS_FAULT_HARD_LEFT_LIMIT;
+		left_limit = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_HARD_LEFT_LIMIT;
 		setIntegerParam(controller->motorStatusLowLimit_, left_limit);
 		
-		right_limit = fault & SPIIPLUS_FAULT_HARD_RIGHT_LIMIT;
+		right_limit = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_HARD_RIGHT_LIMIT;
 		setIntegerParam(controller->motorStatusHighLimit_, right_limit);
 		
-		sto = fault & SPIIPLUS_FAULT_SAFE_TORQUE_OFF;
+		sto = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_SAFE_TORQUE_OFF;
 		setIntegerParam(controller->SPiiPlusSafeTorqueOff_, sto);
 	}
 	
-	// TODO: only get max values when idle polling
-	// Get max velo and accel
 	getMaxParams();
 	
-	// Read the axis status
-	int axis_status;
-	cmd << "?D/AST(" << axisNo_ << ")";
-	status = controller->writeReadInt(cmd, &axis_status);
-	if (status != asynSuccess) return status;
+	// AST (queried in controller poll method)
 	
 	int enabled;
+	int motion;
 	//int open_loop;
 	//int in_pos;
-	int motion;
 	
 	if (dummy_)
 	{
 		enabled = 0;
-		motion = axis_status & (1<<5);
+		motion = controller->axisStatus_[axisNo_] & (1<<5);
 	}
 	else
 	{
-		// Read the entire motor status and parse the relevant bits
-		int motor_status;
-		cmd << "?D/MST(" << axisNo_ << ")";
-		status = controller->writeReadInt(cmd, &motor_status);
-		if (status != asynSuccess) return status;
-	
-		enabled = motor_status & (1<<0);
-		//open_loop = axis_status & (1<<1);
-		//in_pos = axis_status & (1<<4);
-		motion = motor_status & (1<<5);
+		// MST (queried in controller poll method)
+		
+		enabled = controller->motorStatus_[axisNo_] & (1<<0);
+		motion = controller->motorStatus_[axisNo_] & (1<<5);
+		//open_loop = controller->axisStatus_[axisNo_] & (1<<1);
+		//in_pos = controller->axisStatus_[axisNo_] & (1<<4);
 	}
 	
 	setIntegerParam(controller->motorStatusDone_, !motion);
@@ -837,18 +896,15 @@ asynStatus SPiiPlusAxis::getMaxParams()
 	// motorRecResolution (EGU/step)
 	controller->getDoubleParam(axisNo_, controller->motorRecResolution_,   &motorRecResolution);
 	
-	// Query the max velocity (SPiiPlus-units/sec)
-	cmd << "?XVEL(" << axisNo_ << ")";
-	status = controller->writeReadDouble(cmd, &maxVelocity);
-	if (status != asynSuccess) return status;
+	// XVEL [SPiiPlus-units/sec] (queried in controller poll method)
+	maxVelocity = controller->maxVelocity_[axisNo_] / resolution_ * motorRecResolution;
 	
-	// Query the max acceleration (SPiiPlus-units/sec^2)
-	cmd << "?XACC(" << axisNo_ << ")";
-	status = controller->writeReadDouble(cmd, &maxAcceleration);
+	// XACC [SPiiPlus-units/sec^2] (queried in controller poll method)
+	maxAcceleration = controller->maxAcceleration_[axisNo_] / resolution_ * motorRecResolution;
 	
 	// (SPiiPlus-units/time-unit) / (SPiiPlus-units/step) * (EGU/step) = (EGU/time-unit)
-	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxVelocity_, (maxVelocity / resolution_ * motorRecResolution));
-	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxAcceleration_, (maxAcceleration / resolution_ * motorRecResolution));
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxVelocity_, maxVelocity);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusMaxAcceleration_, maxAcceleration);
 	
 	// Assume the calling method will call callParamCallbacks()
 	
@@ -1103,16 +1159,24 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &homingMethod);
   
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
-  fprintf(fp, "  mflags: %i\n", mflags_);
+  fprintf(fp, "  mflags: %i\n", controller->motorFlags_[axisNo_]);
   fprintf(fp, "    dummy:  %i\n", dummy_);
   fprintf(fp, "    stepper:  %i\n", stepper_);
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
-  fprintf(fp, "  moving: %i\n", moving_);
   fprintf(fp, "  resolution: %.6e\n", resolution_);
-  fprintf(fp, "  encoder resolution: %.6e\n", encoderResolution_);
-  fprintf(fp, "  encoder offset: %lf\n", encoderOffset_);
+  fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
+  fprintf(fp, "  encoder offset: %lf\n", controller->encoderOffset_[axisNo_]);
   fprintf(fp, "  homing method: %i\n", homingMethod);
+  fprintf(fp, "  max velocity: %lf\n", controller->maxVelocity_[axisNo_]);
+  fprintf(fp, "  max acceleration: %lf\n", controller->maxAcceleration_[axisNo_]);
+  fprintf(fp, "Status for axis %i:\n", axisNo_);
+  fprintf(fp, "  moving: %i\n", moving_);
+  fprintf(fp, "  axisPosition: %lf\n", controller->axisPosition_[axisNo_]);
+  fprintf(fp, "  feedbackPosition: %lf\n", controller->feedbackPosition_[axisNo_]);
+  fprintf(fp, "  axis status: %i\n", controller->axisStatus_[axisNo_]);
+  fprintf(fp, "  motor status: %i\n", controller->motorStatus_[axisNo_]);
+  fprintf(fp, "  fault status: %i\n", controller->faultStatus_[axisNo_]);
   fprintf(fp, "\n");
   
   // Call the base class method

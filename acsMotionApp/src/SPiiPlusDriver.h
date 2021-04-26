@@ -127,14 +127,11 @@ private:
 	double profileStartPos_;
 	double profileFlybackPos_;
 	int moving_;
-	int mflags_;			// MFLAGS
 	int dummy_;			// MFLAGS, bit 0
 	int stepper_;			// MFLAGS, bit 4
 	int encloop_;			// MFLAGS, bit 5
 	int stepenc_;			// MFLAGS, bit 6
 	double resolution_;		// STEPF
-	double encoderResolution_;	// EFAC
-	double encoderOffset_;		// EOFFS
 	
 friend class SPiiPlusController;
 };
@@ -152,6 +149,7 @@ public:
 	asynStatus drvUserDestroy(asynUser *pasynUser);
 	SPiiPlusAxis* getAxis(asynUser* pasynUser);
 	SPiiPlusAxis* getAxis(int axisNo);
+	asynStatus poll();
 	void report(FILE *fp, int level);
 	
 	/* These are functions for profile moves */
@@ -171,6 +169,7 @@ public:
 	asynStatus writeReadInt(std::stringstream& cmd, int* val);
 	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
 	asynStatus writeReadAck(std::stringstream& cmd);
+	asynStatus getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 	asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
 	asynStatus binaryErrorCheck(char *buffer);
@@ -224,6 +223,17 @@ private:
 	int numDecelSegments_;
 	double dataCollectionInterval_;
 	bool halted_;
+	epicsFloat64 stepperFactor_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 encoderFactor_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 encoderOffset_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 axisPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 feedbackPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 maxVelocity_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 maxAcceleration_[SPIIPLUS_MAX_AXES];
+	epicsInt32 motorFlags_[SPIIPLUS_MAX_AXES];
+	epicsInt32 faultStatus_[SPIIPLUS_MAX_AXES];
+	epicsInt32 axisStatus_[SPIIPLUS_MAX_AXES];
+	epicsInt32 motorStatus_[SPIIPLUS_MAX_AXES];
 	
 friend class SPiiPlusAxis;
 };
