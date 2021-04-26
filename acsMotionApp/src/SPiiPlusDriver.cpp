@@ -1168,11 +1168,19 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "    stepper:  %i\n", stepper_);
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
-  fprintf(fp, "  moving: %i\n", moving_);
   fprintf(fp, "  resolution: %.6e\n", resolution_);
   fprintf(fp, "  encoder resolution: %.6e\n", encoderResolution_);
   fprintf(fp, "  encoder offset: %lf\n", encoderOffset_);
   fprintf(fp, "  homing method: %i\n", homingMethod);
+  fprintf(fp, "  max velocity: %lf\n", controller->maxVelocity_[axisNo_]);
+  fprintf(fp, "  max acceleration: %lf\n", controller->maxAcceleration_[axisNo_]);
+  fprintf(fp, "Status for axis %i:\n", axisNo_);
+  fprintf(fp, "  moving: %i\n", moving_);
+  fprintf(fp, "  axisPosition: %lf\n", controller->axisPosition_[axisNo_]);
+  fprintf(fp, "  feedbackPosition: %lf\n", controller->feedbackPosition_[axisNo_]);
+  fprintf(fp, "  axis status: %i\n", controller->axisStatus_[axisNo_]);
+  fprintf(fp, "  motor status: %i\n", controller->motorStatus_[axisNo_]);
+  fprintf(fp, "  fault status: %i\n", controller->faultStatus_[axisNo_]);
   fprintf(fp, "\n");
   
   // Call the base class method
