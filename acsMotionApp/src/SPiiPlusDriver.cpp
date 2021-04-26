@@ -66,32 +66,28 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		return;
 	}
 	
+	// Query setup parameters
+	getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
+	getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
+	getDoubleArray((char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
+	getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	
 	for (int index = 0; index < numAxes; index += 1)
 	{
 		new SPiiPlusAxis(this, index);
 		
-		// Query the MFLAGS
-		cmd << "?D/MFLAGS(" << index << ")";
-		writeReadInt(cmd, &(pAxes_[index]->mflags_));
+		// Parse the setup parameters
 		// Bit 0 is #DUMMY
-		pAxes_[index]->dummy_ = (pAxes_[index]->mflags_) & (1 << 0);
+		pAxes_[index]->dummy_ = motorFlags_[index] & (1 << 0);
 		// Bit 4 is #STEPPER
-		pAxes_[index]->stepper_ = (pAxes_[index]->mflags_) & (1 << 4);
+		pAxes_[index]->stepper_ = motorFlags_[index] & (1 << 4);
 		// Bit 5 is #ENCLOOP
-		pAxes_[index]->encloop_ = (pAxes_[index]->mflags_) & (1 << 5);
+		pAxes_[index]->encloop_ = motorFlags_[index] & (1 << 5);
 		// Bit 6 is #STEPENC
-		pAxes_[index]->stepenc_ = (pAxes_[index]->mflags_) & (1 << 6);
+		pAxes_[index]->stepenc_ = motorFlags_[index] & (1 << 6);
 		
-		// Query the axis resolution (used to convert motor record steps into controller EGU)
-		cmd << "?STEPF(" << index << ")";
-		writeReadDouble(cmd, &(pAxes_[index]->resolution_));
-		
-		// Query the encoder resolution (not currently used for anything)
-		cmd << "?EFAC(" << index << ")";
-		writeReadDouble(cmd, &(pAxes_[index]->encoderResolution_));
-		// Query the encoder offset (not currently used for anything)
-		cmd << "?EOFFS(" << index << ")";
-		writeReadDouble(cmd, &(pAxes_[index]->encoderOffset_));
+		// axis resolution (used to convert motor record steps into controller EGU)
+		pAxes_[index]->resolution_ = stepperFactor_[index];
 	}
 	
 	drvUser_ = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
@@ -837,7 +833,7 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	{
 		// FPOS (queried in controller poll method) = FP * EFAC + EOFFS
 		// TODO: detect when there is no encoder and fix the encoder position at zero
-		setDoubleParam(controller->motorEncoderPosition_, controller->feedbackPosition_[axisNo_] / encoderResolution_);
+		setDoubleParam(controller->motorEncoderPosition_, controller->feedbackPosition_[axisNo_] / controller->encoderFactor_[axisNo_]);
 		
 		// FAULT (queried in controller poll method)
 		int left_limit, right_limit, sto;
@@ -1163,14 +1159,14 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &homingMethod);
   
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
-  fprintf(fp, "  mflags: %i\n", mflags_);
+  fprintf(fp, "  mflags: %i\n", controller->motorFlags_[axisNo_]);
   fprintf(fp, "    dummy:  %i\n", dummy_);
   fprintf(fp, "    stepper:  %i\n", stepper_);
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
   fprintf(fp, "  resolution: %.6e\n", resolution_);
-  fprintf(fp, "  encoder resolution: %.6e\n", encoderResolution_);
-  fprintf(fp, "  encoder offset: %lf\n", encoderOffset_);
+  fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
+  fprintf(fp, "  encoder offset: %lf\n", controller->encoderOffset_[axisNo_]);
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "  max velocity: %lf\n", controller->maxVelocity_[axisNo_]);
   fprintf(fp, "  max acceleration: %lf\n", controller->maxAcceleration_[axisNo_]);
