@@ -1,130 +1,133 @@
+#
+# Note: the P macro, which is passed to all of the databases in this file, has the value $(PREFIX) and is set in the envVars file
+#
 file "$(TOP)/db/asyn_motor.db"
 {
 pattern
-{P,           N,   M,       DTYP,         PORT,  ADDR,  DESC,          EGU, DIR,  VELO,  VBAS,  ACCL,  BDST,  BVEL,  BACC,  MRES,         PREC,  DHLM,  DLLM,  INIT}
+{N,   M,       DTYP,         PORT,  ADDR,  DESC,          EGU, DIR,  VELO,  VBAS,  ACCL,  BDST,  BVEL,  BACC,  MRES,         PREC,  DHLM,  DLLM,  INIT}
 # 2.54 mm/rev, 200 steps/rev, 1024 microsteps/step
-{acsMotion:,  1,  "m$(N)",  "asynMotor",  ACS1,  0,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    1.240234375e-05,  6,      10,    -10,  ""}
-{acsMotion:,  2,  "m$(N)",  "asynMotor",  ACS1,  1,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-{acsMotion:,  3,  "m$(N)",  "asynMotor",  ACS1,  2,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-{acsMotion:,  4,  "m$(N)",  "asynMotor",  ACS1,  3,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-{acsMotion:,  5,  "m$(N)",  "asynMotor",  ACS1,  4,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-{acsMotion:,  6,  "m$(N)",  "asynMotor",  ACS1,  5,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-{acsMotion:,  7,  "m$(N)",  "asynMotor",  ACS1,  6,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-{acsMotion:,  8,  "m$(N)",  "asynMotor",  ACS1,  7,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:,  9,  "m$(N)",  "asynMotor",  ACS1,  8,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:, 10,  "m$(N)",  "asynMotor",  ACS1,  9,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:, 11,  "m$(N)",  "asynMotor",  ACS1, 10,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:, 12,  "m$(N)",  "asynMotor",  ACS1, 11,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:, 13,  "m$(N)",  "asynMotor",  ACS1, 12,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:, 14,  "m$(N)",  "asynMotor",  ACS1, 13,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:, 15,  "m$(N)",  "asynMotor",  ACS1, 14,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
-#!{acsMotion:, 16,  "m$(N)",  "asynMotor",  ACS1, 15,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{1,  "m$(N)",  "asynMotor",  ACS1,  0,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    1.240234375e-05,  6,      10,    -10,  ""}
+{2,  "m$(N)",  "asynMotor",  ACS1,  1,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{3,  "m$(N)",  "asynMotor",  ACS1,  2,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{4,  "m$(N)",  "asynMotor",  ACS1,  3,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{5,  "m$(N)",  "asynMotor",  ACS1,  4,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{6,  "m$(N)",  "asynMotor",  ACS1,  5,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{7,  "m$(N)",  "asynMotor",  ACS1,  6,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+{8,  "m$(N)",  "asynMotor",  ACS1,  7,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{9,   "m$(N)",  "asynMotor",  ACS1,  8,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{10,  "m$(N)",  "asynMotor",  ACS1,  9,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{11,  "m$(N)",  "asynMotor",  ACS1, 10,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{12,  "m$(N)",  "asynMotor",  ACS1, 11,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{13,  "m$(N)",  "asynMotor",  ACS1, 12,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{14,  "m$(N)",  "asynMotor",  ACS1, 13,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{15,  "m$(N)",  "asynMotor",  ACS1, 14,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
+#!{16,  "m$(N)",  "asynMotor",  ACS1, 15,     "motor $(N)",  mm,  Pos,  1,     .1,    .2,    0,	1,     .2,    0.0001,      4,     100,   -100,  ""}
 }
 
 file "$(TOP)/db/profileMoveController.template"
 {
 pattern
-{P,       R,     PORT, NAXES,  NPOINTS, NPULSES, TIMEOUT}
-{acsMotion:, pm1:,  ACS1,     8,     2000,    2000,     2.0}
+{R,     PORT, NAXES,  NPOINTS, NPULSES, TIMEOUT}
+{pm1:,  ACS1,     8,     2000,    2000,     2.0}
 }
 
 file "$(TOP)/db/profileMoveAxis.template"
 {
 pattern
-{P,       R,     M, NPOINTS, NREADBACK, PORT, ADDR, TIMEOUT, PREC}
-{acsMotion:, pm1:,  1,    2000,      2000, ACS1,    0,     2.0,    4}
-{acsMotion:, pm1:,  2,    2000,      2000, ACS1,    1,     2.0,    4}
-{acsMotion:, pm1:,  3,    2000,      2000, ACS1,    2,     2.0,    4}
-{acsMotion:, pm1:,  4,    2000,      2000, ACS1,    3,     2.0,    4}
-{acsMotion:, pm1:,  5,    2000,      2000, ACS1,    4,     2.0,    4}
-{acsMotion:, pm1:,  6,    2000,      2000, ACS1,    5,     2.0,    4}
-{acsMotion:, pm1:,  7,    2000,      2000, ACS1,    6,     2.0,    4}
-{acsMotion:, pm1:,  8,    2000,      2000, ACS1,    7,     2.0,    4}
+{R,     M, NPOINTS, NREADBACK, PORT, ADDR, TIMEOUT, PREC}
+{pm1:,  1,    2000,      2000, ACS1,    0,     2.0,    4}
+{pm1:,  2,    2000,      2000, ACS1,    1,     2.0,    4}
+{pm1:,  3,    2000,      2000, ACS1,    2,     2.0,    4}
+{pm1:,  4,    2000,      2000, ACS1,    3,     2.0,    4}
+{pm1:,  5,    2000,      2000, ACS1,    4,     2.0,    4}
+{pm1:,  6,    2000,      2000, ACS1,    5,     2.0,    4}
+{pm1:,  7,    2000,      2000, ACS1,    6,     2.0,    4}
+{pm1:,  8,    2000,      2000, ACS1,    7,     2.0,    4}
 }
 
 file "$(TOP)/db/SPiiPlusAxisExtra.db"
 {
 pattern
-{P,       M,   PORT, ADDR}
-{acsMotion:, m1,  ACS1,    0}
-{acsMotion:, m2,  ACS1,    1}
-{acsMotion:, m3,  ACS1,    2}
-{acsMotion:, m4,  ACS1,    3}
-{acsMotion:, m5,  ACS1,    4}
-{acsMotion:, m6,  ACS1,    5}
-{acsMotion:, m7,  ACS1,    6}
-{acsMotion:, m8,  ACS1,    7}
+{M,   PORT, ADDR}
+{m1,  ACS1,    0}
+{m2,  ACS1,    1}
+{m3,  ACS1,    2}
+{m4,  ACS1,    3}
+{m5,  ACS1,    4}
+{m6,  ACS1,    5}
+{m7,  ACS1,    6}
+{m8,  ACS1,    7}
 }
 
 file "$(TOP)/db/SPiiPlusHoming.db"
 {
 pattern
-{P,       M,   PORT, ADDR, TIMEOUT,    VAL}
-{acsMotion:, m1,  ACS1,    0,     2.0,    0}
-{acsMotion:, m2,  ACS1,    1,     2.0,    0}
-{acsMotion:, m3,  ACS1,    2,     2.0,    0}
-{acsMotion:, m4,  ACS1,    3,     2.0,    0}
-{acsMotion:, m5,  ACS1,    4,     2.0,    0}
-{acsMotion:, m6,  ACS1,    5,     2.0,    0}
-{acsMotion:, m7,  ACS1,    6,     2.0,    0}
-{acsMotion:, m8,  ACS1,    7,     2.0,    0}
+{M,   PORT, ADDR, TIMEOUT,    VAL}
+{m1,  ACS1,    0,     2.0,    0}
+{m2,  ACS1,    1,     2.0,    0}
+{m3,  ACS1,    2,     2.0,    0}
+{m4,  ACS1,    3,     2.0,    0}
+{m5,  ACS1,    4,     2.0,    0}
+{m6,  ACS1,    5,     2.0,    0}
+{m7,  ACS1,    6,     2.0,    0}
+{m8,  ACS1,    7,     2.0,    0}
 }
 
 # These records work, but the initial values are all zero.  Maybe HOPR/LOPR/DRVH/DRVL need to be set?
 file "$(TOP)/db/SPiiPlusMaxParams.db"
 {
 pattern
-{P,          M,   PORT, ADDR,  MAX_VELO,  MAX_ACCL,   PREC}
-{acsMotion:, m1,  ACS1,    0,       5.0,      20.0,      4}
-{acsMotion:, m2,  ACS1,    1,     200.0,    1000.0,      4}
-{acsMotion:, m3,  ACS1,    2,     200.0,    1000.0,      4}
-{acsMotion:, m4,  ACS1,    3,     200.0,    1000.0,      4}
-{acsMotion:, m5,  ACS1,    4,     200.0,    1000.0,      4}
-{acsMotion:, m6,  ACS1,    5,     200.0,    1000.0,      4}
-{acsMotion:, m7,  ACS1,    6,     200.0,    1000.0,      4}
-{acsMotion:, m8,  ACS1,    7,     200.0,    1000.0,      4}
+{M,   PORT, ADDR,  MAX_VELO,  MAX_ACCL,   PREC}
+{m1,  ACS1,    0,       5.0,      20.0,      4}
+{m2,  ACS1,    1,     200.0,    1000.0,      4}
+{m3,  ACS1,    2,     200.0,    1000.0,      4}
+{m4,  ACS1,    3,     200.0,    1000.0,      4}
+{m5,  ACS1,    4,     200.0,    1000.0,      4}
+{m6,  ACS1,    5,     200.0,    1000.0,      4}
+{m7,  ACS1,    6,     200.0,    1000.0,      4}
+{m8,  ACS1,    7,     200.0,    1000.0,      4}
 }
 
 file "$(TOP)/db/SPiiPlusMaxParamsRbv.db"
 {
 pattern
-{P,          M,   PORT, ADDR, PREC}
-{acsMotion:, m1,  ACS1,    0,    4}
-{acsMotion:, m2,  ACS1,    1,    4}
-{acsMotion:, m3,  ACS1,    2,    4}
-{acsMotion:, m4,  ACS1,    3,    4}
-{acsMotion:, m5,  ACS1,    4,    4}
-{acsMotion:, m6,  ACS1,    5,    4}
-{acsMotion:, m7,  ACS1,    6,    4}
-{acsMotion:, m8,  ACS1,    7,    4}
+{M,   PORT, ADDR, PREC}
+{m1,  ACS1,    0,    4}
+{m2,  ACS1,    1,    4}
+{m3,  ACS1,    2,    4}
+{m4,  ACS1,    3,    4}
+{m5,  ACS1,    4,    4}
+{m6,  ACS1,    5,    4}
+{m7,  ACS1,    6,    4}
+{m8,  ACS1,    7,    4}
 }
 
 ### The following databases are useful if programs are running on the ACS controller
 #file "$(TOP)/db/SPiiPlusIntVar.db"
 #{
 #pattern
-#{P,          R,         DESC,     PORT,  TAG}
-#{acsMotion:, c0:1001I,  "Int 1",    ACS1,  1001}
+#{R,         DESC,     PORT,  TAG}
+#{c0:1001I,  "Int 1",    ACS1,  1001}
 #}
 #
 #file "$(TOP)/db/SPiiPlusRealVar.db"
 #{
 #pattern
-#{P,          R,         DESC,      PORT,  TAG,   PREC}
-#{acsMotion:, c0:1002R,  "Real 1",    ACS1,  1002,     5}
+#{R,         DESC,      PORT,  TAG,   PREC}
+#{c0:1002R,  "Real 1",    ACS1,  1002,     5}
 #}
 #
 #file "$(TOP)/db/SPiiPlusProgram.db"
 #{
 #pattern
-#{P,          R,    PORT,  BUFF,   NAME}
-#{acsMotion:, c0:,  ACS1,   0,     Test}
+#{R,    PORT,  BUFF,   NAME}
+#{c0:,  ACS1,   0,     Test}
 #}
 
 ### This is only used for during development and will be removed in the near future
 #file "$(TOP)/db/SPiiPlusTest.db"
 #{
 #pattern
-#{P,       R,     PORT}
-#{acsMotion:, pm1:,  ACS1}
+#{R,     PORT}
+#{pm1:,  ACS1}
 #}

@@ -1,6 +1,7 @@
 #!../../bin/linux-x86_64/acsMotion
 
 < envPaths
+< envVars
 
 cd "${TOP}"
 
@@ -11,7 +12,7 @@ acsMotion_registerRecordDeviceDriver pdbbase
 cd "${TOP}/iocBoot/${IOC}"
 
 ## motorUtil (allstop & alldone)
-dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=acsMotion:")
+dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=$(PREFIX)")
 
 ## 
 < AcsMotion.cmd
@@ -19,6 +20,6 @@ dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=acsMotion:")
 iocInit
 
 ## motorUtil (allstop & alldone)
-motorUtilInit("acsMotion:")
+motorUtilInit("$(PREFIX)")
 
 # Boot complete
