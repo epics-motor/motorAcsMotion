@@ -851,6 +851,8 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	
 	// AST (queried in controller poll method)
 	
+	pegReady_ = controller->axisStatus_[axisNo_] & SPIIPLUS_AXIS_STATUS_PEGREADY;
+	
 	int enabled;
 	int motion;
 	//int open_loop;
@@ -1694,9 +1696,11 @@ asynStatus SPiiPlusController::runProfile()
   int startPulses, endPulses;
   //int lastTime;
   int numPoints, numPulses;
-  //int numElements;
+  int numElements;
   int executeStatus;
-  //double pulsePeriod;
+  int pulseAxis;
+  double pulseWidth;
+  double startPulsePos, endPulsePos, pulseInterval;
   double position;
   //double time;
   int i;
@@ -1829,8 +1833,88 @@ asynStatus SPiiPlusController::runProfile()
   cmd << "GO " << axesToString(profileAxes_);
   status = writeReadAck(cmd);
   
-  // configure pulse output
+  // Configure pulse output (does this need to happen before data recording is setup/started?)
 
+  /* The number of user-specified trajectory elements is numPoints-1
+     The actual number of is greater due to the accel and decel elements added in assembleFullProfile */
+  numElements = numPoints - 1;
+  
+  // Check valid range of start and end pulses;  these start at 1, not 0.
+  // numElements+1 is the decelleration element
+  if ((startPulses < 1)           || (startPulses > numElements+1) ||
+      (endPulses   < startPulses) || (endPulses   > numElements+1)) {
+    executeOK = false;
+    sprintf(message, "Error: start or end pulses outside valid range");
+    goto done;
+  }
+  
+  // Hard-code the pulse axis for now
+  pulseAxis = 0;
+  
+  // Assign PEG engine to an encoder
+  // ASSIGNPEG axis, engines_to_encoders_code, gp_out_assign_code
+  cmd << "ASSIGNPEG " << pulseAxis << ", 0x0, 0x0";
+  status = writeReadAck(cmd);
+  
+  // Assign PEG output to output pins
+  // ASSIGNPOUTS axis, output_index, bit_code
+  cmd << "ASSIGNPOUTS " << pulseAxis << ", 0x0, 0x0";
+  status = writeReadAck(cmd);
+  
+  /* Define trajectory output pulses */
+  
+  // Hard-code 0.5ms pulses for now
+  pulseWidth = 0.5;
+  
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+  {
+    startPulsePos = pAxes_[pulseAxis]->profilePositions_[startPulses];
+    endPulsePos = pAxes_[pulseAxis]->profilePositions_[endPulses];
+  }
+  else
+  {
+    int relStartPosition;
+    double displacement;
+    
+    // TODO: convert this value from steps to EGU
+    // Get the starting position of the pulse axis (in what units?) -- how to specify the specific axis?
+    lock();
+    getIntegerParam(motorPosition_, &relStartPosition);
+    unlock();
+    
+    // Sum all the user-specified relative displacements to find the pulse positions, adding them to the starting position
+    // Note: the profilePreDistance_ gets the axis to the 0th user-specified profile point, which is why the loop starts from 1
+    displacement = pAxes_[pulseAxis]->profilePreDistance_;
+    for (i=1; i<numPoints; i++)
+    {
+      displacement += pAxes_[pulseAxis]->profilePositions_[i];
+      if (i == startPulses)
+      {
+          startPulsePos = relStartPosition + displacement;
+      }
+      if (i == endPulses)
+      {
+          endPulsePos = relStartPosition + displacement;
+          break;
+      }
+    }
+  }
+  
+  //
+  pulseInterval = (endPulsePos - startPulsePos) / numElements;
+  
+  // PEG_I axis, width, first_point, interval, last_point
+  cmd << "PEG_I " << pulseAxis << ", " << pulseWidth << ", " << startPulsePos << ", " << pulseInterval << ", " << endPulsePos;
+  status = writeReadAck(cmd);
+  
+  // Wait for PEGREADY 
+  while (pAxes_[pulseAxis]->pegReady_ == 0)
+  {
+    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
+    // Sleep to give the poller time to reread the the axis status
+    epicsThreadSleep(0.1);
+  }
+  
   // wake up poller
   //wakeupPoller();
   
@@ -1880,6 +1964,7 @@ asynStatus SPiiPlusController::runProfile()
         aborted = true;
         executeOK = false;
         status = stopDataCollection();
+        status = stopPEG(pulseAxis);
         strcpy(message, "Aborted during profile move");
         goto done;
       }
@@ -1938,6 +2023,7 @@ asynStatus SPiiPlusController::runProfile()
       aborted = true;
       executeOK = false;
       status = stopDataCollection();
+      status = stopPEG(pulseAxis);
       strcpy(message, "Aborted during profile move");
       goto done;
     }
@@ -2076,6 +2162,18 @@ asynStatus SPiiPlusController::stopDataCollection()
     cmd << "STOPDC/s " << profileAxes_[i];
     status = writeReadAck(cmd);
   }
+  
+  return status;
+}
+
+asynStatus SPiiPlusController::stopPEG(int pulseAxis)
+{
+  asynStatus status;
+  std::stringstream cmd;
+  // static const char *functionName = "stopPEG";  
+  
+  cmd << "STOPPEG " << pulseAxis;
+  status = writeReadAck(cmd);
   
   return status;
 }

@@ -78,6 +78,30 @@
 #define SPIIPLUS_FAULT_SERVO_PROC_ALARM		1<<17
 #define SPIIPLUS_FAULT_SAFE_TORQUE_OFF		1<<18
 #define SPIIPLUS_FAULT_HSSI_NC			1<<20
+//
+#define SPIIPLUS_AXIS_STATUS_LEAD       1<<0
+#define SPIIPLUS_AXIS_STATUS_PEG        1<<2
+#define SPIIPLUS_AXIS_STATUS_DC         1<<3
+#define SPIIPLUS_AXIS_STATUS_PEGREADY   1<<4
+#define SPIIPLUS_AXIS_STATUS_MOVE       1<<5
+#define SPIIPLUS_AXIS_STATUS_ACC        1<<6
+#define SPIIPLUS_AXIS_STATUS_BUILDUP    1<<7
+#define SPIIPLUS_AXIS_STATUS_VELLOCK    1<<8
+#define SPIIPLUS_AXIS_STATUS_POSLOCK    1<<9
+#define SPIIPLUS_AXIS_STATUS_TRIGGER    1<<11
+#define SPIIPLUS_AXIS_STATUS_NEWSEGM    1<<16
+#define SPIIPLUS_AXIS_STATUS_STARV      1<<17
+#define SPIIPLUS_AXIS_STATUS_ENCWARN    1<<18
+#define SPIIPLUS_AXIS_STATUS_ENC2WARN   1<<19
+#define SPIIPLUS_AXIS_STATUS_INRANGE    1<<20
+#define SPIIPLUS_AXIS_STATUS_LCTICKLE   1<<21
+#define SPIIPLUS_AXIS_STATUS_LCMODUL    1<<22
+#define SPIIPLUS_AXIS_STATUS_FOLLOWED   1<<23
+#define SPIIPLUS_AXIS_STATUS_HOLD       1<<24
+#define SPIIPLUS_AXIS_STATUS_INHOMING   1<<25
+#define SPIIPLUS_AXIS_STATUS_DECOMPON   1<<26
+#define SPIIPLUS_AXIS_STATUS_INSHAPE    1<<27
+#define SPIIPLUS_AXIS_STATUS_ENCPROC    1<<29
 
 // drvInfo strings for extra parameters that the XPS controller supports
 #define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
@@ -127,6 +151,7 @@ private:
 	double profileStartPos_;
 	double profileFlybackPos_;
 	int moving_;
+	int pegReady_;      // AST, bit 4
 	int dummy_;			// MFLAGS, bit 0
 	int stepper_;			// MFLAGS, bit 4
 	int encloop_;			// MFLAGS, bit 5
@@ -215,6 +240,7 @@ private:
 	asynStatus waitMotors();
 	void calculateDataCollectionInterval();
 	asynStatus stopDataCollection();
+	asynStatus stopPEG(int pulseAxis);
 	asynStatus test();
 	
 	epicsEventId profileExecuteEvent_;
