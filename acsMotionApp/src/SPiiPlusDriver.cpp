@@ -66,6 +66,9 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		return;
 	}
 	
+	// Initialize this variable to avoid freeing random memory
+	fullProfileTimes_ = 0;
+	
 	// Query setup parameters
 	getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
 	getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
@@ -88,6 +91,9 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		
 		// axis resolution (used to convert motor record steps into controller EGU)
 		pAxes_[index]->resolution_ = stepperFactor_[index];
+		
+		// Initialize this variable to avoid freeing random memory
+		pAxes_[index]->fullProfilePositions_ = 0;
 	}
 	
 	drvUser_ = (SPiiPlusDrvUser_t *) callocMustSucceed(1, sizeof(SPiiPlusDrvUser_t), functionName);
