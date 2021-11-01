@@ -351,10 +351,13 @@ asynStatus SPiiPlusController::writeReadInt(std::stringstream& cmd, int* val)
 
 	std::fill(inString, inString + 256, '\0');
 	
-	size_t response;
-	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
-	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	
+	size_t response;
+	lock();
+	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
+	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
@@ -397,10 +400,13 @@ asynStatus SPiiPlusController::writeReadDouble(std::stringstream& cmd, double* v
 	
 	std::fill(inString, inString + 256, '\0');
 	
-	size_t response;
-	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
-	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	
+	size_t response;
+	lock();
+	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
+	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
@@ -444,10 +450,13 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 
 	std::fill(inString, inString + 256, '\0');
 	
-	size_t response;
-	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
-	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	
+	size_t response;
+	lock();
+	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
+	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
@@ -480,6 +489,8 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	asynStatus status;
 	static const char *functionName = "writeReadBinary";
 	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
+	
 	lock();
 	
 	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
@@ -492,12 +503,17 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	// Flush the receive buffer
 	status = pasynOctetSyncIO->flush(pasynUserController_);
 	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output bytes = %i, output = %s\n", driverName, functionName, outBytes, output);
+	
 	// Send the query command
 	memcpy(outString_, output, outBytes);
 	status = pasynOctetSyncIO->write(pasynUserController_, outString_, outBytes, SPIIPLUS_CMD_TIMEOUT, &nwrite);
 	
 	// The reply from the controller has a 4-byte header and a 1-byte suffix
 	status = pasynOctetSyncIO->read(pasynUserController_, packetBuffer, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input bytes = %i\n", driverName, functionName, inBytes);
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
 	if (status == asynSuccess)
 	{
@@ -506,7 +522,7 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 		if (status == asynError)
 		{
 			*sliceAvailable = false;
-			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: No more slices due to error\n", driverName, functionName);
+			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
 		}
 		else
 		{
@@ -533,7 +549,7 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	else
 	{
 		*sliceAvailable = false;
-		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: No more slices due to a failed read: status=%i, nread=%li\n", driverName, functionName, status, nread);
+		asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (asyn): status=%i, nread=%li\n", driverName, functionName, status, nread);
 	}
 	
 	// Restore the EOS characters
@@ -541,6 +557,8 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
 	
 	unlock();
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
 	
 	return status;
 	}
@@ -585,6 +603,8 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	bool sliceAvailable;
 	static const char *functionName = "getDoubleArray";
 	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
+	
 	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
 	
 	// Create the command to query array data. This could be the only command
@@ -594,9 +614,13 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 	remainingBytes = dataBytes;
 	readBytes = 0;
 	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i))\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end);
+	
 	// Send the command
 	status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
 	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Initial array query: request = %i; read = %li\n", driverName, functionName, inBytes, nread);
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
 	remainingBytes -= nread;
 	readBytes += nread;
@@ -607,18 +631,20 @@ asynStatus SPiiPlusController::getDoubleArray(char *output, const char *var, int
 		// Create the command to query the next slice of the array data
 		readFloat64SliceCmd(command, slice, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
 		
+		asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slice %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, slice);
+		
 		// Send the command
 		status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
 		asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Array slice #%i query: expected = %i; read = %li; sliceAvailable = %d\n", driverName, functionName, slice, inBytes, nread, sliceAvailable);
+		
+		asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 		
 		remainingBytes -= nread;
 		readBytes += nread;
 		slice++;
 	}
 	
-	// Restore the EOS characters
-	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
-	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
 	
 	return status;
 }
@@ -635,6 +661,8 @@ asynStatus SPiiPlusController::getIntegerArray(char *output, const char *var, in
 	bool sliceAvailable;
 	static const char *functionName = "getIntegerArray";
 	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
+	
 	std::fill(outString_, outString_ + MAX_CONTROLLER_STRING_SIZE, '\0');
 	
 	// Create the command to query array data. This could be the only command
@@ -644,9 +672,13 @@ asynStatus SPiiPlusController::getIntegerArray(char *output, const char *var, in
 	remainingBytes = dataBytes;
 	readBytes = 0;
 	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i))\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end);
+	
 	// Send the command
 	status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
 	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Initial array query: request = %i; read = %li\n", driverName, functionName, inBytes, nread);
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
 	remainingBytes -= nread;
 	readBytes += nread;
@@ -657,18 +689,20 @@ asynStatus SPiiPlusController::getIntegerArray(char *output, const char *var, in
 		// Create the command to query the next slice of the array data
 		readInt32SliceCmd(command, slice, var, idx1start, idx1end, idx2start, idx2end, &outBytes, &inBytes, &dataBytes);
 		
+		asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slice %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, slice);
+		
 		// Send the command
 		status = writeReadBinary((char*)command, outBytes, output+readBytes, inBytes, &nread, &sliceAvailable);
 		asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Array slice #%i query: expected = %i; read = %li; sliceAvailable = %d\n", driverName, functionName, slice, inBytes, nread, sliceAvailable);
+		
+		asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 		
 		remainingBytes -= nread;
 		readBytes += nread;
 		slice++;
 	}
 	
-	// Restore the EOS characters
-	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
-	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
 	
 	return status;
 }
@@ -676,11 +710,13 @@ asynStatus SPiiPlusController::getIntegerArray(char *output, const char *var, in
 asynStatus SPiiPlusController::poll()
 {
 	asynStatus status;
-	//static const char *functionName = "poll";
+	static const char *functionName = "poll";
 	
 	/*
 	 * Read position and status using binary queries here and parse the replies in the axis poll method
 	 */
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: POLL_START\n", driverName, functionName);
 	
 	status = getDoubleArray((char *)axisPosition_, "APOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
@@ -702,6 +738,8 @@ asynStatus SPiiPlusController::poll()
 	if (status != asynSuccess) return status;
 	status = getDoubleArray((char *)maxAcceleration_, "XACC", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
+	
+	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: POLL_END\n", driverName, functionName);
 	
 	return status;
 }
@@ -1721,6 +1759,8 @@ asynStatus SPiiPlusController::runProfile()
   std::string posData;
   static const char *functionName = "runProfile";
   
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
+
   if (profileAxes_.size() == 0)
   {
     strcpy(message, "No axes selected");
@@ -1862,6 +1902,8 @@ asynStatus SPiiPlusController::runProfile()
   cmd << axesToString(profileAxes_);
   status = writeReadAck(cmd);
   
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: point buffer fill start\n", driverName, functionName);
+  
   // Fill the point buffer, which can only hold 50 points
   for (ptIdx = 0; ptIdx < MIN(50, fullProfileSize_); ptIdx++)
   {
@@ -1872,6 +1914,8 @@ asynStatus SPiiPlusController::runProfile()
     // Increment the counter of points that have been loaded
     ptLoadedIdx++;
   }
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: point buffer fill end\n", driverName, functionName);
   
   if (fullProfileSize_ > 50)
   {
@@ -1903,6 +1947,8 @@ asynStatus SPiiPlusController::runProfile()
       // load the rest of the points as needed
       for (ptIdx=ptLoadedIdx; ptIdx<(ptLoadedIdx+ptFree); ptIdx++)
       {
+        asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: sending another point\n", driverName, functionName);
+        
         // Create and send the point command (should this be ptIdx+1?)
         cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
         status = writeReadAck(cmd);
@@ -1970,6 +2016,8 @@ asynStatus SPiiPlusController::runProfile()
     callParamCallbacks();
     unlock();
   }
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: profile move is done\n", driverName, functionName);
   
   // Confirm that the motors are done moving?
   
