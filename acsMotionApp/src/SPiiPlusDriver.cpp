@@ -354,7 +354,9 @@ asynStatus SPiiPlusController::writeReadInt(std::stringstream& cmd, int* val)
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
 	
 	size_t response;
+	lock();
 	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
@@ -401,7 +403,9 @@ asynStatus SPiiPlusController::writeReadDouble(std::stringstream& cmd, double* v
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
 	
 	size_t response;
+	lock();
 	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
@@ -449,7 +453,9 @@ asynStatus SPiiPlusController::writeReadAck(std::stringstream& cmd)
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
 	
 	size_t response;
+	lock();
 	asynStatus status = this->writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
