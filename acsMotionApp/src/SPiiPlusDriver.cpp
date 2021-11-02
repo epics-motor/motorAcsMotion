@@ -857,7 +857,7 @@ SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 
 asynStatus SPiiPlusAxis::poll(bool* moving)
 {
-	asynStatus status;
+	asynStatus status = asynSuccess;
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	//static const char *functionName = "poll";
 	std::stringstream cmd;
