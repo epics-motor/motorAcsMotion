@@ -1886,7 +1886,7 @@ asynStatus SPiiPlusController::runProfile()
   numElements = numPoints - 1;
   
   // Check valid range of start and end pulses;  these start at 1, not 0.
-  // numElements+1 is the decelleration element
+  // numElements+1 is the first deceleration element
   if ((startPulses < 1)           || (startPulses > numElements+1) ||
       (endPulses   < startPulses) || (endPulses   > numElements+1)) {
     executeOK = false;
@@ -1914,8 +1914,10 @@ asynStatus SPiiPlusController::runProfile()
   
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
-    startPulsePos = pAxes_[pulseAxis]->profilePositions_[startPulses];
-    endPulsePos = pAxes_[pulseAxis]->profilePositions_[endPulses];
+    startPulsePos = pAxes_[pulseAxis]->fullProfilePositions_[numAccelSegments_+startPulses-1];
+    // NOTE: When endPulses == numPoints, following calculation results in a position a little beyond the last user-specified position.
+    //       endPulses should really have a max of numPoints-1.
+    endPulsePos = pAxes_[pulseAxis]->fullProfilePositions_[numAccelSegments_+endPulses-1];
   }
   else
   {
@@ -1946,10 +1948,11 @@ asynStatus SPiiPlusController::runProfile()
     }
   }
   
-  //
-  pulseInterval = (endPulsePos - startPulsePos) / numElements;
+  // numPulses occur between startPulses and endPulses, which means the pulseInterval can be different from the movement interval
+  pulseInterval = (endPulsePos - startPulsePos) / numPulses;
   
   // PEG_I axis, width, first_point, interval, last_point
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, startPulsePos, endPulsePos, numPulses, pulseInterval);
   cmd << "PEG_I " << pulseAxis << ", " << pulseWidth << ", " << startPulsePos << ", " << pulseInterval << ", " << endPulsePos;
   status = writeReadAck(cmd);
   
