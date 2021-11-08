@@ -934,7 +934,7 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 asynStatus SPiiPlusAxis::getMaxParams()
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
-	asynStatus status;
+	asynStatus status = asynSuccess;
 	double motorRecResolution;
 	double maxVelocity, maxAcceleration;
 	std::stringstream cmd;
@@ -1921,28 +1921,28 @@ asynStatus SPiiPlusController::runProfile()
   }
   else
   {
-    int relStartPosition;
+    double relStartPosition;
     double displacement;
     
     // TODO: convert this value from steps to EGU
     // Get the starting position of the pulse axis (in what units?) -- how to specify the specific axis?
     lock();
-    getIntegerParam(motorPosition_, &relStartPosition);
+    getDoubleParam(pulseAxis, motorPosition_, &relStartPosition);
     unlock();
     
     // Sum all the user-specified relative displacements to find the pulse positions, adding them to the starting position
-    // Note: the profilePreDistance_ gets the axis to the 0th user-specified profile point, which is why the loop starts from 1
-    displacement = pAxes_[pulseAxis]->profilePreDistance_;
-    for (i=1; i<numPoints; i++)
+    // Note: the 0th position is the starting point, which is why the loop starts from 1
+    displacement = 0;
+    for (i=1; i<(numAccelSegments_+numPoints); i++)
     {
-      displacement += pAxes_[pulseAxis]->profilePositions_[i];
-      if (i == startPulses)
+      displacement += pAxes_[pulseAxis]->fullProfilePositions_[i];
+      if (i == (numAccelSegments_+startPulses-1))
       {
-          startPulsePos = relStartPosition + displacement;
+          startPulsePos = relStartPosition * pAxes_[pulseAxis]->resolution_ + displacement;
       }
-      if (i == endPulses)
+      if (i == (numAccelSegments_+endPulses-1))
       {
-          endPulsePos = relStartPosition + displacement;
+          endPulsePos = relStartPosition * pAxes_[pulseAxis]->resolution_ + displacement;
           break;
       }
     }
@@ -1952,7 +1952,7 @@ asynStatus SPiiPlusController::runProfile()
   pulseInterval = (endPulsePos - startPulsePos) / numPulses;
   
   // PEG_I axis, width, first_point, interval, last_point
-  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, startPulsePos, endPulsePos, numPulses, pulseInterval);
+  asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, startPulsePos, endPulsePos, numPulses, pulseInterval);
   cmd << "PEG_I " << pulseAxis << ", " << pulseWidth << ", " << startPulsePos << ", " << pulseInterval << ", " << endPulsePos;
   status = writeReadAck(cmd);
   
