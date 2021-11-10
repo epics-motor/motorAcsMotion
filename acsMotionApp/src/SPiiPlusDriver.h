@@ -191,6 +191,7 @@ public:
 	void createAccDecPositions(SPiiPlusAxis* axis, int moveMode, int numPoints, double preTimeMax, double postTimeMax, double preVelocity, double postVelocity);
 	asynStatus runProfile();
 	int getNumAccelSegments(double time);
+	long int calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses);
 	asynStatus writeReadInt(std::stringstream& cmd, int* val);
 	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
 	asynStatus writeReadAck(std::stringstream& cmd);

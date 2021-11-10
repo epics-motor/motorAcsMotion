@@ -1706,6 +1706,34 @@ void SPiiPlusController::calculateDataCollectionInterval()
   dataCollectionInterval_ = time / maxProfilePoints_;
 }
 
+long int SPiiPlusController::calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses)
+{
+  long int currentPulse;
+  double rawPulse;
+  //static const char *functionName = "calculateCurrentPulse";
+
+  if (currentPoint < startPulse)
+  {
+    currentPulse = 0;
+  }
+  else if (currentPoint > endPulse)
+  {
+    currentPulse = numPulses;
+  }
+  else
+  {
+    /*
+     * currentPulse = (currentPoint - startPulse) * ( (numPulses - 1) / (endPulse - startPulse) ) + 1
+     */
+    rawPulse = (currentPoint - startPulse) * ( (numPulses - 1) / (double)(endPulse - startPulse) ) + 1;
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: rawPulse = %lf, currentPoint = %i, startPulse = %i, endPulse = %i, numPulses = %i\n", driverName, functionName, rawPulse, currentPoint, startPulse, endPulse, numPulses);
+
+    currentPulse = lrint(rawPulse);
+  }
+  
+  return currentPulse;
+}
+
 /** Function to execute a coordinated move of multiple axes. */
 asynStatus SPiiPlusController::executeProfile()
 {
@@ -1974,6 +2002,7 @@ asynStatus SPiiPlusController::runProfile()
   
   lock();
   setIntegerParam(profileCurrentPoint_, ptExecIdx);
+  setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx, startPulses, endPulses, numPulses));
   callParamCallbacks();
   unlock();
   
@@ -2048,9 +2077,15 @@ asynStatus SPiiPlusController::runProfile()
       lock();
       // Only report the current point of the user-specified array
       if (ptExecIdx > numAccelSegments_)
+      {
         setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
+        setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses));
+      }
       else
+      {
         setIntegerParam(profileCurrentPoint_, 0);
+        setIntegerParam(profileActualPulses_, 0);
+      }
       callParamCallbacks();
       unlock();
     }
@@ -2096,12 +2131,21 @@ asynStatus SPiiPlusController::runProfile()
     lock();
     // Stop updating current point when numPoints is reached
     if (ptExecIdx < numAccelSegments_)
+    {
       // This only gets executed if the user-specified profile has very few points in it
       setIntegerParam(profileCurrentPoint_, 0);
+      setIntegerParam(profileActualPulses_, 0);
+    }
     else if ((ptExecIdx >= numAccelSegments_) && (ptExecIdx < numAccelSegments_+numPoints))
+    {
       setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
+      setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses));
+    }
     else
+    {
       setIntegerParam(profileCurrentPoint_, numPoints);
+      setIntegerParam(profileActualPulses_, calculateCurrentPulse(numPoints, startPulses, endPulses, numPulses));
+    }
     callParamCallbacks();
     unlock();
   }
