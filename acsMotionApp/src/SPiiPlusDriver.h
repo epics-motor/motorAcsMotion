@@ -104,9 +104,9 @@
 #define SPIIPLUS_AXIS_STATUS_ENCPROC    1<<29
 
 // drvInfo strings for extra parameters that the XPS controller supports
-#define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
+#define SPiiPlusHomingMethodString             "SPIIPLUS_HOMING_METHOD"
 #define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
-#define SPiiPlusMaxAccelerationString              "SPIIPLUS_MAX_ACCELERATION"
+#define SPiiPlusMaxAccelerationString          "SPIIPLUS_MAX_ACCELERATION"
 #define SPiiPlusReadIntVarString               "SPIIPLUS_READ_INT_VAR"
 #define SPiiPlusWriteIntVarString              "SPIIPLUS_WRITE_INT_VAR"
 #define SPiiPlusReadRealVarString              "SPIIPLUS_READ_REAL_VAR"
@@ -114,7 +114,13 @@
 #define SPiiPlusStartProgramString             "SPIIPLUS_START_"
 #define SPiiPlusStopProgramString              "SPIIPLUS_STOP_"
 #define SPiiPlusSafeTorqueOffString            "SPIIPLUS_SAFE_TORQUE_OFF"
-#define SPiiPlusTestString                      "SPIIPLUS_TEST"
+#define SPiiPlusPulseAxisString                "SPIIPLUS_PULSE_AXIS"
+#define SPiiPlusPEGEngEncCodeString            "SPIIPLUS_PEG_ENG_ENC_CODE"
+#define SPiiPlusPEGOutAssignCodeString         "SPIIPLUS_PEG_OUT_ASSIGN_CODE"
+#define SPiiPlusPOUTSOutputIndexString         "SPIIPLUS_POUTS_OUTPUT_INDEX"
+#define SPiiPlusPOUTSBitCodeString             "SPIIPLUS_POUTS_BIT_CODE"
+#define SPiiPlusPulseWidthString               "SPIIPLUS_PULSE_WIDTH"
+#define SPiiPlusTestString                     "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
     const char *programName;
@@ -221,6 +227,12 @@ protected:
 	int SPiiPlusStartProgram_;
 	int SPiiPlusStopProgram_;
 	int SPiiPlusSafeTorqueOff_;
+	int SPiiPlusPulseAxis_;
+	int SPiiPlusPEGEngEncCode_;
+	int SPiiPlusPEGOutAssignCode_;
+	int SPiiPlusPOUTSOutputIndex_;
+	int SPiiPlusPOUTSBitCode_;
+	int SPiiPlusPulseWidth_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	

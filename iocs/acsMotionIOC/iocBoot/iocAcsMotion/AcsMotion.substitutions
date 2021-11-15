@@ -45,6 +45,13 @@ pattern
 {pm1:,  8,    2000,      2000, ACS1,    7,     2.0,    4}
 }
 
+file "$(TOP)/db/SPiiPlusPEG.db"
+{
+pattern
+{R,     PORT, NAXES,  NPOINTS, NPULSES, TIMEOUT}
+{pm1:,  ACS1,     8,     2000,    2000,     2.0}
+}
+
 file "$(TOP)/db/SPiiPlusAxisExtra.db"
 {
 pattern

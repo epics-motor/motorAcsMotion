@@ -56,7 +56,13 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusStartProgramString,               asynParamInt32,   &SPiiPlusStartProgram_);
 	createParam(SPiiPlusStopProgramString,                asynParamInt32,   &SPiiPlusStopProgram_);
 	createParam(SPiiPlusSafeTorqueOffString,              asynParamInt32,   &SPiiPlusSafeTorqueOff_);
-	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
+	createParam(SPiiPlusPulseAxisString,                  asynParamInt32,   &SPiiPlusPulseAxis_);
+	createParam(SPiiPlusPEGEngEncCodeString,              asynParamOctet,   &SPiiPlusPEGEngEncCode_);
+	createParam(SPiiPlusPEGOutAssignCodeString,           asynParamOctet,   &SPiiPlusPEGOutAssignCode_);
+	createParam(SPiiPlusPOUTSOutputIndexString,           asynParamInt32,   &SPiiPlusPOUTSOutputIndex_);
+	createParam(SPiiPlusPOUTSBitCodeString,               asynParamOctet,   &SPiiPlusPOUTSBitCode_);
+	createParam(SPiiPlusPulseWidthString,                 asynParamFloat64, &SPiiPlusPulseWidth_);
+	createParam(SPiiPlusTestString,                       asynParamInt32,   &SPiiPlusTest_);
 	
 	if (status)
 	{
@@ -1770,7 +1776,8 @@ asynStatus SPiiPlusController::runProfile()
   int numPoints, numPulses;
   int numElements;
   int executeStatus;
-  int pulseAxis;
+  int pulseAxis, outputIndex;
+  std::string pegEngEncCode, pegOutAssignCode, poutsBitCode;
   double pulseWidth;
   double startPulsePos, endPulsePos, pulseInterval;
   double position;
@@ -1807,6 +1814,13 @@ asynStatus SPiiPlusController::runProfile()
   getIntegerParam(profileEndPulses_,   &endPulses);
   getIntegerParam(profileNumPoints_,   &numPoints);
   getIntegerParam(profileNumPulses_,   &numPulses);
+  //
+  getIntegerParam(SPiiPlusPulseAxis_,        &pulseAxis);
+  getStringParam(SPiiPlusPEGEngEncCode_,     pegEngEncCode);
+  getStringParam(SPiiPlusPEGOutAssignCode_,  pegOutAssignCode);
+  getIntegerParam(SPiiPlusPOUTSOutputIndex_, &outputIndex);
+  getStringParam(SPiiPlusPOUTSBitCode_,      poutsBitCode);
+  getDoubleParam(SPiiPlusPulseWidth_,        &pulseWidth);
   
   sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
   setStringParam(profileExecuteMessage_, message);
@@ -1922,23 +1936,19 @@ asynStatus SPiiPlusController::runProfile()
     goto done;
   }
   
-  // Hard-code the pulse axis for now
-  pulseAxis = 0;
-  
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: pulseAxis=%i, pegEngEncCode=%s, pegOutAssignCode=%s, outputIndex=%i, poutsBitCode=%s\n", driverName, functionName, pulseAxis, pegEngEncCode.c_str(), pegOutAssignCode.c_str(), outputIndex, poutsBitCode.c_str());
+
   // Assign PEG engine to an encoder
   // ASSIGNPEG axis, engines_to_encoders_code, gp_out_assign_code
-  cmd << "ASSIGNPEG " << pulseAxis << ", 0x0, 0x0";
+  cmd << "ASSIGNPEG " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
   status = writeReadAck(cmd);
   
   // Assign PEG output to output pins
   // ASSIGNPOUTS axis, output_index, bit_code
-  cmd << "ASSIGNPOUTS " << pulseAxis << ", 0x0, 0x0";
+  cmd << "ASSIGNPOUTS " << pulseAxis << ", " << outputIndex << ", " << poutsBitCode;
   status = writeReadAck(cmd);
   
   /* Define trajectory output pulses */
-  
-  // Hard-code 0.5ms pulses for now
-  pulseWidth = 0.5;
   
   if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
   {
