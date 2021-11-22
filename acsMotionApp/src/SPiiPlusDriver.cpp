@@ -932,7 +932,7 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 asynStatus SPiiPlusAxis::getMaxParams()
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
-	asynStatus status;
+	asynStatus status = asynSuccess;
 	double motorRecResolution;
 	double maxVelocity, maxAcceleration;
 	std::stringstream cmd;
