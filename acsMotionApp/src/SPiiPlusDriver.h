@@ -3,6 +3,8 @@
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
+#include "SPiiPlusComm.h"
+
 #define SPIIPLUS_MAX_AXES 64
 #define SPIIPLUS_MAX_DC_AXES 8
 #define SPIIPLUS_CMD_TIMEOUT 0.05
@@ -166,13 +168,6 @@ public:
 	void createAccDecPositions(SPiiPlusAxis* axis, int moveMode, int numPoints, double preTimeMax, double postTimeMax, double preVelocity, double postVelocity);
 	asynStatus runProfile();
 	int getNumAccelSegments(double time);
-	asynStatus writeReadInt(std::stringstream& cmd, int* val);
-	asynStatus writeReadDouble(std::stringstream& cmd, double* val);
-	asynStatus writeReadAck(std::stringstream& cmd);
-	asynStatus getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
-	asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
-	asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
-	asynStatus binaryErrorCheck(char *buffer);
 	asynStatus readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value);
 	asynStatus writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value);
