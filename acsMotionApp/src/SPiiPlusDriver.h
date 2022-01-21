@@ -3,7 +3,7 @@
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
-#include "SPiiPlusComm.h"
+#include "SPiiPlusCommDriver.h"
 
 #define SPIIPLUS_MAX_AXES 64
 #define SPIIPLUS_MAX_DC_AXES 8
@@ -177,6 +177,7 @@ public:
 	
 protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
+	SPiiPlusComm *pComm_;
 	std::string instring;
 	
 	#define FIRST_SPIIPLUS_PARAM SPiiPlusHomingMethod_
@@ -231,5 +232,6 @@ private:
 	epicsInt32 motorStatus_[SPIIPLUS_MAX_AXES];
 	
 friend class SPiiPlusAxis;
+friend class SPiiPlusComm;
 };
 #define NUM_SPIIPLUS_PARAMS ((int)(&LAST_SPIIPLUS_PARAM - &FIRST_SPIIPLUS_PARAM + 1))

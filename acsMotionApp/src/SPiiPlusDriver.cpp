@@ -20,8 +20,8 @@
 #include <epicsString.h>
 #include <cantProceed.h>
 
+// SPiiPlusDriver.h includes SPiiPlusCommDriver.h
 #include "SPiiPlusDriver.h"
-#include "SPiiPlusComm.h"
 
 static const char *driverName = "SPiiPlusController";
 
@@ -40,7 +40,17 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
  drvUser_(NULL),
  initialized_(false)
 {
-	asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
+	const char* ACSCommPortSuffix = "Comm";
+	char* ACSCommPortName;
+	// Don't connect to the asyn port associated with the controller's ip address, the comm class will do that
+	//asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
+	
+	ACSCommPortName = (char *) malloc(strlen(ACSPortName) + strlen(ACSCommPortSuffix));
+	strcpy(ACSCommPortName, ACSPortName);
+	strcat(ACSCommPortName, ACSCommPortSuffix);
+	// should numAxes be hard-coded to zero for the comm class?
+	pComm_ = new SPiiPlusComm(ACSCommPortName, asynPortName, numAxes);
+	
 	pAxes_ = (SPiiPlusAxis **)(asynMotorController::pAxes_);
 	std::stringstream cmd;
 	static const char *functionName="SPiiPlusController";
@@ -58,22 +68,14 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusSafeTorqueOffString,              asynParamInt32,   &SPiiPlusSafeTorqueOff_);
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
-	if (status)
-	{
-		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
-		"SPiiPlusController::SPiiPlusController: cannot connect to SPii+ controller\n");
-		
-		return;
-	}
-	
 	// Initialize this variable to avoid freeing random memory
 	fullProfileTimes_ = 0;
 	
 	// Query setup parameters
-	getIntegerArray(this, (char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
-	getDoubleArray(this, (char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
-	getDoubleArray(this, (char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
-	getDoubleArray(this, (char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
+	pComm_->getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
+	pComm_->getDoubleArray((char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
+	pComm_->getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
 	
 	for (int index = 0; index < numAxes; index += 1)
 	{
@@ -354,25 +356,25 @@ asynStatus SPiiPlusController::poll()
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: POLL_START\n", driverName, functionName);
 	
-	status = getDoubleArray(this, (char *)axisPosition_, "APOS", 0, numAxes_-1, 0, 0);
+	status = pComm_->getDoubleArray((char *)axisPosition_, "APOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = getIntegerArray(this, (char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
+	status = pComm_->getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = getDoubleArray(this, (char *)feedbackPosition_, "FPOS", 0, numAxes_-1, 0, 0);
+	status = pComm_->getDoubleArray((char *)feedbackPosition_, "FPOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = getIntegerArray(this, (char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
+	status = pComm_->getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = getIntegerArray(this, (char *)motorStatus_, "MST", 0, numAxes_-1, 0, 0);
+	status = pComm_->getIntegerArray((char *)motorStatus_, "MST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
 	// TODO: only get max values when idle polling
-	status = getDoubleArray(this, (char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
+	status = pComm_->getDoubleArray((char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
-	status = getDoubleArray(this, (char *)maxAcceleration_, "XACC", 0, numAxes_-1, 0, 0);
+	status = pComm_->getDoubleArray((char *)maxAcceleration_, "XACC", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: POLL_END\n", driverName, functionName);
@@ -391,7 +393,7 @@ asynStatus SPiiPlusController::readGlobalIntVar(asynUser *pasynUser, epicsInt32 
 	
 	// ?GETVAR(tag)
 	cmd << "?GETVAR(" << tag << ")";
-	status = writeReadInt(this, cmd, value);
+	status = pComm_->writeReadInt(cmd, value);
 	
 	return status;
 }
@@ -407,7 +409,7 @@ asynStatus SPiiPlusController::writeGlobalIntVar(asynUser *pasynUser, epicsInt32
 	
 	// SETVAR(value, tag)
 	cmd << "SETVAR(" << value << "," << tag << ")";
-	status = writeReadAck(this, cmd);
+	status = pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -423,7 +425,7 @@ asynStatus SPiiPlusController::readGlobalRealVar(asynUser *pasynUser, epicsFloat
 	
 	// ?GETVAR(tag)
 	cmd << "?GETVAR(" << tag << ")";
-	status = writeReadDouble(this, cmd, value);
+	status = pComm_->writeReadDouble(cmd, value);
 	
 	return status;
 }
@@ -439,7 +441,7 @@ asynStatus SPiiPlusController::writeGlobalRealVar(asynUser *pasynUser, epicsFloa
 	
 	// SETVAR(value, tag)
 	cmd << "SETVAR(" << value << "," << tag << ")";
-	status = writeReadAck(this, cmd);
+	status = pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -458,7 +460,7 @@ asynStatus SPiiPlusController::startProgram(asynUser *pasynUser, epicsFloat64 va
 	
 	// START buffer,label -or- START buffer,line_no
 	cmd << "START " << buffer << "," << ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName;
-	status = writeReadAck(this, cmd);
+	status = pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -476,7 +478,7 @@ asynStatus SPiiPlusController::stopProgram(asynUser *pasynUser, epicsFloat64 val
 	asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: drvUser->programName = %s, drvUser->len = %i\n", driverName, functionName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->programName, ((SPiiPlusDrvUser_t *)pasynUser->drvUser)->len);
 	// STOP buffer
 	cmd << "STOP " << buffer;
-	status = writeReadAck(this, cmd);
+	status = pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -603,7 +605,7 @@ asynStatus SPiiPlusAxis::setMaxVelocity(double maxVelocity)
 	
 	// (EGU/s) / (EGU/step) * (SPiiPlus-units/step) = (SPiiPlus-units/s)
 	cmd << "XVEL(" << axisNo_ << ")=" << (maxVelocity / motorRecResolution * resolution_);
-	status = writeReadAck(controller, cmd);
+	status = controller->pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -620,7 +622,7 @@ asynStatus SPiiPlusAxis::setMaxAcceleration(double maxAcceleration)
 	
 	// (EGU/s^2) / (EGU/step) * (SPiiPlus-units/step) = (SPiiPlus-units/s^2)
 	cmd << "XACC(" << axisNo_ << ")=" << (maxAcceleration / motorRecResolution * resolution_);
-	status = writeReadAck(controller, cmd);
+	status = controller->pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -635,24 +637,24 @@ asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity,
 	//cmd << "XACC(" << axisNo_ << ")=" << ((acceleration + 10) * resolution_);
 	//status = writeReadAck(controller, cmd);
 	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
-	status = writeReadAck(controller, cmd);
+	status = controller->pComm_->writeReadAck(cmd);
 	cmd << "DEC(" << axisNo_ << ")=" << (acceleration * resolution_);
-	status = writeReadAck(controller, cmd);
+	status = controller->pComm_->writeReadAck(cmd);
 	
 	//cmd << "XVEL(" << axisNo_ << ")=" << ((maxVelocity + 10) * resolution_);
 	//status = writeReadAck(controller, cmd);
 	cmd << "VEL(" << axisNo_ << ")=" << (maxVelocity * resolution_);
-	status = writeReadAck(controller, cmd);
+	status = controller->pComm_->writeReadAck(cmd);
 	
 	if (relative)
 	{
 		cmd << "PTP/r " << axisNo_ << ", " << (position * resolution_);
-		status = writeReadAck(controller, cmd);
+		status = controller->pComm_->writeReadAck(cmd);
 	}
 	else
 	{
 		cmd << "PTP " << axisNo_ << ", " << (position * resolution_);
-		status = writeReadAck(controller, cmd);
+		status = controller->pComm_->writeReadAck(cmd);
 	}
 	
 	return status;
@@ -665,7 +667,7 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	std::stringstream cmd;
 	
 	cmd << "SET APOS(" << axisNo_ << ")=" << (position * resolution_);
-	status = writeReadAck(controller, cmd);
+	status = controller->pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -677,7 +679,7 @@ asynStatus SPiiPlusAxis::stop(double acceleration)
 	std::stringstream cmd;
 	
 	cmd << "HALT " << axisNo_;
-	status = writeReadAck(controller, cmd);
+	status = controller->pComm_->writeReadAck(cmd);
 	
 	return status;
 }
@@ -703,7 +705,7 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 		{
 			cmd << "DISABLE " << axisNo_;
 		}
-		status = writeReadAck(controller, cmd);
+		status = controller->pComm_->writeReadAck(cmd);
 	}
 	
 	return status;
@@ -795,7 +797,7 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 		// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
 		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_);
 		//asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
-		status = writeReadAck(controller, cmd);
+		status = controller->pComm_->writeReadAck(cmd);
 	}
 	return status;
 }
@@ -968,11 +970,11 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
   {
     // Delete the array, if it exists, in case maxProfilePoints changed
     cmd << "#VGV DC_DATA_" << (i+1);
-    writeReadAck(this, cmd);
+    pComm_->writeReadAck(cmd);
     
     // Data recorded with the DC command will reside in DC_DATA_{1,2,3,4,5,6,7,8} 2D arrays
     cmd << "GLOBAL REAL DC_DATA_" << (i+1) << " (3)(" << maxProfilePoints << ")";
-    writeReadAck(this, cmd);
+    pComm_->writeReadAck(cmd);
   }
   
   return status;
@@ -1077,14 +1079,14 @@ asynStatus SPiiPlusController::buildProfile()
   {
     // Query the max velocity and acceleration
     cmd << "?XVEL(" << j << ")";
-    status = writeReadDouble(this, cmd, &maxVelocity);
+    status = pComm_->writeReadDouble(cmd, &maxVelocity);
     if (status) {
       buildOK = false;
       sprintf(message, "Error getting XVEL, status=%d\n", status);
       goto done;
     }
     cmd << "?XACC(" << j << ")";
-    status = writeReadDouble(this, cmd, &maxAcceleration);
+    status = pComm_->writeReadDouble(cmd, &maxAcceleration);
     if (status) {
       buildOK = false;
       sprintf(message, "Error getting XACC, status=%d\n", status);
@@ -1450,7 +1452,7 @@ asynStatus SPiiPlusController::runProfile()
     }
   }
   cmd << axesToString(profileAxes_) << ", " << positionStr.str();
-  status = writeReadAck(this, cmd);
+  status = pComm_->writeReadAck(cmd);
   // Should this be done after every command in this method?
   if (status)
   {
@@ -1485,7 +1487,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Zero the data array
     cmd << "FILL(0,DC_DATA_" << (i+1) << ")";
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
     
     // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
     if (pAxes_[profileAxes_[i]]->dummy_)
@@ -1496,7 +1498,7 @@ asynStatus SPiiPlusController::runProfile()
       posData = "FPOS";
     cmd << "DC/sw " << profileAxes_[i] << ",DC_DATA_" << (i+1) << "," << maxProfilePoints_ << ",";
     cmd << lround(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[i] << "),PE(" << profileAxes_[i] << "),TIME";
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
   }
   
   /*
@@ -1509,7 +1511,7 @@ asynStatus SPiiPlusController::runProfile()
    */
   // Ugly hack: A GO is needed here to start data collection.
   cmd << "GO " << axesToString(profileAxes_);
-  status = writeReadAck(this, cmd);
+  status = pComm_->writeReadAck(cmd);
   
   // configure pulse output
 
@@ -1536,7 +1538,7 @@ asynStatus SPiiPlusController::runProfile()
     cmd << "PATH/twr ";
   }
   cmd << axesToString(profileAxes_);
-  status = writeReadAck(this, cmd);
+  status = pComm_->writeReadAck(cmd);
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: point buffer fill start\n", driverName, functionName);
   
@@ -1545,7 +1547,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Create and send the point command (should this be ptIdx+1?)
     cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
     
     // Increment the counter of points that have been loaded
     ptLoadedIdx++;
@@ -1557,7 +1559,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
     
     while (ptLoadedIdx < fullProfileSize_)
     {
@@ -1575,7 +1577,7 @@ asynStatus SPiiPlusController::runProfile()
       
       // Query the number of free points in the buffer (the first axis in the vector is the lead axis)
       cmd << "?GSFREE(" << profileAxes_[0] << ")";
-      status = writeReadInt(this, cmd, &ptFree);
+      status = pComm_->writeReadInt(cmd, &ptFree);
       
       // Increment the counter of points that have been executed
       ptExecIdx += ptFree;
@@ -1587,7 +1589,7 @@ asynStatus SPiiPlusController::runProfile()
         
         // Create and send the point command (should this be ptIdx+1?)
         cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
-        status = writeReadAck(this, cmd);
+        status = pComm_->writeReadAck(cmd);
       }
       
       // Increment the counter of points that have been loaded
@@ -1605,17 +1607,17 @@ asynStatus SPiiPlusController::runProfile()
     
     // End the point sequence
     cmd << "ENDS " << axesToString(profileAxes_);
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
   }
   else
   {
     // End the point sequence
     cmd << "ENDS " << axesToString(profileAxes_);
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
     
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
   }
   
   // Wait for the remaining points to be executed
@@ -1635,7 +1637,7 @@ asynStatus SPiiPlusController::runProfile()
     
     // Query the number of free points in the buffer
     cmd << "?GSFREE(" << profileAxes_[0] << ")";
-    status = writeReadInt(this, cmd, &ptFree);
+    status = pComm_->writeReadInt(cmd, &ptFree);
     
     // Update the number of points that have been executed
     ptExecIdx = fullProfileSize_ - 50 + ptFree;
@@ -1691,7 +1693,7 @@ asynStatus SPiiPlusController::runProfile()
   }
   // Send the group move command
   cmd << axesToString(profileAxes_) << ", " << positionStr.str();
-  status = writeReadAck(this, cmd);
+  status = pComm_->writeReadAck(cmd);
 
   // Wait for the motors to get there
   wakeupPoller();
@@ -1764,7 +1766,7 @@ asynStatus SPiiPlusController::stopDataCollection()
   for (i=0; i<axesToRecord; i++)
   {
     cmd << "STOPDC/s " << profileAxes_[i];
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
   }
   
   return status;
@@ -1783,7 +1785,7 @@ asynStatus SPiiPlusController::abortProfile()
   if (executeState != PROFILE_EXECUTE_DONE)
   {
     cmd << "HALT " << axesToString(profileAxes_);
-    status = writeReadAck(this, cmd);
+    status = pComm_->writeReadAck(cmd);
     
     halted_ = true;
   }
@@ -1841,7 +1843,7 @@ asynStatus SPiiPlusController::readbackProfile()
     pAxis = getAxis(j);
     
     sprintf(var, "DC_DATA_%i", j+1);
-    status = getDoubleArray(this, buffer, var, 0, 2, 0, (maxProfilePoints_-1));
+    status = pComm_->getDoubleArray(buffer, var, 0, 2, 0, (maxProfilePoints_-1));
     if (status != asynSuccess)
     {
       readbackOK = false;
@@ -1892,7 +1894,7 @@ asynStatus SPiiPlusController::test()
   
   buffer = (char *)calloc(MAX_BINARY_READ_LEN, sizeof(char));
   
-  status = getDoubleArray(this, buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
+  status = pComm_->getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
   
   free(buffer);
   
