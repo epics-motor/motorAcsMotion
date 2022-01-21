@@ -128,7 +128,7 @@ asynStatus SPiiPlusComm::writeReadDouble(std::stringstream& cmd, double* val)
 	size_t response;
 	lock();
 	asynStatus status = writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
-	lock();
+	unlock();
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
@@ -178,7 +178,7 @@ asynStatus SPiiPlusComm::writeReadAck(std::stringstream& cmd)
 	size_t response;
 	lock();
 	asynStatus status = writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
-	lock();
+	unlock();
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
@@ -280,7 +280,7 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	pasynOctetSyncIO->setInputEos(pasynUserComm_, "\r", 1);
 	pasynOctetSyncIO->setOutputEos(pasynUserComm_, "\r", 1);
 	
-	lock();
+	unlock();
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
 	
