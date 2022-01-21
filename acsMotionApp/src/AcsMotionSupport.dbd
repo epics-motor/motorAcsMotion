@@ -1,1 +1,2 @@
 registrar(AcsMotionRegister)
+registrar(AcsMotionCommRegister)
