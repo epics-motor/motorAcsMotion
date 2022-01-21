@@ -31,6 +31,11 @@ R2-0 is a release based on the master branch.
 * Commit [d442ffa](https://github.com/epics-motor/motorAcsMotion/commit/d442ffa3f711377495de9390102b6d8eee6293ba): Initialized status in the getMaxParams.
 * Commit [9e48329](https://github.com/epics-motor/motorAcsMotion/commit/9e48329927849ca802c89d17c900ca7985e9a219): Corrected the name of a dbd file in the example IOC.
 
+#### Notes
+
+* Triggering has not been implemented yet.
+* Homing to a dedicated home switch requires writing custom code to run on the controller, since there isn't a predefined homing routine for that.
+
 ## __R1-0 (2020-08-06)__
 Initial release
 
