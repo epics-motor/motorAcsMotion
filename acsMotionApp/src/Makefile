@@ -13,6 +13,7 @@ LIBRARY_IOC = AcsMotion
 SRCS += SPiiPlusBinComm.cpp
 SRCS += SPiiPlusCommDriver.cpp
 SRCS += SPiiPlusDriver.cpp
+SRCS += SPiiPlusAuxDriver.cpp
 
 AcsMotion_LIBS += motor asyn
 AcsMotion_LIBS += $(EPICS_BASE_IOC_LIBS)
