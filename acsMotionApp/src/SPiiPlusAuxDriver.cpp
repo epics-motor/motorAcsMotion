@@ -56,6 +56,14 @@ SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortNam
                     this);
 }
 
+
+// This is needed to resolve a build error: undefined reference to `vtable for SPiiPlusAuxIO'
+SPiiPlusAuxIO::~SPiiPlusAuxIO()
+{ 
+  // Does the SPiiPlusComm destructor need to be explicitly called here?
+}
+
+
 void SPiiPlusAuxIO::pollerThread()
 {
   /* This function runs in a separate thread.  It waits for the poll time */
@@ -120,6 +128,9 @@ void SPiiPlusAuxIO::pollerThread()
 }
 
 
+extern "C"
+{
+
 /** Configuration command, called directly or from iocsh */
 extern "C" int SPiiPlusAuxIOConfig(const char *auxIOPortName, const char* asynPortName, int numChannels, int pollPeriod)
 {
@@ -127,7 +138,6 @@ extern "C" int SPiiPlusAuxIOConfig(const char *auxIOPortName, const char* asynPo
   pSPiiPlusAuxIO = NULL;  /* This is just to avoid compiler warnings */
   return(asynSuccess);
 }
-
 
 static const iocshArg configArg0 = { "Aux IO port name", iocshArgString};
 static const iocshArg configArg1 = { "Asyn port name",   iocshArgString};
@@ -143,11 +153,11 @@ static void configCallFunc(const iocshArgBuf *args)
   SPiiPlusAuxIOConfig(args[0].sval, args[1].sval, args[2].ival, args[3].ival);
 }
 
-void SPiiPlusAuxIORegister(void)
+void AcsMotionAuxIORegister(void)
 {
   iocshRegister(&configFuncDef,configCallFunc);
 }
 
-extern "C" {
-epicsExportRegistrar(SPiiPlusAuxIORegister);
+epicsExportRegistrar(AcsMotionAuxIORegister);
+
 }

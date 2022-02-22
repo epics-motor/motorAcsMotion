@@ -21,12 +21,13 @@
 class SPiiPlusAuxIO : public asynPortDriver {
 public:
   SPiiPlusAuxIO(const char *auxIOPortName, const char* asynPortName, int numChannels, int pollPeriod);
-
+  ~SPiiPlusAuxIO();
+  
   /* These are the methods that we override from asynPortDriver */
   //virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
   //virtual asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
-  virtual asynStatus writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask);
-  virtual void report(FILE *fp, int details);
+  //virtual asynStatus writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask);
+  //virtual void report(FILE *fp, int details);
   // These should be private but are called from C
   virtual void pollerThread(void);
 
