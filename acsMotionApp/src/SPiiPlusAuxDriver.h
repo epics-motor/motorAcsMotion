@@ -20,7 +20,7 @@
 
 class SPiiPlusAuxIO : public asynPortDriver {
 public:
-  SPiiPlusAuxIO(const char *auxIOPortName, const char* asynPortName, int numChannels, int pollPeriod);
+  SPiiPlusAuxIO(const char *auxIOPortName, const char* asynPortName, int numChannels, double pollPeriod);
   ~SPiiPlusAuxIO();
   
   /* These are the methods that we override from asynPortDriver */

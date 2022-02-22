@@ -18,13 +18,13 @@ static void SPiiPlusAuxIOThreadC(void *pPvt)
 }
 
 
-SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortName, int numChannels, int pollPeriod)
+SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortName, int numChannels, double pollPeriod)
   : asynPortDriver(ACSAuxPortName, numChannels, 
       asynInt32Mask | asynUInt32DigitalMask | asynDrvUserMask,  // Interfaces that we implement
       asynUInt32DigitalMask,                                    // Interfaces that do callbacks
       ASYN_MULTIDEVICE | ASYN_CANBLOCK, 1, /* ASYN_CANBLOCK=1, ASYN_MULTIDEVICE=1, autoConnect=1 */
       0, 0),  /* Default priority and stack size */
-    pollPeriod_(pollPeriod / 1000.0),
+    pollPeriod_(pollPeriod),
     forceCallback_(1)
 {
   const char* ACSCommPortSuffix = "Comm";
@@ -132,7 +132,7 @@ extern "C"
 {
 
 /** Configuration command, called directly or from iocsh */
-extern "C" int SPiiPlusAuxIOConfig(const char *auxIOPortName, const char* asynPortName, int numChannels, int pollPeriod)
+extern "C" int SPiiPlusAuxIOConfig(const char *auxIOPortName, const char* asynPortName, int numChannels, double pollPeriod)
 {
   SPiiPlusAuxIO *pSPiiPlusAuxIO = new SPiiPlusAuxIO(auxIOPortName, asynPortName, numChannels, pollPeriod);
   pSPiiPlusAuxIO = NULL;  /* This is just to avoid compiler warnings */
@@ -142,7 +142,7 @@ extern "C" int SPiiPlusAuxIOConfig(const char *auxIOPortName, const char* asynPo
 static const iocshArg configArg0 = { "Aux IO port name", iocshArgString};
 static const iocshArg configArg1 = { "Asyn port name",   iocshArgString};
 static const iocshArg configArg2 = { "Num channels",     iocshArgInt};
-static const iocshArg configArg3 = { "Poll period (ms)", iocshArgInt};
+static const iocshArg configArg3 = { "Poll period (s)",  iocshArgDouble};
 static const iocshArg * const configArgs[] = {&configArg0,
                                               &configArg1,
                                               &configArg2,
@@ -150,7 +150,7 @@ static const iocshArg * const configArgs[] = {&configArg0,
 static const iocshFuncDef configFuncDef = {"SPiiPlusAuxIO", 4, configArgs};
 static void configCallFunc(const iocshArgBuf *args)
 {
-  SPiiPlusAuxIOConfig(args[0].sval, args[1].sval, args[2].ival, args[3].ival);
+  SPiiPlusAuxIOConfig(args[0].sval, args[1].sval, args[2].ival, args[3].dval);
 }
 
 void AcsMotionAuxIORegister(void)
