@@ -9,6 +9,15 @@
 
 static const char *driverName = "SPiiPlusAuxIO";
 
+
+/* C Function which runs the profile thread */ 
+static void SPiiPlusAuxIOThreadC(void *pPvt)
+{
+  SPiiPlusAuxIO *pAux = (SPiiPlusAuxIO*)pPvt;
+  pAux->pollerThread();
+}
+
+
 SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortName, int numChannels, int pollPeriod)
   : asynPortDriver(ACSAuxPortName, numChannels, 
       asynInt32Mask | asynUInt32DigitalMask | asynDrvUserMask,  // Interfaces that we implement
@@ -32,18 +41,19 @@ SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortNam
    * has I/O channels.  Assume the user will specify a numChannels that is appropriate for their controller.
    */
   
-  
-  
-  
   // Digital I/O parameters
   createParam(digitalInputString,      asynParamUInt32Digital, &digitalInput_);
   createParam(digitalOutputString,     asynParamUInt32Digital, &digitalOutput_);
   createParam(analogInputString,       asynParamFloat64,       &analogInput_);
   createParam(analogOutputString,      asynParamFloat64,       &analogOutput_);
   
-  // Create poller event?
-  
-  
+  /* Start the thread to poll digital inputs and do callbacks to 
+   * device support */
+  epicsThreadCreate("SPiiPlusAuxIOPoller",
+                    epicsThreadPriorityLow,
+                    epicsThreadGetStackSize(epicsThreadStackMedium),
+                    (EPICSTHREADFUNC)SPiiPlusAuxIOThreadC,
+                    this);
 }
 
 void SPiiPlusAuxIO::pollerThread()
@@ -56,12 +66,6 @@ void SPiiPlusAuxIO::pollerThread()
 
   while(1) { 
     lock();
-    
-    // loop over all the input/output channels
-    
-    /* IAMHERE
-     * The SPiiPlusAuxDriver class needs an instance of SPiiPlusController to be able to access controller methods using friendship
-     */
     
     // assume each IN() or OUT() channel always returns 32 bits
     // max IN/OUT/AIN/AOUT index before MP4U returns an error is 255 -> 256
@@ -114,11 +118,6 @@ void SPiiPlusAuxIO::pollerThread()
     epicsThreadSleep(pollPeriod_);
   }
 }
-
-
-
-
-
 
 
 /** Configuration command, called directly or from iocsh */
