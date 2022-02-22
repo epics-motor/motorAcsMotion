@@ -147,7 +147,7 @@ static const iocshArg * const AcsMotionConfigArgs[] = {&configArg0,
                                               &configArg1,
                                               &configArg2,
                                               &configArg3};
-static const iocshFuncDef configAcsMotionAuxIO = {"AcsMotionConfigAuxIO", 4, AcsMotionConfigArgs};
+static const iocshFuncDef configAcsMotionAuxIO = {"AcsMotionAuxIOConfig", 4, AcsMotionConfigArgs};
 static void AcsMotionAuxIOCallFunc(const iocshArgBuf *args)
 {
   AcsMotionAuxIOConfig(args[0].sval, args[1].sval, args[2].ival, args[3].dval);

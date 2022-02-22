@@ -1,7 +1,9 @@
 # Use the following line if motorAcsMotion is built as a submodule of motor
 #!iocshLoad("$(MOTOR)/iocsh/ACS_Motion_tcp.iocsh", "INSTANCE=ACS1,IP_ADDR=10.0.0.100,NUM_AXES=8,IDLE_POLL=0.2")
+#!iocshLoad("$(MOTOR)/iocsh/ACS_Motion_AuxIO_tcp.iocsh", "INSTANCE=ACS1_IO,IP_ADDR=10.0.0.100,NUM_CHAN=32,POLL_PERIOD=0.1")
 # Use the following line if motorAcsMotion is built as a standalone module
 iocshLoad("$(MOTOR_ACSMOTION)/iocsh/ACS_Motion_tcp.iocsh", "INSTANCE=ACS1,IP_ADDR=10.0.0.100,NUM_AXES=8,IDLE_POLL=0.2")
+iocshLoad("$(MOTOR_ACSMOTION)/iocsh/ACS_Motion_AuxIO_tcp.iocsh", "INSTANCE=ACS1_IO,IP_ADDR=10.0.0.100,NUM_CHAN=32,POLL_PERIOD=0.1")
 
 # Load motor records
 dbLoadTemplate("AcsMotion.substitutions","P=$(PREFIX)")
