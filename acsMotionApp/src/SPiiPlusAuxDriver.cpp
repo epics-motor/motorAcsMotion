@@ -132,7 +132,7 @@ extern "C"
 {
 
 /** Configuration command, called directly or from iocsh */
-extern "C" int SPiiPlusAuxIOConfig(const char *auxIOPortName, const char* asynPortName, int numChannels, double pollPeriod)
+int AcsMotionAuxIOConfig(const char *auxIOPortName, const char* asynPortName, int numChannels, double pollPeriod)
 {
   SPiiPlusAuxIO *pSPiiPlusAuxIO = new SPiiPlusAuxIO(auxIOPortName, asynPortName, numChannels, pollPeriod);
   pSPiiPlusAuxIO = NULL;  /* This is just to avoid compiler warnings */
@@ -141,21 +141,21 @@ extern "C" int SPiiPlusAuxIOConfig(const char *auxIOPortName, const char* asynPo
 
 static const iocshArg configArg0 = { "Aux IO port name", iocshArgString};
 static const iocshArg configArg1 = { "Asyn port name",   iocshArgString};
-static const iocshArg configArg2 = { "Num channels",     iocshArgInt};
+static const iocshArg configArg2 = { "Max I/O channels", iocshArgInt};
 static const iocshArg configArg3 = { "Poll period (s)",  iocshArgDouble};
-static const iocshArg * const configArgs[] = {&configArg0,
+static const iocshArg * const AcsMotionConfigArgs[] = {&configArg0,
                                               &configArg1,
                                               &configArg2,
                                               &configArg3};
-static const iocshFuncDef configFuncDef = {"SPiiPlusAuxIO", 4, configArgs};
-static void configCallFunc(const iocshArgBuf *args)
+static const iocshFuncDef configAcsMotionAuxIO = {"AcsMotionConfigAuxIO", 4, AcsMotionConfigArgs};
+static void AcsMotionAuxIOCallFunc(const iocshArgBuf *args)
 {
-  SPiiPlusAuxIOConfig(args[0].sval, args[1].sval, args[2].ival, args[3].dval);
+  AcsMotionAuxIOConfig(args[0].sval, args[1].sval, args[2].ival, args[3].dval);
 }
 
 void AcsMotionAuxIORegister(void)
 {
-  iocshRegister(&configFuncDef,configCallFunc);
+  iocshRegister(&configAcsMotionAuxIO,AcsMotionAuxIOCallFunc);
 }
 
 epicsExportRegistrar(AcsMotionAuxIORegister);
