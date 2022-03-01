@@ -1,0 +1,20 @@
+
+record(ao,"$(P)$(R)") {
+    field(DTYP,"asynFloat64")
+    field(OUT,"@asyn($(PORT) $(CHAN))ANALOG_OUTPUT")
+    field(DRVL,"$(DRVL)")
+    field(LOPR,"$(LOPR)")
+    field(DRVH,"$(DRVH)")
+    field(HOPR,"$(HOPR)")
+    field(PREC,"$(PREC)")
+}
+
+record(ai,"$(P)$(R)_RBV")
+{
+        field(SCAN,"$(SCAN)")
+        field(DTYP,"asynFloat64Average")
+        field(INP,"@asyn($(PORT) $(CHAN))ANALOG_OUTPUT")
+        field(HOPR,"$(HOPR)")
+        field(LOPR,"$(LOPR)")
+        field(PREC,"$(PREC)")
+}

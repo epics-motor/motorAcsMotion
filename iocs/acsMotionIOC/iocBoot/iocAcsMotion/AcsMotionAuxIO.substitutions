@@ -1,0 +1,62 @@
+#
+# Note: the P macro, which is passed to all of the databases in this file, has the value $(PREFIX) and is set in the envVars file
+#
+
+file "$(TOP)/db/SPiiPlusAuxLi.db"
+{
+pattern
+{R,   PORT,    CHAN,    SCAN}
+{li1,  ACS1_IO,    0,      2}
+{li2,  ACS1_IO,    1,      2}
+{li3,  ACS1_IO,    2,      2}
+{li4,  ACS1_IO,    3,      2}
+{li5,  ACS1_IO,    4,      2}
+}
+
+file "$(TOP)/db/SPiiPlusAuxLo.db"
+{
+pattern
+{R,   PORT,    CHAN,    SCAN}
+{lo1,  ACS1_IO,    0,      2}
+{lo2,  ACS1_IO,    1,      2}
+{lo3,  ACS1_IO,    2,      2}
+{lo4,  ACS1_IO,    3,      2}
+{lo5,  ACS1_IO,    4,      2}
+}
+
+file "$(TOP)/db/SPiiPlusAuxAo.db"
+{
+pattern
+{R,    PORT,    CHAN,    SCAN, DRVL, DRVH, LOPR, HOPR, PREC}
+{ao1,  ACS1_IO,    0,       2, -100,  100, -100,  100,    3}
+{ao2,  ACS1_IO,    1,       2, -100,  100, -100,  100,    3}
+{ao3,  ACS1_IO,    2,       2, -100,  100, -100,  100,    3}
+{ao4,  ACS1_IO,    3,       2, -100,  100, -100,  100,    3}
+{ao5,  ACS1_IO,    4,       2, -100,  100, -100,  100,    3}
+{ao6,  ACS1_IO,    5,       2, -100,  100, -100,  100,    3}
+{ao7,  ACS1_IO,    6,       2, -100,  100, -100,  100,    3}
+{ao8,  ACS1_IO,    7,       2, -100,  100, -100,  100,    3}
+{ao9,  ACS1_IO,    8,       2, -100,  100, -100,  100,    3}
+{ao10, ACS1_IO,    9,       2, -100,  100, -100,  100,    3}
+{ao11, ACS1_IO,   10,       2, -100,  100, -100,  100,    3}
+{ao12, ACS1_IO,   11,       2, -100,  100, -100,  100,    3}
+{ao13, ACS1_IO,   12,       2, -100,  100, -100,  100,    3}
+{ao14, ACS1_IO,   13,       2, -100,  100, -100,  100,    3}
+{ao15, ACS1_IO,   14,       2, -100,  100, -100,  100,    3}
+{ao16, ACS1_IO,   15,       2, -100,  100, -100,  100,    3}
+{ao17, ACS1_IO,   16,       2, -100,  100, -100,  100,    3}
+{ao18, ACS1_IO,   17,       2, -100,  100, -100,  100,    3}
+{ao19, ACS1_IO,   18,       2, -100,  100, -100,  100,    3}
+{ao20, ACS1_IO,   19,       2, -100,  100, -100,  100,    3}
+}
+
+file "$(TOP)/db/SPiiPlusAuxAi.db"
+{
+pattern
+{R,    PORT,    CHAN,    SCAN, LOPR, HOPR, PREC}
+{ai0,  ACS1_IO,    0,       2, -100,  100,    3}
+{ai1,  ACS1_IO,    1,       2, -100,  100,    3}
+{ai2,  ACS1_IO,    2,       2, -100,  100,    3}
+{ai3,  ACS1_IO,    3,       2, -100,  100,    3}
+}
+

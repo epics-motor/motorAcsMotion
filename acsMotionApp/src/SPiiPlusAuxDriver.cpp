@@ -20,8 +20,8 @@ static void SPiiPlusAuxIOThreadC(void *pPvt)
 
 SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortName, int numChannels, double pollPeriod)
   : asynPortDriver(ACSAuxPortName, numChannels, 
-      asynInt32Mask | asynUInt32DigitalMask | asynDrvUserMask,  // Interfaces that we implement
-      asynUInt32DigitalMask,                                    // Interfaces that do callbacks
+      asynInt32Mask | asynFloat64Mask | asynUInt32DigitalMask | asynDrvUserMask,  // Interfaces that we implement
+      asynInt32Mask | asynFloat64Mask | asynUInt32DigitalMask,                                    // Interfaces that do callbacks
       ASYN_MULTIDEVICE | ASYN_CANBLOCK, 1, /* ASYN_CANBLOCK=1, ASYN_MULTIDEVICE=1, autoConnect=1 */
       0, 0),  /* Default priority and stack size */
     pollPeriod_(pollPeriod),
@@ -74,6 +74,9 @@ void SPiiPlusAuxIO::pollerThread()
 
   while(1) { 
     lock();
+    
+    // assume status is good
+    status = asynSuccess;
     
     // assume each IN() or OUT() channel always returns 32 bits
     // max IN/OUT/AIN/AOUT index before MP4U returns an error is 255 -> 256
