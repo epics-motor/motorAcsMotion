@@ -130,6 +130,56 @@ asynStatus SPiiPlusAuxIO::writeUInt32Digital(asynUser *pasynUser, epicsUInt32 va
 }
 
 
+asynStatus SPiiPlusAuxIO::writeAnalog(epicsUInt32 chan, epicsFloat64 value)
+{
+  asynStatus status=asynSuccess;
+  std::stringstream cmd;
+  static const char *functionName = "writeAnalog";
+  
+  // Enforce the limits to avoid controller errors
+  if (value > 100.0)
+    value = 100.0;
+  if (value < -100.0)
+    value = -100.0;
+  
+  // The analog output value is in percent [-100, 100]
+  cmd << "AOUT(" << chan << ") = " << value;
+  status = pComm_->writeReadAck(cmd);
+   
+  if (status == asynSuccess) {
+    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, 
+             "%s:%s, port %s, wrote value=%lf, chan=%d\n",
+             driverName, functionName, this->portName, value, chan);
+  } else {
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
+             "%s:%s, port %s, ERROR writing value=%lf, chan=%d, status=%d\n",
+             driverName, functionName, this->portName, value, chan, status);
+  }
+  
+  return status;
+}
+
+
+asynStatus SPiiPlusAuxIO::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
+{
+  int function = pasynUser->reason;
+  int status=asynSuccess;
+  int chan;
+  //static const char *functionName = "writeFloat64";
+
+  this->getAddress(pasynUser, &chan);
+  setDoubleParam(chan, function, value);
+
+  if (function == analogOutput_) {
+      status = writeAnalog(chan, value);
+  }
+  
+  callParamCallbacks(chan);
+  
+  return (status==0) ? asynSuccess : asynError;
+}
+
+
 void SPiiPlusAuxIO::pollerThread()
 {
   /* This function runs in a separate thread.  It waits for the poll time */
