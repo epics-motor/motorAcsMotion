@@ -31,7 +31,6 @@ SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortNam
 {
   const char* ACSCommPortSuffix = "Comm";
   char* ACSCommPortName;
-  int i;
   
   ACSCommPortName = (char *) malloc(strlen(ACSAuxPortName) + strlen(ACSCommPortSuffix));
   strcpy(ACSCommPortName, ACSAuxPortName);
@@ -49,12 +48,6 @@ SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortNam
   createParam(digitalOutputString,     asynParamUInt32Digital, &digitalOutput_);
   createParam(analogInputString,       asynParamFloat64,       &analogInput_);
   createParam(analogOutputString,      asynParamFloat64,       &analogOutput_);
-  
-  // Initial the previous value arrays so they always update the first time
-  for (i=0; i<maxAddr; i++) {
-    prev_in_[i] = -1;
-    prev_out_[i] = -1;
-  }
   
   /* Start the thread to poll digital inputs and do callbacks to 
    * device support */
@@ -239,11 +232,11 @@ void SPiiPlusAuxIO::pollerThread()
         setUIntDigitalParam(i, digitalOutput_, out_[i], 0xFFFFFFFF);
       }
       
-      if (forceCallback_) {
-        forceCallback_ = 0;
-      }
-      
       callParamCallbacks(i);
+    }
+    
+    if (forceCallback_) {
+      forceCallback_ = 0;
     }
     
     unlock();
