@@ -120,9 +120,7 @@ void SPiiPlusAuxIO::pollerThread()
         forceCallback_ = 0;
       }
       
-      for (i=0; i<maxAddr; i++) {
-        callParamCallbacks(i);
-      }
+      callParamCallbacks(i);
     }
     
     unlock();
