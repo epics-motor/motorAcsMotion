@@ -1,4 +1,6 @@
 
+#include <sstream>
+
 #include <iocsh.h>
 #include <epicsThread.h>
 #include <epicsExport.h>
@@ -61,6 +63,70 @@ SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortNam
 SPiiPlusAuxIO::~SPiiPlusAuxIO()
 { 
   // Does the SPiiPlusComm destructor need to be explicitly called here?
+}
+
+
+asynStatus SPiiPlusAuxIO::writeBits(epicsUInt32 chan, epicsUInt32 mask, epicsUInt32 value)
+{
+  asynStatus status=asynSuccess;
+  std::stringstream cmd;
+  int i;
+  epicsUInt32 outValue=0, outMask;
+  static const char *functionName = "writeBits";
+  
+  if (mask == 0xffffffff)
+  {
+    // Use OUT(#) to set all 32-bits simultaneously
+    cmd << "OUT(" << chan << ") = " << value;
+    status = pComm_->writeReadAck(cmd);
+  }
+  else
+  {
+    // Use OUT(#).# to set the desired bits individually
+    for (i=0, outMask=1; i<MAX_BITS; i++, outMask = (outMask<<1)) {
+      //      
+      outValue = ((value & outMask) == 0) ? 0 : 1; 
+      if ((mask & outMask) != 0) {
+        // Only write the value if the mask has this bit set
+        cmd << "OUT(" << chan << ")." << i << " = " << outValue;
+        status = pComm_->writeReadAck(cmd);
+      }
+    }
+  }
+  
+  if (status == asynSuccess) {
+    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, 
+             "%s:%s, port %s, wrote outValue=0x%x, value=0x%x, mask=0x%x, chan=%d\n",
+             driverName, functionName, this->portName, outValue, value, mask, chan);
+  } else {
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, 
+             "%s:%s, port %s, ERROR writing outValue=0x%x, value=0x%x, mask=0x%x, chan=%d, status=%d\n",
+             driverName, functionName, this->portName, outValue, value, mask, chan, status);
+  }
+  
+  return status;
+}
+
+
+asynStatus SPiiPlusAuxIO::writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask)
+{
+  int function = pasynUser->reason;
+  int status=asynSuccess;
+  int chan;
+  //static const char *functionName = "writeUInt32Digital";
+
+  // Get the channel num
+  status = getAddress(pasynUser, &chan);
+
+  setUIntDigitalParam(chan, function, value, mask);
+   
+  if (function == digitalOutput_) {
+      status |= writeBits(chan, mask, value);
+  }
+  
+  callParamCallbacks();
+  
+  return (status==0) ? asynSuccess : asynError;
 }
 
 

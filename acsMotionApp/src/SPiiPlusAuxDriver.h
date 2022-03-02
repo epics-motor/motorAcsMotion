@@ -26,10 +26,13 @@ public:
   /* These are the methods that we override from asynPortDriver */
   //virtual asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
   //virtual asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
-  //virtual asynStatus writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask);
+  virtual asynStatus writeUInt32Digital(asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask);
   //virtual void report(FILE *fp, int details);
   // These should be private but are called from C
   virtual void pollerThread(void);
+
+  /* These are methods unique to SPiiPlusAuxIO */
+  asynStatus writeBits(epicsUInt32 chan, epicsUInt32 mask, epicsUInt32 value);
 
 protected:
   SPiiPlusComm *pComm_;
