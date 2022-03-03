@@ -7,4 +7,7 @@ record(ai,"$(P)$(C)$(R)")
         field(HOPR,"$(HOPR)")
         field(LOPR,"$(LOPR)")
         field(PREC,"$(PREC)")
+        # Convert % output into volts
+        field(ASLO,"0.1")
+        field(EGU, "V")
 }

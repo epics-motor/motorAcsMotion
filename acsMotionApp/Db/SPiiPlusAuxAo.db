@@ -7,6 +7,10 @@ record(ao,"$(P)$(C)$(R)") {
     field(DRVH,"$(DRVH)")
     field(HOPR,"$(HOPR)")
     field(PREC,"$(PREC)")
+    # Convert % output into volts
+    field(ASLO,"0.1")
+    field(EGU, "V")
+
 }
 
 record(ai,"$(P)$(C)$(R)_RBV")
@@ -17,4 +21,7 @@ record(ai,"$(P)$(C)$(R)_RBV")
         field(HOPR,"$(HOPR)")
         field(LOPR,"$(LOPR)")
         field(PREC,"$(PREC)")
+        # Convert % output into volts
+        field(ASLO,"0.1")
+        field(EGU, "V")
 }
