@@ -1,0 +1,23 @@
+# ### ACS_Motion_AuxIO_tcp.iocsh ###
+
+#- ###################################################
+#- INSTANCE         - Name of asyn port to create
+#- IP_ADDR          - IP address of controller
+#- TCP_PORT         - Controller's TCP control port
+#-                  - Default: 701
+#-
+#- NUM_CHAN         - Optional: Number of axes to create for this controller
+#-                    Default: 1
+#-
+#- POLL_PERIOD        - Optional: Poll period (s)
+#-                    Default: 1.0
+#-
+#- ###################################################
+
+# ACS MP4U ethernet connection settings
+drvAsynIPPortConfigure("$(INSTANCE)_ETH","$(IP_ADDR):$(PORT=701)",0,0,0)
+asynOctetSetInputEos( "$(INSTANCE)_ETH", -1, "\r")
+asynOctetSetOutputEos("$(INSTANCE)_ETH", -1, "\r")
+
+AcsMotionAuxIOConfig("$(INSTANCE)", "$(INSTANCE)_ETH", $(NUM_CHAN=32), $(POLL_PERIOD=0.1))
+

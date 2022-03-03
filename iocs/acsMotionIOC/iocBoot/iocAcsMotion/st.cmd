@@ -16,6 +16,8 @@ dbLoadRecords("$(MOTOR)/db/motorUtil.db", "P=$(PREFIX)")
 
 ## 
 < AcsMotion.cmd
+##
+< AcsMotionAuxIO.cmd
 
 iocInit
 

@@ -23,10 +23,11 @@ SPiiPlusComm::SPiiPlusComm(const char *commPortName, const char* asynPortName, i
       0, 0),  /* Default priority and stack size */
     forceCallback_(1)
 {
+	// Can numChannels be zero for this class?
+	
 	// 
 	asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserComm_, NULL);
 	
-	// TODO: this needs to move into the comm class
 	if (status)
 	{
 		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
