@@ -1,5 +1,5 @@
 
-record(bi,"$(P)$(R)")
+record(bi,"$(P)$(C)$(R)")
 {
         field(PINI, "YES")
         field(DTYP,"asynUInt32Digital")

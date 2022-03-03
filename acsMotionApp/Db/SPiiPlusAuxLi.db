@@ -1,5 +1,5 @@
 
-record(longin,"$(P)$(R)")
+record(longin,"$(P)$(C)$(R)")
 {
         field(PINI, "YES")
         field(DTYP,"asynUInt32Digital")

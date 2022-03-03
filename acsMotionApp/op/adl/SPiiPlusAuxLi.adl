@@ -117,7 +117,7 @@ composite {
 				height=20
 			}
 			monitor {
-				chan="$(P)$(R).VAL"
+				chan="$(P)$(C)$(R).VAL"
 				clr=54
 				bclr=4
 			}
@@ -133,7 +133,7 @@ composite {
 				height=20
 			}
 			control {
-				chan="$(P)$(R).DESC"
+				chan="$(P)$(C)$(R).DESC"
 				clr=14
 				bclr=2
 			}

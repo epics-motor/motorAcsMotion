@@ -1,5 +1,5 @@
 
-record(ai,"$(P)$(R)")
+record(ai,"$(P)$(C)$(R)")
 {
         field(SCAN,"$(SCAN)")
         field(DTYP,"asynFloat64Average")

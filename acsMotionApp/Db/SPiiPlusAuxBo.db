@@ -1,5 +1,5 @@
 
-record(bo,"$(P)$(R)")
+record(bo,"$(P)$(C)$(R)")
 {
         field(DTYP,"asynUInt32Digital")
         field(OUT,"@asynMask($(PORT) $(CHAN) $(MASK))DIGITAL_OUTPUT")
@@ -8,7 +8,7 @@ record(bo,"$(P)$(R)")
         field(ONAM, "High")
 }
 
-record(bi,"$(P)$(R)_RBV")
+record(bi,"$(P)$(C)$(R)_RBV")
 {
         field(PINI, "YES")
         field(DTYP,"asynUInt32Digital")

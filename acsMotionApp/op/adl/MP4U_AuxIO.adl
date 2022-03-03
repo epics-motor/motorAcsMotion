@@ -389,7 +389,7 @@ composite {
 								height=95
 							}
 							"composite name"=""
-							"composite file"="MP4U_UnitIO.adl;P=$(P),U=0,A1=0,A2=1,A3=2,A4=3"
+							"composite file"="MP4U_UnitIO.adl;P=$(P),C=$(C),U=0,A1=0,A2=1,A3=2,A4=3"
 						}
 						composite {
 							object {
@@ -399,7 +399,7 @@ composite {
 								height=95
 							}
 							"composite name"=""
-							"composite file"="MP4U_UnitIO.adl;P=$(P),U=1,A1=4,A2=5,A3=6,A4=7"
+							"composite file"="MP4U_UnitIO.adl;P=$(P),C=$(C),U=1,A1=4,A2=5,A3=6,A4=7"
 						}
 						composite {
 							object {
@@ -409,7 +409,7 @@ composite {
 								height=95
 							}
 							"composite name"=""
-							"composite file"="MP4U_UnitIO.adl;P=$(P),U=2,A1=8,A2=9,A3=10,A4=11"
+							"composite file"="MP4U_UnitIO.adl;P=$(P),C=$(C),U=2,A1=8,A2=9,A3=10,A4=11"
 						}
 						composite {
 							object {
@@ -419,7 +419,7 @@ composite {
 								height=95
 							}
 							"composite name"=""
-							"composite file"="MP4U_UnitIO.adl;P=$(P),U=3,A1=12,A2=13,A3=14,A4=15"
+							"composite file"="MP4U_UnitIO.adl;P=$(P),C=$(C),U=3,A1=12,A2=13,A3=14,A4=15"
 						}
 					}
 				}
@@ -448,7 +448,7 @@ composite {
 			"basic attribute" {
 				clr=14
 			}
-			textix="($(P))"
+			textix="($(P)$(C))"
 			align="horiz. centered"
 		}
 	}

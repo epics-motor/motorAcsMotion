@@ -104,7 +104,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxBi.adl;P=$(P),R=bi$(U):17"
+			"composite file"="SPiiPlusAuxBi.adl;P=$(P),C=$(C),R=bi$(U):17"
 		}
 		composite {
 			object {
@@ -114,7 +114,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxBi.adl;P=$(P),R=bi$(U):18"
+			"composite file"="SPiiPlusAuxBi.adl;P=$(P),C=$(C),R=bi$(U):18"
 		}
 		composite {
 			object {
@@ -124,7 +124,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxBi.adl;P=$(P),R=bi$(U):19"
+			"composite file"="SPiiPlusAuxBi.adl;P=$(P),C=$(C),R=bi$(U):19"
 		}
 		composite {
 			object {
@@ -134,7 +134,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxBi.adl;P=$(P),R=bi$(U):20"
+			"composite file"="SPiiPlusAuxBi.adl;P=$(P),C=$(C),R=bi$(U):20"
 		}
 	}
 }
@@ -155,7 +155,7 @@ composite {
 				height=30
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxBo.adl;P=$(P),R=bo$(U):8"
+			"composite file"="SPiiPlusAuxBo.adl;P=$(P),C=$(C),R=bo$(U):8"
 		}
 		composite {
 			object {
@@ -165,7 +165,7 @@ composite {
 				height=30
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxBo.adl;P=$(P),R=bo$(U):9"
+			"composite file"="SPiiPlusAuxBo.adl;P=$(P),C=$(C),R=bo$(U):9"
 		}
 	}
 }
@@ -186,7 +186,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAi.adl;P=$(P),R=ai$(A1)"
+			"composite file"="SPiiPlusAuxAi.adl;P=$(P),C=$(C),R=ai$(A1)"
 		}
 		composite {
 			object {
@@ -196,7 +196,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAi.adl;P=$(P),R=ai$(A2)"
+			"composite file"="SPiiPlusAuxAi.adl;P=$(P),C=$(C),R=ai$(A2)"
 		}
 		composite {
 			object {
@@ -206,7 +206,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAi.adl;P=$(P),R=ai$(A3)"
+			"composite file"="SPiiPlusAuxAi.adl;P=$(P),C=$(C),R=ai$(A3)"
 		}
 		composite {
 			object {
@@ -216,7 +216,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAi.adl;P=$(P),R=ai$(A4)"
+			"composite file"="SPiiPlusAuxAi.adl;P=$(P),C=$(C),R=ai$(A4)"
 		}
 	}
 }
@@ -237,7 +237,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAo.adl;P=$(P),R=ao$(A1)"
+			"composite file"="SPiiPlusAuxAo.adl;P=$(P),C=$(C),R=ao$(A1)"
 		}
 		composite {
 			object {
@@ -247,7 +247,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAo.adl;P=$(P),R=ao$(A2)"
+			"composite file"="SPiiPlusAuxAo.adl;P=$(P),C=$(C),R=ao$(A2)"
 		}
 		composite {
 			object {
@@ -257,7 +257,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAo.adl;P=$(P),R=ao$(A3)"
+			"composite file"="SPiiPlusAuxAo.adl;P=$(P),C=$(C),R=ao$(A3)"
 		}
 		composite {
 			object {
@@ -267,7 +267,7 @@ composite {
 				height=20
 			}
 			"composite name"=""
-			"composite file"="SPiiPlusAuxAo.adl;P=$(P),R=ao$(A4)"
+			"composite file"="SPiiPlusAuxAo.adl;P=$(P),C=$(C),R=ao$(A4)"
 		}
 	}
 }
