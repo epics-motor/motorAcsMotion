@@ -3,7 +3,7 @@ record(bo,"$(P)$(C)$(R)")
 {
         field(DTYP,"asynUInt32Digital")
         field(OUT,"@asynMask($(PORT) $(CHAN) $(MASK))DIGITAL_OUTPUT")
-        field(VAL, "1")
+        field(VAL, "0")
         field(ZNAM, "Low")
         field(ONAM, "High")
 }
