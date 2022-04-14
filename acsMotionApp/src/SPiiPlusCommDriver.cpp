@@ -281,6 +281,9 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	// Restore the EOS characters
 	pasynOctetSyncIO->setInputEos(pasynUserComm_, "\r", 1);
 	pasynOctetSyncIO->setOutputEos(pasynUserComm_, "\r", 1);
+
+	// Free up allocated memory
+	free(packetBuffer);
 	
 	unlock();
 	
