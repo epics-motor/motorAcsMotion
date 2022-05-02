@@ -42,6 +42,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 {
 	const char* ACSCommPortSuffix = "Comm";
 	char* ACSCommPortName;
+	std::stringstream cmd;
 	// Don't connect to the asyn port associated with the controller's ip address, the comm class will do that
 	//asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
 	
@@ -76,6 +77,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	pComm_->getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	pComm_->getIntegerArray((char *)encoderType_, "E_TYPE", 0, numAxes_-1, 0, 0);
 	
 	for (int index = 0; index < numAxes; index += 1)
 	{
@@ -93,6 +95,14 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		
 		// axis resolution (used to convert motor record steps into controller EGU)
 		pAxes_[index]->resolution_ = stepperFactor_[index];
+		
+		// Initialize absolute encoders
+		if (encoderType_[index] > 4)
+		{
+			// Clear encoder error so absolute encoder position will be valid
+			cmd << "FCLEAR " << index;
+			pComm_->writeReadAck(cmd);
+		}
 		
 		// Initialize this variable to avoid freeing random memory
 		pAxes_[index]->fullProfilePositions_ = 0;
@@ -849,6 +859,7 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "  resolution: %.6e\n", resolution_);
   fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
   fprintf(fp, "  encoder offset: %lf\n", controller->encoderOffset_[axisNo_]);
+  fprintf(fp, "  encoder type: %i\n", controller->encoderType_[axisNo_]);
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "  max velocity: %lf\n", controller->maxVelocity_[axisNo_]);
   fprintf(fp, "  max acceleration: %lf\n", controller->maxAcceleration_[axisNo_]);

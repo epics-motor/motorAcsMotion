@@ -230,6 +230,7 @@ private:
 	epicsInt32 faultStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 axisStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 motorStatus_[SPIIPLUS_MAX_AXES];
+	epicsInt32 encoderType_[SPIIPLUS_MAX_AXES];
 	
 friend class SPiiPlusAxis;
 friend class SPiiPlusComm;
