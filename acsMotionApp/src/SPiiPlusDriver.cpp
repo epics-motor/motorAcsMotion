@@ -682,14 +682,9 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	asynStatus status;
 	std::stringstream cmd;
 	
-	cmd << "SET APOS(" << axisNo_ << ")=" << (position * resolution_);
+	// The controller automatically updates APOS and FPOS when RPOS is updated 
+	cmd << "SET RPOS(" << axisNo_ << ")=" << (position * resolution_);
 	status = controller->pComm_->writeReadAck(cmd);
-	
-	if (!dummy_)
-	{
-		cmd << "SET FPOS(" << axisNo_ << ")=" << (position * resolution_);
-		status = controller->pComm_->writeReadAck(cmd);
-	}
 	
 	return status;
 }
