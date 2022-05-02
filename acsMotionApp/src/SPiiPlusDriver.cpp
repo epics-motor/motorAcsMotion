@@ -685,6 +685,12 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	cmd << "SET APOS(" << axisNo_ << ")=" << (position * resolution_);
 	status = controller->pComm_->writeReadAck(cmd);
 	
+	if (!dummy_)
+	{
+		cmd << "SET FPOS(" << axisNo_ << ")=" << (position * resolution_);
+		status = controller->pComm_->writeReadAck(cmd);
+	}
+	
 	return status;
 }
 
