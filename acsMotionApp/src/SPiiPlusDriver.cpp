@@ -371,6 +371,13 @@ asynStatus SPiiPlusController::poll()
 	status = pComm_->getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
+	// RPOS = APOS if MFLAGS(index).#DEFCON=1
+	status = pComm_->getDoubleArray((char *)referencePosition_, "RPOS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)encoderPosition_, "EPOS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
 	status = pComm_->getDoubleArray((char *)feedbackPosition_, "FPOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	

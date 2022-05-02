@@ -223,6 +223,8 @@ private:
 	epicsFloat64 encoderFactor_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 encoderOffset_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 axisPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 encoderPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 referencePosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 feedbackPosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 maxVelocity_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 maxAcceleration_[SPIIPLUS_MAX_AXES];
