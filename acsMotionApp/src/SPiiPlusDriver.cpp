@@ -42,7 +42,6 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 {
 	const char* ACSCommPortSuffix = "Comm";
 	char* ACSCommPortName;
-	std::stringstream cmd;
 	// Don't connect to the asyn port associated with the controller's ip address, the comm class will do that
 	//asynStatus status = pasynOctetSyncIO->connect(asynPortName, 0, &pasynUserController_, NULL);
 	
