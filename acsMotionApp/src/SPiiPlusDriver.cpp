@@ -873,6 +873,8 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "Status for axis %i:\n", axisNo_);
   fprintf(fp, "  moving: %i\n", moving_);
   fprintf(fp, "  axisPosition: %lf\n", controller->axisPosition_[axisNo_]);
+  fprintf(fp, "  referencePosition: %lf\n", controller->referencePosition_[axisNo_]);
+  fprintf(fp, "  encoderPosition: %lf\n", controller->encoderPosition_[axisNo_]);
   fprintf(fp, "  feedbackPosition: %lf\n", controller->feedbackPosition_[axisNo_]);
   fprintf(fp, "  axis status: %i\n", controller->axisStatus_[axisNo_]);
   fprintf(fp, "  motor status: %i\n", controller->motorStatus_[axisNo_]);
