@@ -66,6 +66,25 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusStartProgramString,               asynParamInt32,   &SPiiPlusStartProgram_);
 	createParam(SPiiPlusStopProgramString,                asynParamInt32,   &SPiiPlusStopProgram_);
 	createParam(SPiiPlusSafeTorqueOffString,              asynParamInt32,   &SPiiPlusSafeTorqueOff_);
+	//
+	createParam(SPiiPlusStepFactorString,                 asynParamFloat64,   &SPiiPlusStepFactor_);
+	createParam(SPiiPlusEncTypeString,                    asynParamInt32,     &SPiiPlusEncType_);
+	createParam(SPiiPlusEnc2TypeString,                   asynParamInt32,     &SPiiPlusEnc2Type_);
+	createParam(SPiiPlusEncFactorString,                  asynParamFloat64,   &SPiiPlusEncFactor_);
+	createParam(SPiiPlusEnc2FactorString,                 asynParamFloat64,   &SPiiPlusEnc2Factor_);
+	//
+	createParam(SPiiPlusAxisPosString,                    asynParamFloat64,   &SPiiPlusAxisPos_);
+	createParam(SPiiPlusRefPosString,                     asynParamFloat64,   &SPiiPlusRefPos_);
+	createParam(SPiiPlusEncPosString,                     asynParamFloat64,   &SPiiPlusEncPos_);
+	createParam(SPiiPlusFdbkPosString,                    asynParamFloat64,   &SPiiPlusFdbkPos_);
+	createParam(SPiiPlusFdbk2PosString,                   asynParamFloat64,   &SPiiPlusFdbk2Pos_);
+	//
+	createParam(SPiiPlusRefOffsetString,                  asynParamFloat64,   &SPiiPlusRefOffset_);
+	createParam(SPiiPlusEncOffsetString,                  asynParamFloat64,   &SPiiPlusEncOffset_);
+	createParam(SPiiPlusEnc2OffsetString,                 asynParamFloat64,   &SPiiPlusEnc2Offset_);
+	createParam(SPiiPlusAbsEncOffsetString,               asynParamFloat64,   &SPiiPlusAbsEncOffset_);
+	createParam(SPiiPlusAbsEnc2OffsetString,              asynParamFloat64,   &SPiiPlusAbsEnc2Offset_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize this variable to avoid freeing random memory
@@ -75,7 +94,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
-	pComm_->getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	pComm_->getDoubleArray((char *)encoder2Factor_, "E2FAC", 0, numAxes_-1, 0, 0);
 	pComm_->getIntegerArray((char *)encoderType_, "E_TYPE", 0, numAxes_-1, 0, 0);
 	pComm_->getIntegerArray((char *)encoder2Type_, "E2_TYPE", 0, numAxes_-1, 0, 0);
 	
@@ -208,13 +227,25 @@ asynStatus SPiiPlusController::readInt32(asynUser *pasynUser, epicsInt32 *value)
 {
   int function = pasynUser->reason;
   int status = asynSuccess;
+  SPiiPlusAxis *pAxis;
   //static const char *functionName = "readInt32";
 
   *value = 0;
   
+  pAxis = this->getAxis(pasynUser);
+  if (!pAxis) return asynError; 
+  
   if (function == SPiiPlusReadIntVar_)
   {
     status = readGlobalIntVar(pasynUser, value);
+  }
+  else if (function == SPiiPlusEncType_)
+  {
+    *value = encoderType_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusEnc2Type_)
+  {
+    *value = encoder2Type_[pAxis->axisNo_];
   }
   /*else if (function == SPiiPlusSafeTorqueOff_) 
   {
@@ -287,13 +318,69 @@ asynStatus SPiiPlusController::readFloat64(asynUser *pasynUser, epicsFloat64 *va
 {
   int function = pasynUser->reason;
   int status = asynSuccess;
+  SPiiPlusAxis *pAxis;
   //static const char *functionName = "readFloat64";
 
   *value = 0;
   
+  pAxis = this->getAxis(pasynUser);
+  if (!pAxis) return asynError;
+  
   if (function == SPiiPlusReadRealVar_)
   {
     status = readGlobalRealVar(pasynUser, value);
+  }
+  else if (function == SPiiPlusStepFactor_)
+  {
+    *value = stepperFactor_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusEncFactor_)
+  {
+    *value = encoderFactor_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusEnc2Factor_)
+  {
+    *value = encoder2Factor_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusAxisPos_)
+  {
+    *value = axisPosition_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusRefPos_)
+  {
+    *value = referencePosition_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusEncPos_)
+  {
+    *value = encoderPosition_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusFdbkPos_)
+  {
+    *value = feedbackPosition_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusFdbk2Pos_)
+  {
+    *value = feedback2Position_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusRefOffset_)
+  {
+    *value = referenceOffset_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusEncOffset_)
+  {
+    *value = encoderOffset_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusEnc2Offset_)
+  {
+    *value = encoder2Offset_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusAbsEncOffset_)
+  {
+    *value = absoluteEncoderOffset_[pAxis->axisNo_];
+  }
+  else if (function == SPiiPlusAbsEnc2Offset_)
+  {
+    *value = absoluteEncoder2Offset_[pAxis->axisNo_];
   }
   else
   {

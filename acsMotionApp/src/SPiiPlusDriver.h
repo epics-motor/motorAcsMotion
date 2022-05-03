@@ -82,9 +82,9 @@
 #define SPIIPLUS_FAULT_HSSI_NC			1<<20
 
 // drvInfo strings for extra parameters that the XPS controller supports
-#define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
+#define SPiiPlusHomingMethodString             "SPIIPLUS_HOMING_METHOD"
 #define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
-#define SPiiPlusMaxAccelerationString              "SPIIPLUS_MAX_ACCELERATION"
+#define SPiiPlusMaxAccelerationString          "SPIIPLUS_MAX_ACCELERATION"
 #define SPiiPlusReadIntVarString               "SPIIPLUS_READ_INT_VAR"
 #define SPiiPlusWriteIntVarString              "SPIIPLUS_WRITE_INT_VAR"
 #define SPiiPlusReadRealVarString              "SPIIPLUS_READ_REAL_VAR"
@@ -92,6 +92,26 @@
 #define SPiiPlusStartProgramString             "SPIIPLUS_START_"
 #define SPiiPlusStopProgramString              "SPIIPLUS_STOP_"
 #define SPiiPlusSafeTorqueOffString            "SPIIPLUS_SAFE_TORQUE_OFF"
+//
+#define SPiiPlusStepFactorString               "SPIIPLUS_STEP_FACTOR"
+#define SPiiPlusEncTypeString                  "SPIIPLUS_ENC_TYPE"
+#define SPiiPlusEnc2TypeString                 "SPIIPLUS_ENC2_TYPE"
+#define SPiiPlusEncFactorString                "SPIIPLUS_ENC_FACTOR"
+#define SPiiPlusEnc2FactorString               "SPIIPLUS_ENC2_FACTOR"
+//
+#define SPiiPlusAxisPosString                  "SPIIPLUS_AXIS_POS"
+#define SPiiPlusRefPosString                   "SPIIPLUS_REF_POS"
+#define SPiiPlusEncPosString                   "SPIIPLUS_ENC_POS"
+#define SPiiPlusEnc2PosString                  "SPIIPLUS_ENC2_POS"
+#define SPiiPlusFdbkPosString                  "SPIIPLUS_FDBK_POS"
+#define SPiiPlusFdbk2PosString                 "SPIIPLUS_FDBK2_POS"
+//
+#define SPiiPlusRefOffsetString                "SPIIPLUS_REF_OFFSET"
+#define SPiiPlusEncOffsetString                "SPIIPLUS_ENC_OFFSET"
+#define SPiiPlusEnc2OffsetString               "SPIIPLUS_ENC2_OFFSET"
+#define SPiiPlusAbsEncOffsetString             "SPIIPLUS_ABS_ENC_OFFSET"
+#define SPiiPlusAbsEnc2OffsetString            "SPIIPLUS_ABS_ENC2_OFFSET"
+//
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -191,9 +211,27 @@ protected:
 	int SPiiPlusStartProgram_;
 	int SPiiPlusStopProgram_;
 	int SPiiPlusSafeTorqueOff_;
+	//
+	int SPiiPlusStepFactor_;
+	int SPiiPlusEncType_;
+	int SPiiPlusEnc2Type_;
+	int SPiiPlusEncFactor_;
+	int SPiiPlusEnc2Factor_;
+	//
+	int SPiiPlusAxisPos_;
+	int SPiiPlusRefPos_;
+	int SPiiPlusEncPos_;
+	int SPiiPlusFdbkPos_;
+	int SPiiPlusFdbk2Pos_;
+	//
+	int SPiiPlusRefOffset_;
+	int SPiiPlusEncOffset_;
+	int SPiiPlusEnc2Offset_;
+	int SPiiPlusAbsEncOffset_;
+	int SPiiPlusAbsEnc2Offset_;
+	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
-	
 	
 	
 private:
