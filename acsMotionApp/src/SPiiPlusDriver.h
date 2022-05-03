@@ -102,7 +102,6 @@
 #define SPiiPlusAxisPosString                  "SPIIPLUS_AXIS_POS"
 #define SPiiPlusRefPosString                   "SPIIPLUS_REF_POS"
 #define SPiiPlusEncPosString                   "SPIIPLUS_ENC_POS"
-#define SPiiPlusEnc2PosString                  "SPIIPLUS_ENC2_POS"
 #define SPiiPlusFdbkPosString                  "SPIIPLUS_FDBK_POS"
 #define SPiiPlusFdbk2PosString                 "SPIIPLUS_FDBK2_POS"
 //
