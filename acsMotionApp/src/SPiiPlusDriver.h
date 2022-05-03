@@ -221,11 +221,17 @@ private:
 	bool halted_;
 	epicsFloat64 stepperFactor_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 encoderFactor_[SPIIPLUS_MAX_AXES];
-	epicsFloat64 encoderOffset_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 encoder2Factor_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 axisPosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 encoderPosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 referencePosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 feedbackPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 feedback2Position_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 referenceOffset_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 encoderOffset_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 encoder2Offset_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 absoluteEncoderOffset_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 absoluteEncoder2Offset_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 maxVelocity_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 maxAcceleration_[SPIIPLUS_MAX_AXES];
 	epicsInt32 motorFlags_[SPIIPLUS_MAX_AXES];
@@ -233,6 +239,7 @@ private:
 	epicsInt32 axisStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 motorStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 encoderType_[SPIIPLUS_MAX_AXES];
+	epicsInt32 encoder2Type_[SPIIPLUS_MAX_AXES];
 	
 friend class SPiiPlusAxis;
 friend class SPiiPlusComm;

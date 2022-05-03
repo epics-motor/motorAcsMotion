@@ -77,6 +77,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	pComm_->getDoubleArray((char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
 	pComm_->getIntegerArray((char *)encoderType_, "E_TYPE", 0, numAxes_-1, 0, 0);
+	pComm_->getIntegerArray((char *)encoder2Type_, "E2_TYPE", 0, numAxes_-1, 0, 0);
 	
 	for (int index = 0; index < numAxes; index += 1)
 	{
@@ -361,14 +362,16 @@ asynStatus SPiiPlusController::poll()
 	
 	/*
 	 * Read position and status using binary queries here and parse the replies in the axis poll method
+	 * 
+	 * FPOS = FP*EFAC + EOFFS
+	 * F2POS = FP2*E2FAC + E2OFFS
+	 * 
 	 */
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: POLL_START\n", driverName, functionName);
 	
+	/* positions */
 	status = pComm_->getDoubleArray((char *)axisPosition_, "APOS", 0, numAxes_-1, 0, 0);
-	if (status != asynSuccess) return status;
-	
-	status = pComm_->getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
 	// RPOS = APOS if MFLAGS(index).#DEFCON=1
@@ -381,13 +384,38 @@ asynStatus SPiiPlusController::poll()
 	status = pComm_->getDoubleArray((char *)feedbackPosition_, "FPOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = pComm_->getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
+	status = pComm_->getDoubleArray((char *)feedback2Position_, "F2POS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	/* offsets */
+	// RPOS = 0 if MFLAGS(index).#DEFCON=1
+	status = pComm_->getDoubleArray((char *)referenceOffset_, "ROFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)encoder2Offset_, "E2OFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)absoluteEncoderOffset_, "E_AOFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)absoluteEncoder2Offset_, "E2_AOFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	/* statuses */
+	status = pComm_->getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
 	status = pComm_->getIntegerArray((char *)motorStatus_, "MST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
+	status = pComm_->getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
 	// TODO: only get max values when idle polling
+	/* max values */
 	status = pComm_->getDoubleArray((char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	status = pComm_->getDoubleArray((char *)maxAcceleration_, "XACC", 0, numAxes_-1, 0, 0);
@@ -864,18 +892,25 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
   fprintf(fp, "  resolution: %.6e\n", resolution_);
-  fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
-  fprintf(fp, "  encoder offset: %lf\n", controller->encoderOffset_[axisNo_]);
-  fprintf(fp, "  encoder type: %i\n", controller->encoderType_[axisNo_]);
+  fprintf(fp, "  reference offset: %lf\n", controller->referenceOffset_[axisNo_]);
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "  max velocity: %lf\n", controller->maxVelocity_[axisNo_]);
   fprintf(fp, "  max acceleration: %lf\n", controller->maxAcceleration_[axisNo_]);
+  fprintf(fp, "Encoder info for axis %i:\n", axisNo_);
+  fprintf(fp, "  encoder type: %i\n", controller->encoderType_[axisNo_]);
+  fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
+  fprintf(fp, "  encoder offset: %lf\n", controller->encoderOffset_[axisNo_]);
+  fprintf(fp, "  encoder 2 type: %i\n", controller->encoder2Type_[axisNo_]);
+  fprintf(fp, "  encoder 2 resolution: %.6e\n", controller->encoder2Factor_[axisNo_]);
+  fprintf(fp, "  encoder 2 offset: %lf\n", controller->encoder2Offset_[axisNo_]);
+  fprintf(fp, "Position info for axis %i:\n", axisNo_);
+  fprintf(fp, "  axis position: %lf\n", controller->axisPosition_[axisNo_]);
+  fprintf(fp, "  reference position: %lf\n", controller->referencePosition_[axisNo_]);
+  fprintf(fp, "  encoder position: %lf\n", controller->encoderPosition_[axisNo_]);
+  fprintf(fp, "  feedback position: %lf\n", controller->feedbackPosition_[axisNo_]);
+  fprintf(fp, "  feedback 2 position: %lf\n", controller->feedback2Position_[axisNo_]);
   fprintf(fp, "Status for axis %i:\n", axisNo_);
   fprintf(fp, "  moving: %i\n", moving_);
-  fprintf(fp, "  axisPosition: %lf\n", controller->axisPosition_[axisNo_]);
-  fprintf(fp, "  referencePosition: %lf\n", controller->referencePosition_[axisNo_]);
-  fprintf(fp, "  encoderPosition: %lf\n", controller->encoderPosition_[axisNo_]);
-  fprintf(fp, "  feedbackPosition: %lf\n", controller->feedbackPosition_[axisNo_]);
   fprintf(fp, "  axis status: %i\n", controller->axisStatus_[axisNo_]);
   fprintf(fp, "  motor status: %i\n", controller->motorStatus_[axisNo_]);
   fprintf(fp, "  fault status: %i\n", controller->faultStatus_[axisNo_]);
