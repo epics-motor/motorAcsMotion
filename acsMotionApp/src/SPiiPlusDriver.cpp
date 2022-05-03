@@ -565,8 +565,8 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		
 		enabled = controller->motorStatus_[axisNo_] & (1<<0);
 		motion = controller->motorStatus_[axisNo_] & (1<<5);
-		//open_loop = controller->axisStatus_[axisNo_] & (1<<1);
-		//in_pos = controller->axisStatus_[axisNo_] & (1<<4);
+		//open_loop = controller->motorStatus_[axisNo_] & (1<<1);
+		//in_pos = controller->motorStatus_[axisNo_] & (1<<4);
 	}
 	
 	setIntegerParam(controller->motorStatusDone_, !motion);
