@@ -133,6 +133,7 @@ public:
 	asynStatus defineProfile(double *positions, size_t numPoints);
 	
 	asynStatus getMaxParams();
+	asynStatus updateFeedbackParams();
 	asynStatus setMaxVelocity(double maxVelocity);
 	asynStatus setMaxAcceleration(double maxAcceleration);
 	

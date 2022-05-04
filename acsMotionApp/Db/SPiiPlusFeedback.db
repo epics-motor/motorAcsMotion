@@ -5,7 +5,7 @@ record(longin,"$(P)$(M):E_TYPE") {
     field(DTYP, "asynInt32")
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_TYPE")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(longin,"$(P)$(M):E2_TYPE") {
@@ -13,7 +13,7 @@ record(longin,"$(P)$(M):E2_TYPE") {
     field(DTYP, "asynInt32")
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC2_TYPE")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):STEPF") {
@@ -22,7 +22,7 @@ record(ai,"$(P)$(M):STEPF") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_STEP_FACTOR")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):EFAC") {
@@ -31,7 +31,7 @@ record(ai,"$(P)$(M):EFAC") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_FACTOR")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):E2FAC") {
@@ -40,7 +40,7 @@ record(ai,"$(P)$(M):E2FAC") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC2_FACTOR")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):APOS") {
@@ -49,7 +49,7 @@ record(ai,"$(P)$(M):APOS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_AXIS_POS")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):RPOS") {
@@ -58,7 +58,7 @@ record(ai,"$(P)$(M):RPOS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_REF_POS")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):EPOS") {
@@ -67,7 +67,7 @@ record(ai,"$(P)$(M):EPOS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_POS")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):FPOS") {
@@ -76,7 +76,7 @@ record(ai,"$(P)$(M):FPOS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_FDBK_POS")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):F2POS") {
@@ -85,7 +85,7 @@ record(ai,"$(P)$(M):F2POS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_FDBK2_POS")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):ROFFS") {
@@ -94,7 +94,7 @@ record(ai,"$(P)$(M):ROFFS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_REF_OFFSET")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):EOFFS") {
@@ -103,7 +103,7 @@ record(ai,"$(P)$(M):EOFFS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_OFFSET")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):E2OFFS") {
@@ -112,7 +112,7 @@ record(ai,"$(P)$(M):E2OFFS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC2_OFFSET")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):E_AOFFS") {
@@ -121,7 +121,7 @@ record(ai,"$(P)$(M):E_AOFFS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ABS_ENC_OFFSET")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }
 
 record(ai,"$(P)$(M):E2_AOFFS") {
@@ -130,5 +130,5 @@ record(ai,"$(P)$(M):E2_AOFFS") {
     field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ABS_ENC2_OFFSET")
     field(PREC, "$(PREC=4)")
     field(PINI, "1")
-    field(SCAN, "$(SCAN=0)")
+    field(SCAN, "$(SCAN=2)")
 }

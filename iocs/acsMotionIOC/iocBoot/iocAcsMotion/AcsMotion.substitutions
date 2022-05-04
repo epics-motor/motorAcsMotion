@@ -107,7 +107,14 @@ pattern
 #{
 #pattern
 #{M,   PORT, ADDR, PREC, SCAN}
-#{m1,  ACS1,    0,    4,    6}
+#{m1,  ACS1,    0,    4,    2}
+#{m2,  ACS1,    1,    4,    2}
+#{m3,  ACS1,    2,    4,    2}
+#{m4,  ACS1,    3,    4,    2}
+#{m5,  ACS1,    4,    4,    2}
+#{m6,  ACS1,    5,    4,    2}
+#{m7,  ACS1,    6,    4,    2}
+#{m8,  ACS1,    7,    4,    2}
 #}
 
 ### The following databases are useful if programs are running on the ACS controller

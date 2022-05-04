@@ -115,12 +115,20 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		// axis resolution (used to convert motor record steps into controller EGU)
 		pAxes_[index]->resolution_ = stepperFactor_[index];
 		
+		// Update parameters that shouldn't change while the IOC is running
+		setDoubleParam(index, SPiiPlusStepFactor_, stepperFactor_[index]);
+		setIntegerParam(index, SPiiPlusEncType_, encoderType_[index]);
+		setIntegerParam(index, SPiiPlusEnc2Type_, encoder2Type_[index]);
+		setDoubleParam(index, SPiiPlusEncFactor_, encoderFactor_[index]);
+		setDoubleParam(index, SPiiPlusEnc2Factor_, encoder2Factor_[index]);
+		
 		// Initialize absolute encoders
 		if (encoderType_[index] > 4)
 		{
 			// Clear encoder error so absolute encoder position will be valid
 			cmd << "FCLEAR " << index;
 			pComm_->writeReadAck(cmd);
+			
 		}
 		
 		// Initialize this variable to avoid freeing random memory
@@ -227,25 +235,13 @@ asynStatus SPiiPlusController::readInt32(asynUser *pasynUser, epicsInt32 *value)
 {
   int function = pasynUser->reason;
   int status = asynSuccess;
-  SPiiPlusAxis *pAxis;
   //static const char *functionName = "readInt32";
 
   *value = 0;
   
-  pAxis = this->getAxis(pasynUser);
-  if (!pAxis) return asynError; 
-  
   if (function == SPiiPlusReadIntVar_)
   {
     status = readGlobalIntVar(pasynUser, value);
-  }
-  else if (function == SPiiPlusEncType_)
-  {
-    *value = encoderType_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusEnc2Type_)
-  {
-    *value = encoder2Type_[pAxis->axisNo_];
   }
   /*else if (function == SPiiPlusSafeTorqueOff_) 
   {
@@ -318,69 +314,13 @@ asynStatus SPiiPlusController::readFloat64(asynUser *pasynUser, epicsFloat64 *va
 {
   int function = pasynUser->reason;
   int status = asynSuccess;
-  SPiiPlusAxis *pAxis;
   //static const char *functionName = "readFloat64";
 
   *value = 0;
   
-  pAxis = this->getAxis(pasynUser);
-  if (!pAxis) return asynError;
-  
   if (function == SPiiPlusReadRealVar_)
   {
     status = readGlobalRealVar(pasynUser, value);
-  }
-  else if (function == SPiiPlusStepFactor_)
-  {
-    *value = stepperFactor_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusEncFactor_)
-  {
-    *value = encoderFactor_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusEnc2Factor_)
-  {
-    *value = encoder2Factor_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusAxisPos_)
-  {
-    *value = axisPosition_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusRefPos_)
-  {
-    *value = referencePosition_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusEncPos_)
-  {
-    *value = encoderPosition_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusFdbkPos_)
-  {
-    *value = feedbackPosition_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusFdbk2Pos_)
-  {
-    *value = feedback2Position_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusRefOffset_)
-  {
-    *value = referenceOffset_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusEncOffset_)
-  {
-    *value = encoderOffset_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusEnc2Offset_)
-  {
-    *value = encoder2Offset_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusAbsEncOffset_)
-  {
-    *value = absoluteEncoderOffset_[pAxis->axisNo_];
-  }
-  else if (function == SPiiPlusAbsEnc2Offset_)
-  {
-    *value = absoluteEncoder2Offset_[pAxis->axisNo_];
   }
   else
   {
@@ -662,6 +602,8 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	
 	getMaxParams();
 	
+	updateFeedbackParams();
+	
 	// AST (queried in controller poll method)
 	
 	int enabled;
@@ -723,6 +665,32 @@ asynStatus SPiiPlusAxis::getMaxParams()
 	
 	return status;
 }
+
+
+asynStatus SPiiPlusAxis::updateFeedbackParams()
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status = asynSuccess;
+	std::stringstream cmd;
+	
+	// Update the axis parameters with the values that were queried in the controller poll method
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusAxisPos_, controller->axisPosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusRefPos_, controller->referencePosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusEncPos_, controller->encoderPosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusFdbkPos_, controller->feedbackPosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusFdbk2Pos_, controller->feedback2Position_[axisNo_]);
+	//
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusRefOffset_, controller->referenceOffset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusEncOffset_, controller->encoderOffset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusEnc2Offset_, controller->encoder2Offset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEncOffset_, controller->absoluteEncoderOffset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEnc2Offset_, controller->absoluteEncoder2Offset_[axisNo_]);
+	
+	// Assume the calling method will call callParamCallbacks()
+	
+	return status;
+}
+
 
 asynStatus SPiiPlusAxis::setMaxVelocity(double maxVelocity)
 {
