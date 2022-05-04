@@ -102,6 +102,14 @@ pattern
 {m8,  ACS1,    7,    4}
 }
 
+### The feedback database is helpful for troubleshooting encoder problems
+#file "$(TOP)/db/SPiiPlusFeedback.db"
+#{
+#pattern
+#{M,   PORT, ADDR, PREC, SCAN}
+#{m1,  ACS1,    0,    4,    6}
+#}
+
 ### The following databases are useful if programs are running on the ACS controller
 #file "$(TOP)/db/SPiiPlusIntVar.db"
 #{
