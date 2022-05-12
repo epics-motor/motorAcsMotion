@@ -129,7 +129,18 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		pAxes_[index]->hall_ = motorFlags_[index] & (1 << 27);
 		
 		// axis resolution (used to convert motor record steps into controller EGU)
-		pAxes_[index]->resolution_ = stepperFactor_[index];
+		// TODO: how should nanomotion piezo ceramic motors (bit 7 of mflags) be handled?
+		if ((pAxes_[index]->brushl_ == 0) && (pAxes_[index]->linear_ == 0))
+		{
+			// Use the stepper factor as the resolution for stepper motors
+			pAxes_[index]->resolution_ = stepperFactor_[index];
+		}
+		else
+		{
+			// Use the encoder factor as the resolution for brushless and linear motors
+			// TODO: how to handle mutliple encoders?
+			pAxes_[index]->resolution_ = encoderFactor_[index];
+		}
 		
 		// Update parameters that shouldn't change while the IOC is running
 		setDoubleParam(index, SPiiPlusStepFactor_, stepperFactor_[index]);
