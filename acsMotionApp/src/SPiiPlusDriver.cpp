@@ -103,14 +103,30 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		new SPiiPlusAxis(this, index);
 		
 		// Parse the setup parameters
-		// Bit 0 is #DUMMY
+		// Bit 0 is #DUMMY (dummy axis)
 		pAxes_[index]->dummy_ = motorFlags_[index] & (1 << 0);
-		// Bit 4 is #STEPPER
+		// Bit 1 is #OPEN (open-loop control)
+		pAxes_[index]->open_ = motorFlags_[index] & (1 << 1);
+		// Bit 2 is #MICRO (microstepper mode)
+		pAxes_[index]->micro_ = motorFlags_[index] & (1 << 2);
+		// Bit 4 is #STEPPER (pulse/direction stepper)
 		pAxes_[index]->stepper_ = motorFlags_[index] & (1 << 4);
-		// Bit 5 is #ENCLOOP
+		// Bit 5 is #ENCLOOP (stepper with steps as feedback)
 		pAxes_[index]->encloop_ = motorFlags_[index] & (1 << 5);
-		// Bit 6 is #STEPENC
+		// Bit 6 is #STEPENC (stepper with encoder as feedback)
 		pAxes_[index]->stepenc_ = motorFlags_[index] & (1 << 6);
+		// Bit 8 is #BRUSHL (brushless motor)
+		pAxes_[index]->brushl_ = motorFlags_[index] & (1 << 8);
+		// Bit 9 is #BRUSHOK (brushless commutation OK)
+		pAxes_[index]->brushok_ = motorFlags_[index] & (1 << 9);
+		// Bit 10 is #PHASE2 (2-phase motor)
+		pAxes_[index]->phase2_ = motorFlags_[index] & (1 << 10);
+		// Bit 21 is #LINEAR (linear motor)
+		pAxes_[index]->linear_ = motorFlags_[index] & (1 << 21);
+		// Bit 22 is #ABSCOMM (absolute encoder commutation)
+		pAxes_[index]->abscomm_ = motorFlags_[index] & (1 << 22);
+		// Bit 27 is #HALL (hall commutation)
+		pAxes_[index]->hall_ = motorFlags_[index] & (1 << 27);
 		
 		// axis resolution (used to convert motor record steps into controller EGU)
 		pAxes_[index]->resolution_ = stepperFactor_[index];
@@ -943,9 +959,17 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
   fprintf(fp, "  mflags: %i\n", controller->motorFlags_[axisNo_]);
   fprintf(fp, "    dummy:  %i\n", dummy_);
+  fprintf(fp, "    open:  %i\n", open_);
+  fprintf(fp, "    micro:  %i\n", micro_);
   fprintf(fp, "    stepper:  %i\n", stepper_);
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
+  fprintf(fp, "    brushl:  %i\n", brushl_);
+  fprintf(fp, "    brushok  %i\n", brushok_);
+  fprintf(fp, "    phase2:  %i\n", phase2_);
+  fprintf(fp, "    linear:  %i\n", linear_);
+  fprintf(fp, "    abscomm:  %i\n", abscomm_);
+  fprintf(fp, "    hall:  %i\n", hall_);
   fprintf(fp, "  resolution: %.6e\n", resolution_);
   fprintf(fp, "  reference offset: %lf\n", controller->referenceOffset_[axisNo_]);
   fprintf(fp, "  homing method: %i\n", homingMethod);

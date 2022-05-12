@@ -150,9 +150,17 @@ private:
 	double profileFlybackPos_;
 	int moving_;
 	int dummy_;			// MFLAGS, bit 0
+	int open_;			// MFLAGS, bit 1
+	int micro_;			// MFLAGS, bit 2
 	int stepper_;			// MFLAGS, bit 4
 	int encloop_;			// MFLAGS, bit 5
 	int stepenc_;			// MFLAGS, bit 6
+	int brushl_;			// MFLAGS, bit 8
+	int brushok_;			// MFLAGS, bit 9
+	int phase2_;			// MFLAGS, bit 10
+	int linear_;			// MFLAGS, bit 21
+	int abscomm_;			// MFLAGS, bit 22
+	int hall_;			// MFLAGS, bit 27
 	double resolution_;		// STEPF
 	
 friend class SPiiPlusController;
