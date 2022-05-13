@@ -1,7 +1,8 @@
 # motorAcsMotion
 EPICS motor drivers for controllers from [ACS Motion Control](https://www.acsmotioncontrol.com/) supporting the ACSPL+ command set.
 
-[![Build Status](https://travis-ci.org/epics-motor/motorAcsMotion.png)](https://travis-ci.org/epics-motor/motorAcsMotion)
+[![Build Status](https://github.com/epics-motor/motorAcsMotion/actions/workflows/ci-scripts-build.yml/badge.svg)](https://github.com/epics-motor/motorAcsMotion/actions/workflows/ci-scripts-build.yml)
+<!--[![Build Status](https://travis-ci.org/epics-motor/motorAcsMotion.png)](https://travis-ci.org/epics-motor/motorAcsMotion)-->
 
 motorAcsMotion is a submodule of [motor](https://github.com/epics-modules/motor).  When motorAcsMotion is built in the ``motor/modules`` directory, no manual configuration is needed.
 
