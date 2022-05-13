@@ -80,6 +80,14 @@
 #define SPIIPLUS_FAULT_SERVO_PROC_ALARM		1<<17
 #define SPIIPLUS_FAULT_SAFE_TORQUE_OFF		1<<18
 #define SPIIPLUS_FAULT_HSSI_NC			1<<20
+//
+#define SPIIPLUS_MFLAGS_DUMMY               (1<<0)
+#define SPIIPLUS_MFLAGS_HOME                (1<<3)
+#define SPIIPLUS_MFLAGS_STEPPER             (1<<4)
+#define SPIIPLUS_MFLAGS_ENCLOOP             (1<<5)
+#define SPIIPLUS_MFLAGS_STEPENC             (1<<6)
+
+
 
 // drvInfo strings for extra parameters that the XPS controller supports
 #define SPiiPlusHomingMethodString              "SPIIPLUS_HOMING_METHOD"
@@ -92,6 +100,7 @@
 #define SPiiPlusStartProgramString             "SPIIPLUS_START_"
 #define SPiiPlusStopProgramString              "SPIIPLUS_STOP_"
 #define SPiiPlusSafeTorqueOffString            "SPIIPLUS_SAFE_TORQUE_OFF"
+#define SPiiPlusHomingProcedureDoneString      "SPIIPLUS_HOMING_DONE"
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -130,6 +139,7 @@ private:
 	double profileFlybackPos_;
 	int moving_;
 	int dummy_;			// MFLAGS, bit 0
+	int home_;              // MFLAGS, bit 3
 	int stepper_;			// MFLAGS, bit 4
 	int encloop_;			// MFLAGS, bit 5
 	int stepenc_;			// MFLAGS, bit 6
@@ -191,6 +201,7 @@ protected:
 	int SPiiPlusStartProgram_;
 	int SPiiPlusStopProgram_;
 	int SPiiPlusSafeTorqueOff_;
+	int SPiiPlusHomingProcedureDone_;
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
