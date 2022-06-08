@@ -455,8 +455,10 @@ asynStatus SPiiPlusController::poll()
 	status = pComm_->getDoubleArray((char *)absoluteEncoderOffset_, "E_AOFFS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = pComm_->getDoubleArray((char *)absoluteEncoder2Offset_, "E2_AOFFS", 0, numAxes_-1, 0, 0);
-	if (status != asynSuccess) return status;
+        // TODO: re-add E2_AOFFS query after querying the firmware version
+        // E2_AOFFS doesn't exist in firmware v2.70
+	//status = pComm_->getDoubleArray((char *)absoluteEncoder2Offset_, "E2_AOFFS", 0, numAxes_-1, 0, 0);
+	//if (status != asynSuccess) return status;
 	
 	/* statuses */
 	status = pComm_->getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);

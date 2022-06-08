@@ -124,11 +124,11 @@ record(ai,"$(P)$(M):E_AOFFS") {
     field(SCAN, "$(SCAN=2)")
 }
 
-record(ai,"$(P)$(M):E2_AOFFS") {
-    field(DESC, "Abs Encoder 2 Offset")
-    field(DTYP, "asynFloat64")
-    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ABS_ENC2_OFFSET")
-    field(PREC, "$(PREC=4)")
-    field(PINI, "1")
-    field(SCAN, "$(SCAN=2)")
-}
+#!record(ai,"$(P)$(M):E2_AOFFS") {
+#!    field(DESC, "Abs Encoder 2 Offset")
+#!    field(DTYP, "asynFloat64")
+#!    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ABS_ENC2_OFFSET")
+#!    field(PREC, "$(PREC=4)")
+#!    field(PINI, "1")
+#!    field(SCAN, "$(SCAN=2)")
+#!}
