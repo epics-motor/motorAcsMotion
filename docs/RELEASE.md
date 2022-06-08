@@ -7,7 +7,7 @@ R2-0-1 is a bugfix release based on the R2-0-bugfix branch.
 
 #### Bug fixes
 
-* Commit [8e125cc](https://github.com/epics-motor/motorAcsMotion/commit/8e125cc6e0b4bc868fd837115f5a86fb9f7b6727): Applied fix for memory leak, found and fixed in the master branch by Paul Richards in cad837ef846f8278f875897ee0514beb41c2fcd0
+* Commit [8e125cc](https://github.com/epics-motor/motorAcsMotion/commit/8e125cc6e0b4bc868fd837115f5a86fb9f7b6727): Applied fix for memory leak, found and fixed in the master branch by [Paul Richards](https://github.com/prichards-wmko) in [cad837e](https://github.com/epics-motor/motorAcsMotion/commit/cad837ef846f8278f875897ee0514beb41c2fcd0)
 
 
 ## __R2-0 (2022-01-21)__
