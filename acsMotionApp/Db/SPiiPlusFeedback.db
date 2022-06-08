@@ -1,0 +1,134 @@
+# Feedback records for troubleshooting
+
+record(longin,"$(P)$(M):E_TYPE") {
+    field(DESC, "Encoder Type")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_TYPE")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(longin,"$(P)$(M):E2_TYPE") {
+    field(DESC, "Encoder 2 Type")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC2_TYPE")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):STEPF") {
+    field(DESC, "Step Factor")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_STEP_FACTOR")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):EFAC") {
+    field(DESC, "Encoder Factor")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_FACTOR")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):E2FAC") {
+    field(DESC, "Encoder 2 Factor")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC2_FACTOR")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):APOS") {
+    field(DESC, "Axis Position")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_AXIS_POS")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):RPOS") {
+    field(DESC, "Reference Position")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_REF_POS")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):EPOS") {
+    field(DESC, "Encoder Position")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_POS")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):FPOS") {
+    field(DESC, "Feedback Position")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_FDBK_POS")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):F2POS") {
+    field(DESC, "Feedback 2 Position")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_FDBK2_POS")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):ROFFS") {
+    field(DESC, "Reference Offset")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_REF_OFFSET")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):EOFFS") {
+    field(DESC, "Encoder Offset")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_OFFSET")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):E2OFFS") {
+    field(DESC, "Encoder 2 Offset")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC2_OFFSET")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(ai,"$(P)$(M):E_AOFFS") {
+    field(DESC, "Abs Encoder Offset")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ABS_ENC_OFFSET")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+#!record(ai,"$(P)$(M):E2_AOFFS") {
+#!    field(DESC, "Abs Encoder 2 Offset")
+#!    field(DTYP, "asynFloat64")
+#!    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ABS_ENC2_OFFSET")
+#!    field(PREC, "$(PREC=4)")
+#!    field(PINI, "1")
+#!    field(SCAN, "$(SCAN=2)")
+#!}

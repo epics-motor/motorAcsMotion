@@ -67,6 +67,25 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusStopProgramString,                asynParamInt32,   &SPiiPlusStopProgram_);
 	createParam(SPiiPlusSafeTorqueOffString,              asynParamInt32,   &SPiiPlusSafeTorqueOff_);
 	createParam(SPiiPlusHomingProcedureDoneString,        asynParamInt32,   &SPiiPlusHomingProcedureDone_);
+	//
+	createParam(SPiiPlusStepFactorString,                 asynParamFloat64,   &SPiiPlusStepFactor_);
+	createParam(SPiiPlusEncTypeString,                    asynParamInt32,     &SPiiPlusEncType_);
+	createParam(SPiiPlusEnc2TypeString,                   asynParamInt32,     &SPiiPlusEnc2Type_);
+	createParam(SPiiPlusEncFactorString,                  asynParamFloat64,   &SPiiPlusEncFactor_);
+	createParam(SPiiPlusEnc2FactorString,                 asynParamFloat64,   &SPiiPlusEnc2Factor_);
+	//
+	createParam(SPiiPlusAxisPosString,                    asynParamFloat64,   &SPiiPlusAxisPos_);
+	createParam(SPiiPlusRefPosString,                     asynParamFloat64,   &SPiiPlusRefPos_);
+	createParam(SPiiPlusEncPosString,                     asynParamFloat64,   &SPiiPlusEncPos_);
+	createParam(SPiiPlusFdbkPosString,                    asynParamFloat64,   &SPiiPlusFdbkPos_);
+	createParam(SPiiPlusFdbk2PosString,                   asynParamFloat64,   &SPiiPlusFdbk2Pos_);
+	//
+	createParam(SPiiPlusRefOffsetString,                  asynParamFloat64,   &SPiiPlusRefOffset_);
+	createParam(SPiiPlusEncOffsetString,                  asynParamFloat64,   &SPiiPlusEncOffset_);
+	createParam(SPiiPlusEnc2OffsetString,                 asynParamFloat64,   &SPiiPlusEnc2Offset_);
+	createParam(SPiiPlusAbsEncOffsetString,               asynParamFloat64,   &SPiiPlusAbsEncOffset_);
+	createParam(SPiiPlusAbsEnc2OffsetString,              asynParamFloat64,   &SPiiPlusAbsEnc2Offset_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize this variable to avoid freeing random memory
@@ -76,26 +95,71 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)encoderFactor_, "EFAC", 0, numAxes_-1, 0, 0);
-	pComm_->getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	pComm_->getDoubleArray((char *)encoder2Factor_, "E2FAC", 0, numAxes_-1, 0, 0);
+	pComm_->getIntegerArray((char *)encoderType_, "E_TYPE", 0, numAxes_-1, 0, 0);
+	pComm_->getIntegerArray((char *)encoder2Type_, "E2_TYPE", 0, numAxes_-1, 0, 0);
 	
 	for (int index = 0; index < numAxes; index += 1)
 	{
 		new SPiiPlusAxis(this, index);
 		
 		// Parse the setup parameters
-		// Bit 0 is #DUMMY
+		// Bit 0 is #DUMMY (dummy axis)
 		pAxes_[index]->dummy_ = motorFlags_[index] & SPIIPLUS_MFLAGS_DUMMY;
-		// Bit 3 is #HOME
+		// Bit 1 is #OPEN (open-loop control)
+		pAxes_[index]->open_ = motorFlags_[index] & SPIIPLUS_MFLAGS_OPEN;
+		// Bit 2 is #MICRO (microstepper mode)
+		pAxes_[index]->micro_ = motorFlags_[index] & SPIIPLUS_MFLAGS_MICRO;
+		// Bit 3 is #HOME (homing procedure done)
 		pAxes_[index]->home_ = motorFlags_[index] & SPIIPLUS_MFLAGS_HOME;
-		// Bit 4 is #STEPPER
+		// Bit 4 is #STEPPER (pulse/direction stepper)
 		pAxes_[index]->stepper_ = motorFlags_[index] & SPIIPLUS_MFLAGS_STEPPER;
-		// Bit 5 is #ENCLOOP
+		// Bit 5 is #ENCLOOP (stepper with steps as feedback)
 		pAxes_[index]->encloop_ = motorFlags_[index] & SPIIPLUS_MFLAGS_ENCLOOP;
-		// Bit 6 is #STEPENC
+		// Bit 6 is #STEPENC (stepper with encoder as feedback)
 		pAxes_[index]->stepenc_ = motorFlags_[index] & SPIIPLUS_MFLAGS_STEPENC;
+		// Bit 8 is #BRUSHL (brushless motor)
+		pAxes_[index]->brushl_ = motorFlags_[index] & SPIIPLUS_MFLAGS_BRUSHL;
+		// Bit 9 is #BRUSHOK (brushless commutation OK)
+		pAxes_[index]->brushok_ = motorFlags_[index] & SPIIPLUS_MFLAGS_BRUSHOK;
+		// Bit 10 is #PHASE2 (2-phase motor)
+		pAxes_[index]->phase2_ = motorFlags_[index] & SPIIPLUS_MFLAGS_PHASE2;
+		// Bit 21 is #LINEAR (linear motor)
+		pAxes_[index]->linear_ = motorFlags_[index] & SPIIPLUS_MFLAGS_LINEAR;
+		// Bit 22 is #ABSCOMM (absolute encoder commutation)
+		pAxes_[index]->abscomm_ = motorFlags_[index] & SPIIPLUS_MFLAGS_ABSCOMM;
+		// Bit 27 is #HALL (hall commutation)
+		pAxes_[index]->hall_ = motorFlags_[index] & SPIIPLUS_MFLAGS_HALL;
 		
 		// axis resolution (used to convert motor record steps into controller EGU)
-		pAxes_[index]->resolution_ = stepperFactor_[index];
+		// TODO: how should nanomotion piezo ceramic motors (bit 7 of mflags) be handled?
+		if ((pAxes_[index]->brushl_ == 0) && (pAxes_[index]->linear_ == 0))
+		{
+			// Use the stepper factor as the resolution for stepper motors
+			pAxes_[index]->resolution_ = stepperFactor_[index];
+		}
+		else
+		{
+			// Use the encoder factor as the resolution for brushless and linear motors
+			// TODO: how to handle mutliple encoders?
+			pAxes_[index]->resolution_ = encoderFactor_[index];
+		}
+		
+		// Update parameters that shouldn't change while the IOC is running
+		setDoubleParam(index, SPiiPlusStepFactor_, stepperFactor_[index]);
+		setIntegerParam(index, SPiiPlusEncType_, encoderType_[index]);
+		setIntegerParam(index, SPiiPlusEnc2Type_, encoder2Type_[index]);
+		setDoubleParam(index, SPiiPlusEncFactor_, encoderFactor_[index]);
+		setDoubleParam(index, SPiiPlusEnc2Factor_, encoder2Factor_[index]);
+		
+		// Initialize absolute encoders
+		if (encoderType_[index] > 4)
+		{
+			// Clear encoder error so absolute encoder position will be valid
+			cmd << "FCLEAR " << index;
+			pComm_->writeReadAck(cmd);
+			
+		}
 		
 		// Initialize this variable to avoid freeing random memory
 		pAxes_[index]->fullProfilePositions_ = 0;
@@ -355,29 +419,66 @@ asynStatus SPiiPlusController::poll()
 	
 	/*
 	 * Read position and status using binary queries here and parse the replies in the axis poll method
+	 * 
+	 * FPOS = FP*EFAC + EOFFS
+	 * F2POS = FP2*E2FAC + E2OFFS
+	 * 
 	 */
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: POLL_START\n", driverName, functionName);
 	
+	/* positions */
 	status = pComm_->getDoubleArray((char *)axisPosition_, "APOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = pComm_->getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
+	// RPOS = APOS if MFLAGS(index).#DEFCON=1
+	status = pComm_->getDoubleArray((char *)referencePosition_, "RPOS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)encoderPosition_, "EPOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
 	status = pComm_->getDoubleArray((char *)feedbackPosition_, "FPOS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
-	status = pComm_->getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
+	status = pComm_->getDoubleArray((char *)feedback2Position_, "F2POS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	/* offsets */
+	// RPOS = 0 if MFLAGS(index).#DEFCON=1
+	status = pComm_->getDoubleArray((char *)referenceOffset_, "ROFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)encoderOffset_, "EOFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)encoder2Offset_, "E2OFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	status = pComm_->getDoubleArray((char *)absoluteEncoderOffset_, "E_AOFFS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	// TODO: re-add E2_AOFFS query after querying the firmware version
+	// E2_AOFFS doesn't exist in firmware v2.70
+	//status = pComm_->getDoubleArray((char *)absoluteEncoder2Offset_, "E2_AOFFS", 0, numAxes_-1, 0, 0);
+	//if (status != asynSuccess) return status;
+	
+	/* statuses */
+	status = pComm_->getIntegerArray((char *)axisStatus_, "AST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
 	status = pComm_->getIntegerArray((char *)motorStatus_, "MST", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
+	status = pComm_->getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
+	// MFLAGS need to be polled here for the homed status
 	status = pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
-
+	
 	// TODO: only get max values when idle polling
+	/* max values */
 	status = pComm_->getDoubleArray((char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	status = pComm_->getDoubleArray((char *)maxAcceleration_, "XACC", 0, numAxes_-1, 0, 0);
@@ -541,6 +642,8 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	
 	getMaxParams();
 	
+	updateFeedbackParams();
+	
 	// AST (queried in controller poll method)
 	
 	int enabled;
@@ -559,8 +662,8 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		
 		enabled = controller->motorStatus_[axisNo_] & (1<<0);
 		motion = controller->motorStatus_[axisNo_] & (1<<5);
-		//open_loop = controller->axisStatus_[axisNo_] & (1<<1);
-		//in_pos = controller->axisStatus_[axisNo_] & (1<<4);
+		//open_loop = controller->motorStatus_[axisNo_] & (1<<1);
+		//in_pos = controller->motorStatus_[axisNo_] & (1<<4);
 	}
 	
 	setIntegerParam(controller->motorStatusDone_, !motion);
@@ -602,6 +705,32 @@ asynStatus SPiiPlusAxis::getMaxParams()
 	
 	return status;
 }
+
+
+asynStatus SPiiPlusAxis::updateFeedbackParams()
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status = asynSuccess;
+	std::stringstream cmd;
+	
+	// Update the axis parameters with the values that were queried in the controller poll method
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusAxisPos_, controller->axisPosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusRefPos_, controller->referencePosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusEncPos_, controller->encoderPosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusFdbkPos_, controller->feedbackPosition_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusFdbk2Pos_, controller->feedback2Position_[axisNo_]);
+	//
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusRefOffset_, controller->referenceOffset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusEncOffset_, controller->encoderOffset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusEnc2Offset_, controller->encoder2Offset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEncOffset_, controller->absoluteEncoderOffset_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEnc2Offset_, controller->absoluteEncoder2Offset_[axisNo_]);
+	
+	// Assume the calling method will call callParamCallbacks()
+	
+	return status;
+}
+
 
 asynStatus SPiiPlusAxis::setMaxVelocity(double maxVelocity)
 {
@@ -676,7 +805,8 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	asynStatus status;
 	std::stringstream cmd;
 	
-	cmd << "SET APOS(" << axisNo_ << ")=" << (position * resolution_);
+	// The controller automatically updates APOS and FPOS when RPOS is updated 
+	cmd << "SET RPOS(" << axisNo_ << ")=" << (position * resolution_);
 	status = controller->pComm_->writeReadAck(cmd);
 	
 	return status;
@@ -853,20 +983,38 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "Configuration for axis %i:\n", axisNo_);
   fprintf(fp, "  mflags: %i\n", controller->motorFlags_[axisNo_]);
   fprintf(fp, "    dummy:  %i\n", dummy_);
+  fprintf(fp, "    open:  %i\n", open_);
+  fprintf(fp, "    micro:  %i\n", micro_);
+  fprintf(fp, "    homed:  %i\n", home_);
   fprintf(fp, "    stepper:  %i\n", stepper_);
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
-  fprintf(fp, "    homed:  %i\n", home_);
+  fprintf(fp, "    brushl:  %i\n", brushl_);
+  fprintf(fp, "    brushok  %i\n", brushok_);
+  fprintf(fp, "    phase2:  %i\n", phase2_);
+  fprintf(fp, "    linear:  %i\n", linear_);
+  fprintf(fp, "    abscomm:  %i\n", abscomm_);
+  fprintf(fp, "    hall:  %i\n", hall_);
   fprintf(fp, "  resolution: %.6e\n", resolution_);
-  fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
-  fprintf(fp, "  encoder offset: %lf\n", controller->encoderOffset_[axisNo_]);
+  fprintf(fp, "  reference offset: %lf\n", controller->referenceOffset_[axisNo_]);
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "  max velocity: %lf\n", controller->maxVelocity_[axisNo_]);
   fprintf(fp, "  max acceleration: %lf\n", controller->maxAcceleration_[axisNo_]);
+  fprintf(fp, "Encoder info for axis %i:\n", axisNo_);
+  fprintf(fp, "  encoder type: %i\n", controller->encoderType_[axisNo_]);
+  fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
+  fprintf(fp, "  encoder offset: %lf\n", controller->encoderOffset_[axisNo_]);
+  fprintf(fp, "  encoder 2 type: %i\n", controller->encoder2Type_[axisNo_]);
+  fprintf(fp, "  encoder 2 resolution: %.6e\n", controller->encoder2Factor_[axisNo_]);
+  fprintf(fp, "  encoder 2 offset: %lf\n", controller->encoder2Offset_[axisNo_]);
+  fprintf(fp, "Position info for axis %i:\n", axisNo_);
+  fprintf(fp, "  axis position: %lf\n", controller->axisPosition_[axisNo_]);
+  fprintf(fp, "  reference position: %lf\n", controller->referencePosition_[axisNo_]);
+  fprintf(fp, "  encoder position: %lf\n", controller->encoderPosition_[axisNo_]);
+  fprintf(fp, "  feedback position: %lf\n", controller->feedbackPosition_[axisNo_]);
+  fprintf(fp, "  feedback 2 position: %lf\n", controller->feedback2Position_[axisNo_]);
   fprintf(fp, "Status for axis %i:\n", axisNo_);
   fprintf(fp, "  moving: %i\n", moving_);
-  fprintf(fp, "  axisPosition: %lf\n", controller->axisPosition_[axisNo_]);
-  fprintf(fp, "  feedbackPosition: %lf\n", controller->feedbackPosition_[axisNo_]);
   fprintf(fp, "  axis status: %i\n", controller->axisStatus_[axisNo_]);
   fprintf(fp, "  motor status: %i\n", controller->motorStatus_[axisNo_]);
   fprintf(fp, "  fault status: %i\n", controller->faultStatus_[axisNo_]);

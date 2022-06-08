@@ -26,6 +26,7 @@ DB += SPiiPlusIntVar.db
 DB += SPiiPlusRealVar.db
 DB += SPiiPlusProgram.db
 DB += SPiiPlusAxisExtra.db
+DB += SPiiPlusFeedback.db
 DB += SPiiPlusTest.db
 
 #----------------------------------------------------
