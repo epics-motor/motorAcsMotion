@@ -66,6 +66,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusStartProgramString,               asynParamInt32,   &SPiiPlusStartProgram_);
 	createParam(SPiiPlusStopProgramString,                asynParamInt32,   &SPiiPlusStopProgram_);
 	createParam(SPiiPlusSafeTorqueOffString,              asynParamInt32,   &SPiiPlusSafeTorqueOff_);
+	createParam(SPiiPlusHomingProcedureDoneString,        asynParamInt32,   &SPiiPlusHomingProcedureDone_);
 	//
 	createParam(SPiiPlusStepFactorString,                 asynParamFloat64,   &SPiiPlusStepFactor_);
 	createParam(SPiiPlusEncTypeString,                    asynParamInt32,     &SPiiPlusEncType_);
@@ -104,17 +105,19 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		
 		// Parse the setup parameters
 		// Bit 0 is #DUMMY (dummy axis)
-		pAxes_[index]->dummy_ = motorFlags_[index] & (1 << 0);
+		pAxes_[index]->dummy_ = motorFlags_[index] & SPIIPLUS_MFLAGS_DUMMY;
 		// Bit 1 is #OPEN (open-loop control)
 		pAxes_[index]->open_ = motorFlags_[index] & (1 << 1);
 		// Bit 2 is #MICRO (microstepper mode)
 		pAxes_[index]->micro_ = motorFlags_[index] & (1 << 2);
+		// Bit 3 is #HOME (homing procedure done)
+		pAxes_[index]->home_ = motorFlags_[index] & SPIIPLUS_MFLAGS_HOME;
 		// Bit 4 is #STEPPER (pulse/direction stepper)
-		pAxes_[index]->stepper_ = motorFlags_[index] & (1 << 4);
+		pAxes_[index]->stepper_ = motorFlags_[index] & SPIIPLUS_MFLAGS_STEPPER;
 		// Bit 5 is #ENCLOOP (stepper with steps as feedback)
-		pAxes_[index]->encloop_ = motorFlags_[index] & (1 << 5);
+		pAxes_[index]->encloop_ = motorFlags_[index] & SPIIPLUS_MFLAGS_ENCLOOP;
 		// Bit 6 is #STEPENC (stepper with encoder as feedback)
-		pAxes_[index]->stepenc_ = motorFlags_[index] & (1 << 6);
+		pAxes_[index]->stepenc_ = motorFlags_[index] & SPIIPLUS_MFLAGS_STEPENC;
 		// Bit 8 is #BRUSHL (brushless motor)
 		pAxes_[index]->brushl_ = motorFlags_[index] & (1 << 8);
 		// Bit 9 is #BRUSHOK (brushless commutation OK)
@@ -470,6 +473,10 @@ asynStatus SPiiPlusController::poll()
 	status = pComm_->getIntegerArray((char *)faultStatus_, "FAULT", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
+	// MFLAGS need to be polled here for the homed status
+	status = pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
 	// TODO: only get max values when idle polling
 	/* max values */
 	status = pComm_->getDoubleArray((char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
@@ -618,7 +625,7 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		setDoubleParam(controller->motorEncoderPosition_, controller->feedbackPosition_[axisNo_] / controller->encoderFactor_[axisNo_]);
 		
 		// FAULT (queried in controller poll method)
-		int left_limit, right_limit, sto;
+		int left_limit, right_limit, sto, home;
 		left_limit = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_HARD_LEFT_LIMIT;
 		setIntegerParam(controller->motorStatusLowLimit_, left_limit);
 		
@@ -627,6 +634,10 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		
 		sto = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_SAFE_TORQUE_OFF;
 		setIntegerParam(controller->SPiiPlusSafeTorqueOff_, sto);
+
+		// MFLAGS HOME (queried in controller poll method)
+		home = controller->motorFlags_[axisNo_] & SPIIPLUS_MFLAGS_HOME;
+		setIntegerParam(controller->SPiiPlusHomingProcedureDone_, home);
 	}
 	
 	getMaxParams();
@@ -974,6 +985,7 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "    dummy:  %i\n", dummy_);
   fprintf(fp, "    open:  %i\n", open_);
   fprintf(fp, "    micro:  %i\n", micro_);
+  fprintf(fp, "    homed:  %i\n", home_);
   fprintf(fp, "    stepper:  %i\n", stepper_);
   fprintf(fp, "    encloop:  %i\n", encloop_);
   fprintf(fp, "    stepenc:  %i\n", stepenc_);
