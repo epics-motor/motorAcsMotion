@@ -82,10 +82,18 @@
 #define SPIIPLUS_FAULT_HSSI_NC			1<<20
 //
 #define SPIIPLUS_MFLAGS_DUMMY               (1<<0)
+#define SPIIPLUS_MFLAGS_OPEN                (1<<1)
+#define SPIIPLUS_MFLAGS_MICRO               (1<<2)
 #define SPIIPLUS_MFLAGS_HOME                (1<<3)
 #define SPIIPLUS_MFLAGS_STEPPER             (1<<4)
 #define SPIIPLUS_MFLAGS_ENCLOOP             (1<<5)
 #define SPIIPLUS_MFLAGS_STEPENC             (1<<6)
+#define SPIIPLUS_MFLAGS_BRUSHL              (1<<8)
+#define SPIIPLUS_MFLAGS_BRUSHOK             (1<<9)
+#define SPIIPLUS_MFLAGS_PHASE2              (1<<10)
+#define SPIIPLUS_MFLAGS_LINEAR              (1<<21)
+#define SPIIPLUS_MFLAGS_ABSCOMM             (1<<22)
+#define SPIIPLUS_MFLAGS_HALL                (1<<27)
 
 
 
