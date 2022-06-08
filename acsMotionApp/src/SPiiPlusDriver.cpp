@@ -556,6 +556,9 @@ asynStatus SPiiPlusController::writeReadBinary(char *output, int outBytes, char 
 	pasynOctetSyncIO->setInputEos(pasynUserController_, "\r", 1);
 	pasynOctetSyncIO->setOutputEos(pasynUserController_, "\r", 1);
 	
+	// Free up allocated memory
+	free(packetBuffer);
+	
 	unlock();
 	
 	asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
