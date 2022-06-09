@@ -72,7 +72,6 @@ asynStatus SPiiPlusComm::writeReadInt(std::stringstream& cmd, int* val)
 	static const char *functionName = "writeReadInt";
 	char inString[MAX_CONTROLLER_STRING_SIZE];
 	std::stringstream val_convert;
-	int errNo;
 
 	std::fill(inString, inString + 256, '\0');
 	
@@ -98,12 +97,10 @@ asynStatus SPiiPlusComm::writeReadInt(std::stringstream& cmd, int* val)
 		}
 		else
 		{
-			// Overwrite the '?' so the conversion can succeed
-			inString[0] = ' ';
-			val_convert << std::string(inString);
-			val_convert >> errNo;
+			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Command failed: %s\n", driverName, functionName, cmd.str().c_str());
 			
-			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
+			// Query the controller for more detail about the error
+			writeReadErrorMessage(inString);
 			
 			status = asynError;
 		}
@@ -121,7 +118,6 @@ asynStatus SPiiPlusComm::writeReadDouble(std::stringstream& cmd, double* val)
 	static const char *functionName = "writeReadDouble";
 	char inString[MAX_CONTROLLER_STRING_SIZE];
 	std::stringstream val_convert;
-	int errNo;
 	
 	std::fill(inString, inString + 256, '\0');
 	
@@ -148,12 +144,10 @@ asynStatus SPiiPlusComm::writeReadDouble(std::stringstream& cmd, double* val)
 		}
 		else
 		{
-			// Overwrite the '?' so the conversion can succeed
-			inString[0] = ' ';
-			val_convert << std::string(inString);
-			val_convert >> errNo;
+			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Command failed: %s\n", driverName, functionName, cmd.str().c_str());
 			
-			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
+			// Query the controller for more detail about the error
+			writeReadErrorMessage(inString);
 			
 			status = asynError;
 		}
@@ -171,7 +165,6 @@ asynStatus SPiiPlusComm::writeReadAck(std::stringstream& cmd)
 	static const char *functionName = "writeReadAck";
 	char inString[MAX_CONTROLLER_STRING_SIZE];
 	std::stringstream val_convert;
-	int errNo;
 
 	std::fill(inString, inString + 256, '\0');
 	
@@ -187,12 +180,10 @@ asynStatus SPiiPlusComm::writeReadAck(std::stringstream& cmd)
 	
 	if (inString[0] == '?')
 	{
-		// Overwrite the '?' so the conversion can succeed
-		inString[0] = ' ';
-		val_convert << std::string(inString);
-		val_convert >> errNo;
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Command failed: %s\n", driverName, functionName, cmd.str().c_str());
 		
-		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i - command: %s\n", driverName, functionName, errNo, cmd.str().c_str());
+		// Query the controller for more detail about the error
+		writeReadErrorMessage(inString);
 		
 		status = asynError;
 	}
@@ -200,6 +191,50 @@ asynStatus SPiiPlusComm::writeReadAck(std::stringstream& cmd)
 	// clear the command stringstream
 	cmd.str("");
 	cmd.clear();
+	
+	return status;
+}
+
+asynStatus SPiiPlusComm::writeReadErrorMessage(char* errNoReply)
+{
+	static const char *functionName = "writeReadErrorMessage";
+	std::stringstream val_convert;
+	std::stringstream local_cmd;
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	int errNo;
+	
+	/* errNoReply is of the form ?#### */
+	
+	std::fill(inString, inString + 256, '\0');
+	
+	// The command to query the error message is ??####
+	local_cmd << "?" << errNoReply;
+	
+	// Overwrite the '?' so the conversion can succeed
+	errNoReply[0] = ' ';
+	val_convert << std::string(errNoReply);
+	val_convert >> errNo;
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, local_cmd.str().c_str());
+	
+	size_t response;
+	lock();
+	asynStatus status = writeReadController(local_cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
+	
+	if (inString[0] != '?')
+	{
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i: %s\n", driverName, functionName, errNo, inString);
+	}
+	else {
+		// We should never get here unless a controller returns an error for which it doesn't have an error message defined
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i\n", driverName, functionName, errNo);
+		
+		status = asynError;
+	}
 	
 	return status;
 }
