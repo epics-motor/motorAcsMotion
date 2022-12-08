@@ -1,2 +1,2 @@
-(P)$(R):maxVelocity_RBV.PREC
-(P)$(R):maxAcceleration_RBV.PREC
+$(P)$(M):maxVelocity_RBV.PREC
+$(P)$(M):maxAcceleration_RBV.PREC
