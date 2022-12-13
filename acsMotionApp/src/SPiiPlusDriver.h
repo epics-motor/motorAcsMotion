@@ -99,6 +99,7 @@
 
 // drvInfo strings for extra parameters that the XPS controller supports
 #define SPiiPlusHomingMethodString             "SPIIPLUS_HOMING_METHOD"
+#define SPiiPlusJogDirectionString             "SPIIPLUS_JOG_DIRECTION"
 #define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
 #define SPiiPlusMaxAccelerationString          "SPIIPLUS_MAX_ACCELERATION"
 #define SPiiPlusReadIntVarString               "SPIIPLUS_READ_INT_VAR"
@@ -142,6 +143,7 @@ public:
 	void report(FILE *fp, int level);
 	
 	asynStatus move(double position, int relative, double min_velocity, double max_velocity, double acceleration);
+	asynStatus moveVelocity(double minVelocity, double maxVelocity, double acceleration);
 	asynStatus home(double minVelocity, double maxVelocity, double acceleration, int forwards);
 	asynStatus stop(double acceleration);
 	asynStatus poll(bool *moving);
@@ -228,6 +230,7 @@ protected:
 	
 	#define FIRST_SPIIPLUS_PARAM SPiiPlusHomingMethod_
 	int SPiiPlusHomingMethod_;
+	int SPiiPlusJogDirection_;
 	int SPiiPlusMaxVelocity_;
 	int SPiiPlusMaxAcceleration_;
 	int SPiiPlusReadIntVar_;
