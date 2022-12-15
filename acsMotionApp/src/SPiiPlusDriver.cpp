@@ -811,23 +811,17 @@ asynStatus SPiiPlusAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	epicsInt32 jogDirection;
 	controller->getIntegerParam(axisNo_, controller->SPiiPlusJogDirection_, &jogDirection);
 
-	//Factor speed to resolution
-	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
+	//Factor speed to resolution but work at a sensible ramp up if MRES = 0.0001
+	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_) * 10;
 	status = controller->pComm_->writeReadAck(cmd);
-	cmd << "DEC(" << axisNo_ << ")=" << (acceleration * resolution_);
+
+	cmd << "DEC(" << axisNo_ << ")=" << (abs(maxVelocity) * 10);
 	status = controller->pComm_->writeReadAck(cmd);
-	cmd << "VEL(" << axisNo_ << ")=" << (maxVelocity * resolution_);
+
+	cmd << "VEL(" << axisNo_ << ")=" << (abs(maxVelocity) / 10);
 	status = controller->pComm_->writeReadAck(cmd);
 
 	char motionDirection = maxVelocity > 0 ? '+' : '-';
- 
-	//DEBUG: 
-	//printf("\n\n");
-	//printf("%f: resolution\n", resolution_);
-	//printf("%f: minVelocity\n", minVelocity);
-	//printf("%f: maxVelocity\n", maxVelocity);
-	//printf("%c: Direction\n", motionDirection);
-	//printf("-----\n");
 
 	cmd << "jog " << axisNo_ << ", " << motionDirection;
 	status = controller->pComm_->writeReadAck(cmd);
