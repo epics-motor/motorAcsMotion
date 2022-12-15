@@ -57,7 +57,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	
 	// Create parameters
 	createParam(SPiiPlusHomingMethodString,               asynParamInt32, &SPiiPlusHomingMethod_);
-  createParam(SPiiPlusJogDirectionString,               asynParamInt32, &SPiiPlusJogDirection_);
+	createParam(SPiiPlusJogDirectionString,               asynParamInt32, &SPiiPlusJogDirection_);
 	createParam(SPiiPlusMaxVelocityString,                asynParamFloat64, &SPiiPlusMaxVelocity_);
 	createParam(SPiiPlusMaxAccelerationString,            asynParamFloat64, &SPiiPlusMaxAcceleration_);
 	createParam(SPiiPlusReadIntVarString,                 asynParamInt32,   &SPiiPlusReadIntVar_);
