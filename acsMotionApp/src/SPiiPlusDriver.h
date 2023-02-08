@@ -128,6 +128,9 @@
 #define SPiiPlusAbsEncOffsetString             "SPIIPLUS_ABS_ENC_OFFSET"
 #define SPiiPlusAbsEnc2OffsetString            "SPIIPLUS_ABS_ENC2_OFFSET"
 //
+#define SPiiPlusEncFaultString                 "SPIIPLUS_ENC_FAULT"
+#define SPiiPlusEnc2FaultString                "SPIIPLUS_ENC2_FAULT"
+//
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -257,6 +260,9 @@ protected:
 	int SPiiPlusAbsEncOffset_;
 	int SPiiPlusAbsEnc2Offset_;
 	//
+	int SPiiPlusEncFault_;
+	int SPiiPlusEnc2Fault_;
+	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
@@ -301,6 +307,8 @@ private:
 	epicsFloat64 maxAcceleration_[SPIIPLUS_MAX_AXES];
 	epicsInt32 motorFlags_[SPIIPLUS_MAX_AXES];
 	epicsInt32 faultStatus_[SPIIPLUS_MAX_AXES];
+	epicsInt32 encoderFault_[SPIIPLUS_MAX_AXES];
+	epicsInt32 encoder2Fault_[SPIIPLUS_MAX_AXES];
 	epicsInt32 axisStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 motorStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 encoderType_[SPIIPLUS_MAX_AXES];
