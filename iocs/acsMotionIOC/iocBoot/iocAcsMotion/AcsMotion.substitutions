@@ -62,15 +62,15 @@ pattern
 file "$(TOP)/db/SPiiPlusHoming.db"
 {
 pattern
-{M,   PORT, ADDR, TIMEOUT,    VAL}
-{m1,  ACS1,    0,     2.0,    0}
-{m2,  ACS1,    1,     2.0,    0}
-{m3,  ACS1,    2,     2.0,    0}
-{m4,  ACS1,    3,     2.0,    0}
-{m5,  ACS1,    4,     2.0,    0}
-{m6,  ACS1,    5,     2.0,    0}
-{m7,  ACS1,    6,     2.0,    0}
-{m8,  ACS1,    7,     2.0,    0}
+{M,   PORT, ADDR, TIMEOUT,    VAL,   MAX_DIST, OFFSET_POS, OFFSET_NEG}
+{m1,  ACS1,    0,     2.0,    0,     0.0,      0.0,        0.0}
+{m2,  ACS1,    1,     2.0,    0,     0.0,      0.0,        0.0}
+{m3,  ACS1,    2,     2.0,    0,     0.0,      0.0,        0.0}
+{m4,  ACS1,    3,     2.0,    0,     0.0,      0.0,        0.0}
+{m5,  ACS1,    4,     2.0,    0,     0.0,      0.0,        0.0}
+{m6,  ACS1,    5,     2.0,    0,     0.0,      0.0,        0.0}
+{m7,  ACS1,    6,     2.0,    0,     0.0,      0.0,        0.0}
+{m8,  ACS1,    7,     2.0,    0,     0.0,      0.0,        0.0}
 }
 
 file "$(TOP)/db/SPiiPlusJogging.db"
