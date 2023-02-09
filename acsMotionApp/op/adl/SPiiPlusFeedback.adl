@@ -1,12 +1,12 @@
 
 file {
-	name="SPiiPlusFeedback.adl"
+	name="/home/beams3/KPETERSN/development/epics-motor/motorAcsMotion/acsMotionApp/op/adl/SPiiPlusFeedback.adl"
 	version=030111
 }
 display {
 	object {
-		x=247
-		y=109
+		x=238
+		y=101
 		width=680
 		height=250
 	}
@@ -645,6 +645,19 @@ composite {
 		}
 	}
 }
+text {
+	object {
+		x=10
+		y=10
+		width=390
+		height=29
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="$(P)$(M) feedback parameters"
+	align="horiz. centered"
+}
 composite {
 	object {
 		x=46
@@ -856,16 +869,96 @@ composite {
 		}
 	}
 }
-text {
+composite {
 	object {
-		x=100
-		y=10
-		width=500
-		height=29
+		x=421
+		y=12
+		width=225
+		height=45
 	}
-	"basic attribute" {
-		clr=14
+	"composite name"=""
+	children {
+		composite {
+			object {
+				x=546
+				y=12
+				width=100
+				height=45
+			}
+			"composite name"=""
+			children {
+				"text update" {
+					object {
+						x=546
+						y=37
+						width=100
+						height=20
+					}
+					monitor {
+						chan="$(P)$(M):FAULT:ENC2.VAL"
+						clr=54
+						bclr=4
+					}
+					align="horiz. centered"
+					format="string"
+					limits {
+					}
+				}
+				text {
+					object {
+						x=546
+						y=12
+						width=100
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="FAULT:ENC2"
+					align="horiz. centered"
+				}
+			}
+		}
+		composite {
+			object {
+				x=421
+				y=12
+				width=100
+				height=45
+			}
+			"composite name"=""
+			children {
+				text {
+					object {
+						x=421
+						y=12
+						width=100
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="FAULT:ENC"
+					align="horiz. centered"
+				}
+				"text update" {
+					object {
+						x=421
+						y=37
+						width=100
+						height=20
+					}
+					monitor {
+						chan="$(P)$(M):FAULT:ENC.VAL"
+						clr=54
+						bclr=4
+					}
+					align="horiz. centered"
+					format="string"
+					limits {
+					}
+				}
+			}
+		}
 	}
-	textix="$(P)$(M) feedback parameters"
-	align="horiz. centered"
 }

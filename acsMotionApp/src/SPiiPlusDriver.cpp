@@ -87,6 +87,9 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusAbsEncOffsetString,               asynParamFloat64,   &SPiiPlusAbsEncOffset_);
 	createParam(SPiiPlusAbsEnc2OffsetString,              asynParamFloat64,   &SPiiPlusAbsEnc2Offset_);
 	//
+	createParam(SPiiPlusEncFaultString,                   asynParamInt32,     &SPiiPlusEncFault_);
+	createParam(SPiiPlusEnc2FaultString,                  asynParamInt32,     &SPiiPlusEnc2Fault_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize this variable to avoid freeing random memory
@@ -726,7 +729,9 @@ asynStatus SPiiPlusAxis::updateFeedbackParams()
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusEnc2Offset_, controller->encoder2Offset_[axisNo_]);
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEncOffset_, controller->absoluteEncoderOffset_[axisNo_]);
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEnc2Offset_, controller->absoluteEncoder2Offset_[axisNo_]);
-	
+	//
+	controller->setIntegerParam(axisNo_, controller->SPiiPlusEncFault_, controller->encoderFault_[axisNo_]);
+	controller->setIntegerParam(axisNo_, controller->SPiiPlusEnc2Fault_, controller->encoder2Fault_[axisNo_]);
 	// Assume the calling method will call callParamCallbacks()
 	
 	return status;

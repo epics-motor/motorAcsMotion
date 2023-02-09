@@ -132,3 +132,23 @@ record(ai,"$(P)$(M):E_AOFFS") {
 #!    field(PINI, "1")
 #!    field(SCAN, "$(SCAN=2)")
 #!}
+
+record(bi,"$(P)$(M):FAULT:ENC") {
+    field(DESC, "Encoder Fault")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC_FAULT")
+    field(ZNAM, "OK")
+    field(ONAM, "ERROR")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
+record(bi,"$(P)$(M):FAULT:ENC2") {
+    field(DESC, "Encoder 2 Fault")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_ENC2_FAULT")
+    field(ZNAM, "OK")
+    field(ONAM, "ERROR")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
