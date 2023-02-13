@@ -3,7 +3,6 @@ record(ao, "$(P)$(M):jogDirection")
     field(DTYP, "asynInt32")
     field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))SPIIPLUS_JOG_DIRECTION")
     field(DESC, "Jog Direction")
-    field(TPRO, 1)
 }
 
 record(calcout, "$(P)$(M):jogStatus")
