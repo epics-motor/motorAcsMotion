@@ -729,7 +729,9 @@ asynStatus SPiiPlusAxis::updateFeedbackParams()
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEncOffset_, controller->absoluteEncoderOffset_[axisNo_]);
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEnc2Offset_, controller->absoluteEncoder2Offset_[axisNo_]);
 	//
+	controller->encoderFault_[axisNo_] = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_ENCODER_NC;
 	controller->setIntegerParam(axisNo_, controller->SPiiPlusEncFault_, controller->encoderFault_[axisNo_]);
+	controller->encoder2Fault_[axisNo_] = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_ENCODER_2_NC;
 	controller->setIntegerParam(axisNo_, controller->SPiiPlusEnc2Fault_, controller->encoder2Fault_[axisNo_]);
 	// Assume the calling method will call callParamCallbacks()
 	
