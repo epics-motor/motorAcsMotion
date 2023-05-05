@@ -18,7 +18,7 @@
 #define analogInputString         "ANALOG_INPUT"
 #define analogOutputString        "ANALOG_OUTPUT"
 
-class SPiiPlusAuxIO : public asynPortDriver {
+class epicsShareClass SPiiPlusAuxIO : public asynPortDriver {
 public:
   SPiiPlusAuxIO(const char *auxIOPortName, const char* asynPortName, int numChannels, double pollPeriod);
   ~SPiiPlusAuxIO();

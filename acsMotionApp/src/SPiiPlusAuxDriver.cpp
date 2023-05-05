@@ -4,9 +4,12 @@
 
 #include <iocsh.h>
 #include <epicsThread.h>
-#include <epicsExport.h>
 
-#include <asynPortDriver.h>
+// asynMotorController.h includes asynPortDriver.h
+#include <asynMotorController.h>
+#include <asynMotorAxis.h>
+
+#include <epicsExport.h>
 
 #include "SPiiPlusAuxDriver.h"
 
