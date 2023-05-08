@@ -818,19 +818,16 @@ asynStatus SPiiPlusAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	epicsInt32 jogDirection;
 	controller->getIntegerParam(axisNo_, controller->SPiiPlusJogDirection_, &jogDirection);
 
-	//Factor speed to resolution but work at a sensible ramp up if MRES = 0.0001
-	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_) * 10;
+	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->pComm_->writeReadAck(cmd);
 
-	cmd << "DEC(" << axisNo_ << ")=" << (abs(maxVelocity) * 10);
-	status = controller->pComm_->writeReadAck(cmd);
-
-	cmd << "VEL(" << axisNo_ << ")=" << (abs(maxVelocity) / 10);
+	cmd << "DEC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->pComm_->writeReadAck(cmd);
 
 	char motionDirection = maxVelocity > 0 ? '+' : '-';
 
-	cmd << "jog " << axisNo_ << ", " << motionDirection;
+	// Pass the jog velocity to the jog command, rather than change the normal velocity
+	cmd << "JOG/v " << axisNo_ << ", " << (abs(maxVelocity) * resolution_) << ", " << motionDirection;
 	status = controller->pComm_->writeReadAck(cmd);
 
 	return status;
