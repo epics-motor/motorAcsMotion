@@ -57,7 +57,6 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	
 	// Create parameters
 	createParam(SPiiPlusHomingMethodString,               asynParamInt32, &SPiiPlusHomingMethod_);
-	createParam(SPiiPlusJogDirectionString,               asynParamInt32, &SPiiPlusJogDirection_);
 	createParam(SPiiPlusMaxVelocityString,                asynParamFloat64, &SPiiPlusMaxVelocity_);
 	createParam(SPiiPlusMaxAccelerationString,            asynParamFloat64, &SPiiPlusMaxAcceleration_);
 	createParam(SPiiPlusReadIntVarString,                 asynParamInt32,   &SPiiPlusReadIntVar_);
@@ -814,9 +813,6 @@ asynStatus SPiiPlusAxis::moveVelocity(double minVelocity, double maxVelocity, do
 	asynStatus status;
 	double deviceUnits;
 	std::stringstream cmd;
-
-	epicsInt32 jogDirection;
-	controller->getIntegerParam(axisNo_, controller->SPiiPlusJogDirection_, &jogDirection);
 
 	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
 	status = controller->pComm_->writeReadAck(cmd);

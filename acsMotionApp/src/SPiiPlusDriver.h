@@ -99,7 +99,6 @@
 
 // drvInfo strings for extra parameters that the XPS controller supports
 #define SPiiPlusHomingMethodString             "SPIIPLUS_HOMING_METHOD"
-#define SPiiPlusJogDirectionString             "SPIIPLUS_JOG_DIRECTION"
 #define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
 #define SPiiPlusMaxAccelerationString          "SPIIPLUS_MAX_ACCELERATION"
 #define SPiiPlusReadIntVarString               "SPIIPLUS_READ_INT_VAR"
@@ -233,7 +232,6 @@ protected:
 	
 	#define FIRST_SPIIPLUS_PARAM SPiiPlusHomingMethod_
 	int SPiiPlusHomingMethod_;
-	int SPiiPlusJogDirection_;
 	int SPiiPlusMaxVelocity_;
 	int SPiiPlusMaxAcceleration_;
 	int SPiiPlusReadIntVar_;

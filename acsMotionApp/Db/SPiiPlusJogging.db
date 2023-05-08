@@ -1,7 +1,6 @@
-record(ao, "$(P)$(M):jogDirection")
+record(longout, "$(P)$(M):jogDirection")
 {
-    field(DTYP, "asynInt32")
-    field(OUT,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))SPIIPLUS_JOG_DIRECTION")
+    field(DTYP, "Soft Channel")
     field(DESC, "Jog Direction")
 }
 
