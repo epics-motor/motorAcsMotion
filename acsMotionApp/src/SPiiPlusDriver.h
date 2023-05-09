@@ -131,6 +131,9 @@
 #define SPiiPlusEncFaultString                 "SPIIPLUS_ENC_FAULT"
 #define SPiiPlusEnc2FaultString                "SPIIPLUS_ENC2_FAULT"
 //
+#define SPiiPlusSetEncOffsetString             "SPIIPLUS_SET_ENC_OFFSET"
+#define SPiiPlusSetEnc2OffsetString            "SPIIPLUS_SET_ENC2_OFFSET"
+//
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -157,7 +160,8 @@ public:
 	asynStatus updateFeedbackParams();
 	asynStatus setMaxVelocity(double maxVelocity);
 	asynStatus setMaxAcceleration(double maxAcceleration);
-	
+	asynStatus setEncoderOffset(double newEncoderOffset);
+	asynStatus setEncoder2Offset(double newEncoder2Offset);
 	
 private:
 	SPiiPlusController *pC_;	/**< Pointer to the asynMotorController to which this axis belongs.
@@ -263,6 +267,9 @@ protected:
 	//
 	int SPiiPlusEncFault_;
 	int SPiiPlusEnc2Fault_;
+	//
+	int SPiiPlusSetEncOffset_;
+	int SPiiPlusSetEnc2Offset_;
 	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
