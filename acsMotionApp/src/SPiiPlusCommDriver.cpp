@@ -160,6 +160,62 @@ asynStatus SPiiPlusComm::writeReadDouble(std::stringstream& cmd, double* val)
 	return status;
 }
 
+asynStatus SPiiPlusComm::writeReadStr(std::stringstream& cmd, char* val)
+{
+	static const char *functionName = "writeReadStr";
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	long unsigned int idx;
+
+	std::fill(inString, inString + 256, '\0');
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	
+	size_t response;
+	lock();
+	asynStatus status = writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
+	
+	if (status == asynSuccess)
+	{
+		if (inString[0] != '?')
+		{
+			// inString sometimes ends with \r:\r, copy until the first \r or null is found
+			for (idx = 0; idx < strlen(inString); idx++)
+			{
+				if ((inString[idx] == '\0') || (inString[idx] == '\r'))
+				{
+					val[idx] = '\0';
+					break;
+				}
+				else
+				{
+					val[idx] = inString[idx];
+				} 
+			}
+			
+			asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:    val = %s\n", driverName, functionName, val);
+		}
+		else
+		{
+			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Command failed: %s\n", driverName, functionName, cmd.str().c_str());
+			
+			// Query the controller for more detail about the error
+			writeReadErrorMessage(inString);
+			
+			status = asynError;
+		}
+	}
+	
+	// clear the command stringstream
+	cmd.str("");
+	cmd.clear();
+	
+	return status;
+}
+
 asynStatus SPiiPlusComm::writeReadAck(std::stringstream& cmd)
 {
 	static const char *functionName = "writeReadAck";

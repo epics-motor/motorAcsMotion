@@ -92,10 +92,17 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusSetEncOffsetString,               asynParamFloat64,   &SPiiPlusSetEncOffset_);
 	createParam(SPiiPlusSetEnc2OffsetString,              asynParamFloat64,   &SPiiPlusSetEnc2Offset_);
 	//
+	createParam(SPiiPlusFWVersionString,                  asynParamOctet,     &SPiiPlusFWVersion_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize this variable to avoid freeing random memory
 	fullProfileTimes_ = 0;
+	
+	// Query system info
+	cmd << "?VR";
+	pComm_->writeReadStr(cmd, firmwareVersion_);
+	setStringParam(SPiiPlusFWVersion_, firmwareVersion_);
 	
 	// Query setup parameters
 	pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
@@ -2180,6 +2187,7 @@ void SPiiPlusController::report(FILE *fp, int level)
   fprintf(fp, "    num axes: %i\n", numAxes_);
   fprintf(fp, "    moving poll period: %lf\n", movingPollPeriod_);
   fprintf(fp, "    idle poll period: %lf\n", idlePollPeriod_);
+  fprintf(fp, "    firmware version: %s\n", firmwareVersion_);
   fprintf(fp, "\n");
   
   // Print more axis detail if level = 1
