@@ -134,6 +134,8 @@
 #define SPiiPlusSetEncOffsetString             "SPIIPLUS_SET_ENC_OFFSET"
 #define SPiiPlusSetEnc2OffsetString            "SPIIPLUS_SET_ENC2_OFFSET"
 //
+#define SPiiPlusFWVersionString                "SPIIPLUS_FW_VERSION"
+//
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -271,6 +273,8 @@ protected:
 	int SPiiPlusSetEncOffset_;
 	int SPiiPlusSetEnc2Offset_;
 	//
+	int SPiiPlusFWVersion_;
+	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
@@ -291,6 +295,7 @@ private:
 	void calculateDataCollectionInterval();
 	asynStatus stopDataCollection();
 	asynStatus test();
+	char firmwareVersion_[MAX_MESSAGE_LEN];
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;

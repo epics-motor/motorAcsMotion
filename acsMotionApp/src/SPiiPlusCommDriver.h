@@ -18,6 +18,7 @@ public:
   asynStatus writeReadController(const char *output, char *input, size_t maxChars, size_t *nread, double timeout);
   asynStatus writeReadInt(std::stringstream& cmd, int* val);
   asynStatus writeReadDouble(std::stringstream& cmd, double* val);
+  asynStatus writeReadStr(std::stringstream& cmd, char* val);
   asynStatus writeReadAck(std::stringstream& cmd);
   asynStatus writeReadErrorMessage(char* errNoReply);
   asynStatus getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
