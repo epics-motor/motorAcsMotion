@@ -3,7 +3,7 @@
 ## __R2-1 (2023-05-10)__
 R2-1 is a release based on the master branch.
 
-### Changes since R2-0-1
+### Changes since R2-0
 
 #### New features
 * Pull request [#22](https://github.com/epics-motor/motorAcsMotion/pull/22) and [#23](https://github.com/epics-motor/motorAcsMotion/pull/23): Added auxiliary I/O support
@@ -21,10 +21,11 @@ R2-1 is a release based on the master branch.
 * Pull request [#45](https://github.com/epics-motor/motorAcsMotion/pull/45): Allow PINI to be specified for global var output records, so they initialize properly in IOCs with autosave.
 
 #### Bug fixes
+* Commit [cad837e](https://github.com/epics-motor/motorAcsMotion/commit/cad837ef846f8278f875897ee0514beb41c2fcd0): [Paul Richards](https://github.com/prichards-wmko) found and fixed a significant memory leak
 * Pull request [#25](https://github.com/epics-motor/motorAcsMotion/pull/25): Include header files to fix RHEL7 build problems
 * Pull request [#36](https://github.com/epics-motor/motorAcsMotion/pull/36): Fixed inconsistencies and typos in max params db and req files
 * Commit [2cfc752](https://github.com/epics-motor/motorAcsMotion/commit/2cfc752ccc82cb5143b41f1049076dc4b480cd46): Modified starting locations for MEDM/caQtDM screens so they don't appear outside of FHD displays
-* Pull request [#34](https://github.com/epics-motor/motorAcsMotion/pull/34): Applied [Mark Rivers](https://github.com/MarkRivers) fixes for SPiiPlusAuxDriver build problems on Windows (dynamic)
+* Pull request [#34](https://github.com/epics-motor/motorAcsMotion/pull/34): Applied fixes from [Mark Rivers](https://github.com/MarkRivers) for SPiiPlusAuxDriver build problems on Windows (dynamic)
 
 #### Continuous integration
 * Commit [fdfe967](https://github.com/epics-motor/motorAcsMotion/commit/fdfe967817fc871fd4358e33a7a8199d6e8aa1b9): Added ci-scripts (v3.3.0)
