@@ -8,7 +8,7 @@ include $(TOP)/configure/CONFIG
 
 DBD += AcsMotionSupport.dbd
 
-LIBRARY_IOC_Default = AcsMotion
+LIBRARY_IOC_DEFAULT = AcsMotion
 LIBRARY_IOC_vxWorks = -nil-
 
 SRCS += SPiiPlusBinComm.cpp
