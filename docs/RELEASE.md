@@ -1,5 +1,36 @@
 # motorAcsMotion Releases
 
+## __R2-1 (2023-05-10)__
+R2-1 is a release based on the master branch.
+
+### Changes since R2-0
+
+#### New features
+* Pull request [#22](https://github.com/epics-motor/motorAcsMotion/pull/22) and [#23](https://github.com/epics-motor/motorAcsMotion/pull/23): Added auxiliary I/O support
+* Pull request [#26](https://github.com/epics-motor/motorAcsMotion/pull/26): [Paul Richards](https://github.com/prichards-wmko) added a "homed" record to show when the homing procedure is complete
+* Pull request [#28](https://github.com/epics-motor/motorAcsMotion/pull/28): Added support for closed-loop stages with encoders
+* Pull request [#29](https://github.com/epics-motor/motorAcsMotion/pull/29): Improved error messages
+* Pull request [#40](https://github.com/epics-motor/motorAcsMotion/pull/40) and [#42](https://github.com/epics-motor/motorAcsMotion/pull/42): Made the ENC and ENC2 bits of the FAULT status available as PVs
+* Pull request [#39](https://github.com/epics-motor/motorAcsMotion/pull/39): [Tim Speight](https://github.com/tim-speight) implemented jogging and added a jogDirection status record
+* Pull request [#43](https://github.com/epics-motor/motorAcsMotion/pull/43): Minor jog improvements
+* Pull request [#44](https://github.com/epics-motor/motorAcsMotion/pull/44): Allow the encoder offsets to be zeroed
+* Pull request [#46](https://github.com/epics-motor/motorAcsMotion/pull/46): Query the firmware version string and include it in asynReport output
+
+#### Modifications to existing features
+* Pull request [#21](https://github.com/epics-motor/motorAcsMotion/pull/21): Moved communication methods to a new SPiiPlusCommDriver class
+* Pull request [#45](https://github.com/epics-motor/motorAcsMotion/pull/45): Allow PINI to be specified for global var output records, so they initialize properly in IOCs with autosave.
+
+#### Bug fixes
+* Commit [cad837e](https://github.com/epics-motor/motorAcsMotion/commit/cad837ef846f8278f875897ee0514beb41c2fcd0): [Paul Richards](https://github.com/prichards-wmko) found and fixed a significant memory leak
+* Pull request [#25](https://github.com/epics-motor/motorAcsMotion/pull/25): Include header files to fix RHEL7 build problems
+* Pull request [#36](https://github.com/epics-motor/motorAcsMotion/pull/36): Fixed inconsistencies and typos in max params db and req files
+* Commit [2cfc752](https://github.com/epics-motor/motorAcsMotion/commit/2cfc752ccc82cb5143b41f1049076dc4b480cd46): Modified starting locations for MEDM/caQtDM screens so they don't appear outside of FHD displays
+* Pull request [#34](https://github.com/epics-motor/motorAcsMotion/pull/34): Applied fixes from [Mark Rivers](https://github.com/MarkRivers) for SPiiPlusAuxDriver build problems on Windows (dynamic)
+
+#### Continuous integration
+* Commit [fdfe967](https://github.com/epics-motor/motorAcsMotion/commit/fdfe967817fc871fd4358e33a7a8199d6e8aa1b9): Added ci-scripts (v3.3.0)
+* Pull request [#27](https://github.com/epics-motor/motorAcsMotion/pull/27): Configured to build with Github Actions
+
 ## __R2-0-1 (2022-06-08)__
 R2-0-1 is a bugfix release based on the R2-0-bugfix branch.
 
@@ -8,7 +39,6 @@ R2-0-1 is a bugfix release based on the R2-0-bugfix branch.
 #### Bug fixes
 
 * Commit [8e125cc](https://github.com/epics-motor/motorAcsMotion/commit/8e125cc6e0b4bc868fd837115f5a86fb9f7b6727): Applied fix for memory leak, found and fixed in the master branch by [Paul Richards](https://github.com/prichards-wmko) in [cad837e](https://github.com/epics-motor/motorAcsMotion/commit/cad837ef846f8278f875897ee0514beb41c2fcd0)
-
 
 ## __R2-0 (2022-01-21)__
 R2-0 is a release based on the master branch.
@@ -52,4 +82,3 @@ Initial release
 ### Notes
 
 * Only point-to-point moves are supported.
-

@@ -19,6 +19,7 @@ DB += SPiiPlusAuxBo.db
 DB += SPiiPlusAuxLi.db
 DB += SPiiPlusAuxLo.db
 
+DB += SPiiPlusJogging.db
 DB += SPiiPlusHoming.db
 DB += SPiiPlusCommut.db
 DB += SPiiPlusMaxParams.db

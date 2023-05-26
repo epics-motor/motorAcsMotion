@@ -132,6 +132,11 @@
 #define SPiiPlusEncFaultString                 "SPIIPLUS_ENC_FAULT"
 #define SPiiPlusEnc2FaultString                "SPIIPLUS_ENC2_FAULT"
 //
+#define SPiiPlusSetEncOffsetString             "SPIIPLUS_SET_ENC_OFFSET"
+#define SPiiPlusSetEnc2OffsetString            "SPIIPLUS_SET_ENC2_OFFSET"
+//
+#define SPiiPlusFWVersionString                "SPIIPLUS_FW_VERSION"
+//
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -146,6 +151,7 @@ public:
 	void report(FILE *fp, int level);
 	
 	asynStatus move(double position, int relative, double min_velocity, double max_velocity, double acceleration);
+	asynStatus moveVelocity(double minVelocity, double maxVelocity, double acceleration);
 	asynStatus home(double minVelocity, double maxVelocity, double acceleration, int forwards);
 	asynStatus moveVelocity(double minVelocity, double maxVelocity, double acceleration);
 	asynStatus stop(double acceleration);
@@ -158,7 +164,8 @@ public:
 	asynStatus updateFeedbackParams();
 	asynStatus setMaxVelocity(double maxVelocity);
 	asynStatus setMaxAcceleration(double maxAcceleration);
-	
+	asynStatus setEncoderOffset(double newEncoderOffset);
+	asynStatus setEncoder2Offset(double newEncoder2Offset);
 	
 private:
 	SPiiPlusController *pC_;	/**< Pointer to the asynMotorController to which this axis belongs.
@@ -267,6 +274,11 @@ protected:
 	int SPiiPlusEncFault_;
 	int SPiiPlusEnc2Fault_;
 	//
+	int SPiiPlusSetEncOffset_;
+	int SPiiPlusSetEnc2Offset_;
+	//
+	int SPiiPlusFWVersion_;
+	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
@@ -287,6 +299,7 @@ private:
 	void calculateDataCollectionInterval();
 	asynStatus stopDataCollection();
 	asynStatus test();
+	char firmwareVersion_[MAX_MESSAGE_LEN];
 	
 	epicsEventId profileExecuteEvent_;
 	std::vector <int> profileAxes_;

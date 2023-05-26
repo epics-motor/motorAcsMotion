@@ -90,10 +90,20 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusEncFaultString,                   asynParamInt32,     &SPiiPlusEncFault_);
 	createParam(SPiiPlusEnc2FaultString,                  asynParamInt32,     &SPiiPlusEnc2Fault_);
 	//
+	createParam(SPiiPlusSetEncOffsetString,               asynParamFloat64,   &SPiiPlusSetEncOffset_);
+	createParam(SPiiPlusSetEnc2OffsetString,              asynParamFloat64,   &SPiiPlusSetEnc2Offset_);
+	//
+	createParam(SPiiPlusFWVersionString,                  asynParamOctet,     &SPiiPlusFWVersion_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize this variable to avoid freeing random memory
 	fullProfileTimes_ = 0;
+	
+	// Query system info
+	cmd << "?VR";
+	pComm_->writeReadStr(cmd, firmwareVersion_);
+	setStringParam(SPiiPlusFWVersion_, firmwareVersion_);
 	
 	// Query setup parameters
 	pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
@@ -398,6 +408,14 @@ asynStatus SPiiPlusController::writeFloat64(asynUser *pasynUser, epicsFloat64 va
   else if (function == SPiiPlusWriteRealVar_) 
   {
     status = writeGlobalRealVar(pasynUser, value);
+  }
+  else if (function == SPiiPlusSetEncOffset_)
+  {
+    status = pAxis->setEncoderOffset(value);
+  }
+  else if (function == SPiiPlusSetEnc2Offset_)
+  {
+    status = pAxis->setEncoder2Offset(value);
   }
   else
   {
@@ -752,7 +770,9 @@ asynStatus SPiiPlusAxis::updateFeedbackParams()
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEncOffset_, controller->absoluteEncoderOffset_[axisNo_]);
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusAbsEnc2Offset_, controller->absoluteEncoder2Offset_[axisNo_]);
 	//
+	controller->encoderFault_[axisNo_] = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_ENCODER_NC;
 	controller->setIntegerParam(axisNo_, controller->SPiiPlusEncFault_, controller->encoderFault_[axisNo_]);
+	controller->encoder2Fault_[axisNo_] = controller->faultStatus_[axisNo_] & SPIIPLUS_FAULT_ENCODER_2_NC;
 	controller->setIntegerParam(axisNo_, controller->SPiiPlusEnc2Fault_, controller->encoder2Fault_[axisNo_]);
 	// Assume the calling method will call callParamCallbacks()
 	
@@ -794,6 +814,7 @@ asynStatus SPiiPlusAxis::setMaxAcceleration(double maxAcceleration)
 	return status;
 }
 
+
 asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity, double maxVelocity, double acceleration)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
@@ -827,6 +848,29 @@ asynStatus SPiiPlusAxis::move(double position, int relative, double minVelocity,
 	return status;
 }
 
+asynStatus SPiiPlusAxis::moveVelocity(double minVelocity, double maxVelocity, double acceleration)
+{
+  //Push hold jogging
+  SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	double deviceUnits;
+	std::stringstream cmd;
+
+	cmd << "ACC(" << axisNo_ << ")=" << (acceleration * resolution_);
+	status = controller->pComm_->writeReadAck(cmd);
+
+	cmd << "DEC(" << axisNo_ << ")=" << (acceleration * resolution_);
+	status = controller->pComm_->writeReadAck(cmd);
+
+	char motionDirection = maxVelocity > 0 ? '+' : '-';
+
+	// Pass the jog velocity to the jog command, rather than change the normal velocity
+	cmd << "JOG/v " << axisNo_ << ", " << (abs(maxVelocity) * resolution_) << ", " << motionDirection;
+	status = controller->pComm_->writeReadAck(cmd);
+
+	return status;
+}
+
 asynStatus SPiiPlusAxis::setPosition(double position)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
@@ -836,6 +880,68 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 	// The controller automatically updates APOS and FPOS when RPOS is updated 
 	cmd << "SET RPOS(" << axisNo_ << ")=" << (position * resolution_);
 	status = controller->pComm_->writeReadAck(cmd);
+	
+	return status;
+}
+
+asynStatus SPiiPlusAxis::setEncoderOffset(double newEncoderOffset)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	std::stringstream cmd;
+	double oldEncoderOffset;
+	const char* sign;
+	static const char *functionName = "setEncoderOffset";
+	
+	// We can't use getDoubleParam to get the old encoder 2 offset because it has already been updated
+	oldEncoderOffset = pC_->encoderOffset_[axisNo_];
+	
+	// If the value is positive or zero, add a '+'.  If the value is negative, no sign needs to be added
+	sign = (newEncoderOffset < 0.0) ? " " : "+";
+	
+	// The encoder offset is in SPiiPlus units
+	// SET FPOS(n) = FPOS(n) - EOFFS(n) + newEncoderOffset
+	cmd << "SET FPOS(" << axisNo_ << ")=FPOS(" << axisNo_ << ")-EOFFS(" << axisNo_ << ")" << sign << newEncoderOffset;
+	status = controller->pComm_->writeReadAck(cmd);
+	
+	if (status != asynSuccess)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i encoder offset change failed\n", driverName, functionName, axisNo_);
+	} else {
+		// Always print this line so there is a record in an IOC's log for offset changes
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i encoder offset changed from %lf to %lf\n", driverName, functionName, axisNo_, oldEncoderOffset, newEncoderOffset);
+	}
+	
+	return status;
+}
+
+asynStatus SPiiPlusAxis::setEncoder2Offset(double newEncoder2Offset)
+{
+	SPiiPlusController* controller = (SPiiPlusController*) pC_;
+	asynStatus status;
+	std::stringstream cmd;
+	double oldEncoder2Offset;
+	const char* sign;
+	static const char *functionName = "setEncoder2Offset";
+	
+	// We can't use getDoubleParam to get the old encoder 2 offset because it has already been updated
+	oldEncoder2Offset = pC_->encoder2Offset_[axisNo_];
+	
+	// If the value is positive or zero, add a '+'.  If the value is negative, no sign needs to be added
+	sign = (newEncoder2Offset < 0.0) ? " " : "+";
+	
+	// The encoder 2 offset is in SPiiPlus units
+	// SET F2POS(n) = F2POS(n) - E2OFFS(n) + newEncoder2Offset
+	cmd << "SET F2POS(" << axisNo_ << ")=F2POS(" << axisNo_ << ")-E2OFFS(" << axisNo_ << ")" << sign << newEncoder2Offset;
+	status = controller->pComm_->writeReadAck(cmd);
+	
+	if (status != asynSuccess)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i encoder 2 offset change failed\n", driverName, functionName, axisNo_);
+	} else {
+		// Always print this line so there is a record in an IOC's log for offset changes
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i encoder 2 offset changed from %lf to %lf\n", driverName, functionName, axisNo_, oldEncoder2Offset, newEncoder2Offset);
+	}
 	
 	return status;
 }
@@ -2132,6 +2238,7 @@ void SPiiPlusController::report(FILE *fp, int level)
   fprintf(fp, "    num axes: %i\n", numAxes_);
   fprintf(fp, "    moving poll period: %lf\n", movingPollPeriod_);
   fprintf(fp, "    idle poll period: %lf\n", idlePollPeriod_);
+  fprintf(fp, "    firmware version: %s\n", firmwareVersion_);
   fprintf(fp, "\n");
   
   // Print more axis detail if level = 1

@@ -73,6 +73,20 @@ pattern
 {m8,  ACS1,    7,     2.0,    0}
 }
 
+file "$(TOP)/db/SPiiPlusJogging.db"
+{
+pattern
+{M}
+{m1}
+{m2}
+{m3}
+{m4}
+{m5}
+{m6}
+{m7}
+{m8}
+}
+
 # These records work, but the initial values are all zero.  Maybe HOPR/LOPR/DRVH/DRVL need to be set?
 file "$(TOP)/db/SPiiPlusMaxParams.db"
 {
@@ -118,6 +132,7 @@ pattern
 #}
 
 ### The following databases are useful if programs are running on the ACS controller
+## PINI can be set to YES for IOCs that use autosave so that global var output records initialize properly
 #file "$(TOP)/db/SPiiPlusIntVar.db"
 #{
 #pattern
@@ -125,6 +140,7 @@ pattern
 #{c0:1001I,  "Int 1",    ACS1,  1001}
 #}
 #
+## PINI can be set to YES for IOCs that use autosave so that global var output records initialize properly
 #file "$(TOP)/db/SPiiPlusRealVar.db"
 #{
 #pattern
