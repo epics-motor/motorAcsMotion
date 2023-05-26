@@ -20,6 +20,7 @@ DB += SPiiPlusAuxLi.db
 DB += SPiiPlusAuxLo.db
 
 DB += SPiiPlusHoming.db
+DB += SPiiPlusCommut.db
 DB += SPiiPlusMaxParams.db
 DB += SPiiPlusMaxParamsRbv.db
 DB += SPiiPlusIntVar.db
