@@ -1,5 +1,19 @@
 # motorAcsMotion Releases
 
+## __R2-2 (2023-06-06)__
+R2-2 is a release based on the master branch.
+
+### Changes since R2-1
+
+#### New features
+* None
+
+#### Modifications to existing features
+* Pull request [#50](https://github.com/epics-motor/motorAcsMotion/pull/50): Added homing max distance, homing offset positive, and homing offset negative
+
+#### Bug fixes
+* Pull request [#48](https://github.com/epics-motor/motorAcsMotion/pull/48) from [Keenan Lang](https://github.com/keenanlang): Don't build for vxWorks; vxWorks version 6.9 doesn't support lround.
+
 ## __R2-1 (2023-05-10)__
 R2-1 is a release based on the master branch.
 
