@@ -94,6 +94,10 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	//
 	createParam(SPiiPlusFWVersionString,                  asynParamOctet,     &SPiiPlusFWVersion_);
 	//
+	createParam(SPiiPlusHomingMaxDistString,              asynParamFloat64,   &SPiiPlusHomingMaxDist_);
+	createParam(SPiiPlusHomingOffsetPosString,            asynParamFloat64,   &SPiiPlusHomingOffsetPos_);
+	createParam(SPiiPlusHomingOffsetNegString,            asynParamFloat64,   &SPiiPlusHomingOffsetNeg_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize this variable to avoid freeing random memory
@@ -975,9 +979,20 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 	std::stringstream cmd;
 	epicsInt32 mbboHomingMethod;
 	epicsInt32 homingMethod;
+	epicsFloat64 homingMaxDistance;
+	epicsFloat64 homingOffset;
 	static const char *functionName = "home";
 	
 	controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &mbboHomingMethod);
+	controller->getDoubleParam(axisNo_, controller->SPiiPlusHomingMaxDist_, &homingMaxDistance);
+	if (forwards == 0)
+	{
+		controller->getDoubleParam(axisNo_, controller->SPiiPlusHomingOffsetNeg_, &homingOffset);
+	}
+	else
+	{
+		controller->getDoubleParam(axisNo_, controller->SPiiPlusHomingOffsetPos_, &homingOffset);
+	}
 	
 	switch(mbboHomingMethod)
 	{
@@ -1046,7 +1061,7 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 	else
 	{
 		// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
-		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_);
+		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_) << "," << homingMaxDistance << "," << homingOffset;
 		//asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
 		status = controller->pComm_->writeReadAck(cmd);
 	}

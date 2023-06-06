@@ -23,3 +23,27 @@ record(mbbo, "$(P)$(M):homingMethod")
     field(VAL,  "$(VAL=0)")
     field(PINI, "YES")
 }
+
+record(ao,"$(P)$(M):homingMaxDist") {
+    field(DESC, "Homing Max Distance")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_HOMING_MAX_DIST")
+    field(VAL,  "$(MAX_DIST=0)")
+    field(PREC, "$(PREC=4)")
+}
+
+record(ao,"$(P)$(M):homingOffsetPos") {
+    field(DESC, "Homing Offset Pos")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_HOMING_OFFSET_POS")
+    field(VAL,  "$(OFFSET_POS=0)")
+    field(PREC, "$(PREC=4)")
+}
+
+record(ao,"$(P)$(M):homingOffsetNeg") {
+    field(DESC, "Homing Offset Neg")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_HOMING_OFFSET_NEG")
+    field(VAL,  "$(OFFSET_NEG=0)")
+    field(PREC, "$(PREC=4)")
+}

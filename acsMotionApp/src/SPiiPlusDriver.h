@@ -136,6 +136,10 @@
 //
 #define SPiiPlusFWVersionString                "SPIIPLUS_FW_VERSION"
 //
+#define SPiiPlusHomingMaxDistString            "SPIIPLUS_HOMING_MAX_DIST"
+#define SPiiPlusHomingOffsetPosString          "SPIIPLUS_HOMING_OFFSET_POS"
+#define SPiiPlusHomingOffsetNegString          "SPIIPLUS_HOMING_OFFSET_NEG"
+//
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -274,6 +278,10 @@ protected:
 	int SPiiPlusSetEnc2Offset_;
 	//
 	int SPiiPlusFWVersion_;
+	//
+	int SPiiPlusHomingMaxDist_;
+	int SPiiPlusHomingOffsetPos_;
+	int SPiiPlusHomingOffsetNeg_;
 	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
