@@ -1060,8 +1060,17 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 	}
 	else
 	{
-		// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
-		cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_) << "," << homingMaxDistance << "," << homingOffset;
+		if (homingMaxDistance == 0.0)
+		{
+			// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
+			cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_) << ",," << homingOffset;
+		}
+		else
+		{
+			// HOME Axis, [opt]HomingMethod,[opt]HomingVel,[opt]MaxDistance,[opt]HomingOffset,[opt]HomingCurrLimit,[opt]HardStopThreshold
+			cmd << "HOME " << axisNo_ << "," << homingMethod << "," << (maxVelocity * resolution_) << "," << homingMaxDistance << "," << homingOffset;
+		}
+		
 		//asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: home command = %s\n", driverName, functionName, cmd.str().c_str());
 		status = controller->pComm_->writeReadAck(cmd);
 	}
