@@ -30,6 +30,7 @@ record(ao,"$(P)$(M):homingMaxDist") {
     field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_HOMING_MAX_DIST")
     field(VAL,  "$(MAX_DIST=0)")
     field(PREC, "$(PREC=4)")
+    field(PINI, "YES")
 }
 
 record(ao,"$(P)$(M):homingOffsetPos") {
@@ -38,6 +39,7 @@ record(ao,"$(P)$(M):homingOffsetPos") {
     field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_HOMING_OFFSET_POS")
     field(VAL,  "$(OFFSET_POS=0)")
     field(PREC, "$(PREC=4)")
+    field(PINI, "YES")
 }
 
 record(ao,"$(P)$(M):homingOffsetNeg") {
@@ -46,4 +48,5 @@ record(ao,"$(P)$(M):homingOffsetNeg") {
     field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_HOMING_OFFSET_NEG")
     field(VAL,  "$(OFFSET_NEG=0)")
     field(PREC, "$(PREC=4)")
+    field(PINI, "YES")
 }
