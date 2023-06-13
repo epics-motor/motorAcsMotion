@@ -50,3 +50,12 @@ record(ao,"$(P)$(M):homingOffsetNeg") {
     field(PREC, "$(PREC=4)")
     field(PINI, "YES")
 }
+
+record(ao,"$(P)$(M):homingCurrLimit") {
+    field(DESC, "Homing Current Limit")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_HOMING_CURR_LIMIT")
+    field(VAL,  "$(CURR_LIMIT=0)")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "YES")
+}

@@ -139,6 +139,7 @@
 #define SPiiPlusHomingMaxDistString            "SPIIPLUS_HOMING_MAX_DIST"
 #define SPiiPlusHomingOffsetPosString          "SPIIPLUS_HOMING_OFFSET_POS"
 #define SPiiPlusHomingOffsetNegString          "SPIIPLUS_HOMING_OFFSET_NEG"
+#define SPiiPlusHomingCurrLimitString          "SPIIPLUS_HOMING_CURR_LIMIT"
 //
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
 
@@ -282,6 +283,7 @@ protected:
 	int SPiiPlusHomingMaxDist_;
 	int SPiiPlusHomingOffsetPos_;
 	int SPiiPlusHomingOffsetNeg_;
+	int SPiiPlusHomingCurrLimit_;
 	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
