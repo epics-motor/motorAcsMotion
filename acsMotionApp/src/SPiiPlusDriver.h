@@ -225,6 +225,7 @@ public:
 	/* These are the methods that are new to this class */
 	void profileThread();
 	void assembleFullProfile(int numPoints);
+	void sanityCheckProfile();
 	void createAccDecTimes(double preTimeMax, double postTimeMax);
 	void createAccDecPositions(SPiiPlusAxis* axis, int moveMode, int numPoints, double preTimeMax, double postTimeMax, double preVelocity, double postVelocity);
 	asynStatus runProfile();
