@@ -1239,7 +1239,7 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
   
   for (i=0; i<profileAxes_.size(); i++)
   {
-    pAxis = getAxis(i);
+    pAxis = getAxis(profileAxes_[i]);
     
     if (profileAxes_[i] == profileAxes_.front())
     {
@@ -1297,7 +1297,8 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
 asynStatus SPiiPlusController::buildProfile()
 {
   int i; 
-  unsigned int j; 
+  unsigned int j;
+  unsigned int idx;
   int status;
   bool buildOK=true;
   //bool verifyOK=true;
@@ -1390,15 +1391,18 @@ asynStatus SPiiPlusController::buildProfile()
   
   for (j=0; j<profileAxes_.size(); j++)
   {
+    // j != axis index
+    idx = profileAxes_[j];
+     
     // Query the max velocity and acceleration
-    cmd << "?XVEL(" << j << ")";
+    cmd << "?XVEL(" << idx << ")";
     status = pComm_->writeReadDouble(cmd, &maxVelocity);
     if (status) {
       buildOK = false;
       sprintf(message, "Error getting XVEL, status=%d\n", status);
       goto done;
     }
-    cmd << "?XACC(" << j << ")";
+    cmd << "?XACC(" << idx << ")";
     status = pComm_->writeReadDouble(cmd, &maxAcceleration);
     if (status) {
       buildOK = false;
@@ -1413,36 +1417,36 @@ asynStatus SPiiPlusController::buildProfile()
     
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      preDistance = pAxes_[j]->profilePositions_[1] - pAxes_[j]->profilePositions_[0];
+      preDistance = pAxes_[idx]->profilePositions_[1] - pAxes_[idx]->profilePositions_[0];
     }
     else
     {
-      preDistance = pAxes_[j]->profilePositions_[0];
+      preDistance = pAxes_[idx]->profilePositions_[0];
     }
     // Use the 2nd element of the times array instead of the 1st; the 1st will be used for the preDistance move.
-    preVelocity[j] = preDistance/profileTimes_[1];
-    preTime = fabs(preVelocity[j]) / maxAcceleration;
+    preVelocity[idx] = preDistance/profileTimes_[1];
+    preTime = fabs(preVelocity[idx]) / maxAcceleration;
     preTimeMax = MAX(preTimeMax, preTime);
     // Use the acceleration specified by the user, if it is less than the max acceleration
     preTimeMax = MAX(preTimeMax, accelTime);
     
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      postDistance = pAxes_[j]->profilePositions_[numPoints-1] - pAxes_[j]->profilePositions_[numPoints-2];
+      postDistance = pAxes_[idx]->profilePositions_[numPoints-1] - pAxes_[idx]->profilePositions_[numPoints-2];
     }
     else
     {
-      postDistance = pAxes_[j]->profilePositions_[numPoints-1];
+      postDistance = pAxes_[idx]->profilePositions_[numPoints-1];
     }
-    postVelocity[j] = postDistance/profileTimes_[numPoints-1];
-    postTime = fabs(postVelocity[j]) / maxAcceleration;
+    postVelocity[idx] = postDistance/profileTimes_[numPoints-1];
+    postTime = fabs(postVelocity[idx]) / maxAcceleration;
     postTimeMax = MAX(postTimeMax, postTime);
     // Use the acceleration specified by the user, if it is less than the max acceleration
     postTimeMax = MAX(postTimeMax, accelTime);
     
     asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
               "%s:%s: axis %d profilePositions[0]=%f, profilePositions[%d]=%f, maxAcceleration=%f, preTimeMax=%f, postTimeMax=%f\n",
-              driverName, functionName, j, pAxes_[j]->profilePositions_[0], numPoints-1, pAxes_[j]->profilePositions_[numPoints-1],
+              driverName, functionName, idx, pAxes_[idx]->profilePositions_[0], numPoints-1, pAxes_[idx]->profilePositions_[numPoints-1],
               maxAcceleration, preTimeMax, postTimeMax);
   }
   
@@ -1462,26 +1466,32 @@ asynStatus SPiiPlusController::buildProfile()
    */
   for (j=0; j<profileAxes_.size(); j++)
   {
-    pAxes_[j]->profilePreDistance_  =  0.5 * preVelocity[j]  * preTimeMax;
-    pAxes_[j]->profilePostDistance_ =  0.5 * postVelocity[j] * postTimeMax;
+    // j != axis index
+    idx = profileAxes_[j];     
+
+    pAxes_[idx]->profilePreDistance_  =  0.5 * preVelocity[idx]  * preTimeMax;
+    pAxes_[idx]->profilePostDistance_ =  0.5 * postVelocity[idx] * postTimeMax;
     
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      pAxes_[j]->profileStartPos_ = pAxes_[j]->profilePositions_[0] - pAxes_[j]->profilePreDistance_;
-      pAxes_[j]->profileFlybackPos_ = pAxes_[j]->profilePositions_[numPoints-1];
+      pAxes_[idx]->profileStartPos_ = pAxes_[idx]->profilePositions_[0] - pAxes_[idx]->profilePreDistance_;
+      pAxes_[idx]->profileFlybackPos_ = pAxes_[idx]->profilePositions_[numPoints-1];
     }
     else
     {
-      pAxes_[j]->profileStartPos_ = -pAxes_[j]->profilePreDistance_;
-      pAxes_[j]->profileFlybackPos_ = -pAxes_[j]->profilePostDistance_;
+      pAxes_[idx]->profileStartPos_ = -pAxes_[idx]->profilePreDistance_;
+      pAxes_[idx]->profileFlybackPos_ = -pAxes_[idx]->profilePostDistance_;
     }
     
     // populate the profileAccelPositions_ and profileDecelPositions_ arrays
-    createAccDecPositions(pAxes_[j], moveMode, numPoints, preTimeMax, postTimeMax, preVelocity[j], postVelocity[j]);
+    createAccDecPositions(pAxes_[idx], moveMode, numPoints, preTimeMax, postTimeMax, preVelocity[idx], postVelocity[idx]);
   }
   
   // populate the fullProfileTimes_ and fullProfilePositions_ arrays
   assembleFullProfile(numPoints);
+  
+  // Sanity check
+  //sanityCheckProfile();
   
   // calculate the time interval for data collection
   calculateDataCollectionInterval();
@@ -1615,7 +1625,7 @@ void SPiiPlusController::assembleFullProfile(int numPoints)
     fullProfileTimes_[profileIdx] = profileAccelTimes_[i];
     for (j=0; j<profileAxes_.size(); j++)
     {
-      pAxes_[j]->fullProfilePositions_[profileIdx] = pAxes_[j]->profileAccelPositions_[i];
+      pAxes_[profileAxes_[j]]->fullProfilePositions_[profileIdx] = pAxes_[profileAxes_[j]]->profileAccelPositions_[i];
     }
     profileIdx++;
   }
@@ -1624,7 +1634,7 @@ void SPiiPlusController::assembleFullProfile(int numPoints)
     fullProfileTimes_[profileIdx] = profileTimes_[i];
     for (j=0; j<profileAxes_.size(); j++)
     {
-      pAxes_[j]->fullProfilePositions_[profileIdx] = pAxes_[j]->profilePositions_[i];
+      pAxes_[profileAxes_[j]]->fullProfilePositions_[profileIdx] = pAxes_[profileAxes_[j]]->profilePositions_[i];
     }
     profileIdx++;
   }
@@ -1633,12 +1643,31 @@ void SPiiPlusController::assembleFullProfile(int numPoints)
     fullProfileTimes_[profileIdx] = profileDecelTimes_[i];
     for (j=0; j<profileAxes_.size(); j++)
     {
-      pAxes_[j]->fullProfilePositions_[profileIdx] = pAxes_[j]->profileDecelPositions_[i];
+      pAxes_[profileAxes_[j]]->fullProfilePositions_[profileIdx] = pAxes_[profileAxes_[j]]->profileDecelPositions_[i];
     }
     profileIdx++;
   }
   // fullProfileSize_ == profileIdx at this point
   fullProfileSize_ = numAccelSegments_ + (numPoints-1) + numDecelSegments_;
+}
+
+void SPiiPlusController::sanityCheckProfile()
+{
+  int i;
+  unsigned int idx, j, numProfileAxes;
+  
+  numProfileAxes = profileAxes_.size();
+  
+  for (i=0; i<fullProfileSize_; i++)
+  {
+    printf("%i\t", i);
+    for (j=0; j<numProfileAxes; j++)
+    {
+      idx = profileAxes_[j];
+      printf("%f\t", pAxes_[idx]->fullProfilePositions_[i]);
+    }
+    printf("\n");
+  }
 }
 
 void SPiiPlusController::calculateDataCollectionInterval()
