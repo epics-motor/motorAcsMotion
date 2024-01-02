@@ -172,7 +172,6 @@
 #define SPiiPlusPulseWidthString               "SPIIPLUS_PULSE_WIDTH"
 //
 #define SPiiPlusTestString                      "SPIIPLUS_TEST"
->>>>>>> master
 
 struct SPiiPlusDrvUser_t {
     const char *programName;
