@@ -1,0 +1,8 @@
+$(P)$(C)$(R).VAL
+$(P)$(C)$(R).DESC
+$(P)$(C)$(R).ZNAM
+$(P)$(C)$(R).ONAM
+$(P)$(C)$(R)_RBV.SCAN
+$(P)$(C)$(R)_RBV.DESC
+$(P)$(C)$(R)_RBV.ZNAM
+$(P)$(C)$(R)_RBV.ONAM

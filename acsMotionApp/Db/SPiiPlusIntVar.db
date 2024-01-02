@@ -5,6 +5,8 @@ record(longout, "$(P)$(R)")
     field(DTYP, "asynInt32")
     field(OUT,  "@asyn($(PORT),$(TAG),$(TIMEOUT=1))SPIIPLUS_WRITE_INT_VAR")
     field(FLNK, "$(P)$(R)_RBV")
+    # Only set PINI to YES if autosave is used
+    field(PINI, "$(PINI=NO)")
 }
 
 record(longin, "$(P)$(R)_RBV")

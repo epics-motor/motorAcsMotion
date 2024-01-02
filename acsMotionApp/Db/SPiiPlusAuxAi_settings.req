@@ -1,0 +1,5 @@
+$(P)$(C)$(R).SCAN
+$(P)$(C)$(R).DESC
+$(P)$(C)$(R).PREC
+$(P)$(C)$(R).HOPR
+$(P)$(C)$(R).LOPR

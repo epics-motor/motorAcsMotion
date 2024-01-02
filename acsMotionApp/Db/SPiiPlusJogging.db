@@ -1,0 +1,14 @@
+record(longout, "$(P)$(M):jogDirection")
+{
+    field(DTYP, "Soft Channel")
+    field(DESC, "Jog Direction")
+}
+
+record(calcout, "$(P)$(M):jogStatus")
+{
+    field(DESC, "JogState Linkup")
+    field(OUT, "$(P)$(M):jogDirection PP")
+    field(CALC, "(A>0)&&(B=0) ? 1 : ((A=0)&&(B=0) ? 0 : -1)")
+    field(INPA, "$(P)$(M).JOGF CP")
+    field(INPB, "$(P)$(M).JOGR CP")
+}

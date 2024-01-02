@@ -11,7 +11,15 @@ include $(TOP)/configure/CONFIG
 # Create and install (or just install) into <top>/db
 # databases, templates, substitutions like this
 #DB += xxx.db
-DB += SPiiPlusPEG.db
+
+DB += SPiiPlusAuxAi.db
+DB += SPiiPlusAuxAo.db
+DB += SPiiPlusAuxBi.db
+DB += SPiiPlusAuxBo.db
+DB += SPiiPlusAuxLi.db
+DB += SPiiPlusAuxLo.db
+
+DB += SPiiPlusJogging.db
 DB += SPiiPlusHoming.db
 DB += SPiiPlusMaxParams.db
 DB += SPiiPlusMaxParamsRbv.db
@@ -19,6 +27,8 @@ DB += SPiiPlusIntVar.db
 DB += SPiiPlusRealVar.db
 DB += SPiiPlusProgram.db
 DB += SPiiPlusAxisExtra.db
+DB += SPiiPlusFeedback.db
+DB += SPiiPlusPEG.db
 DB += SPiiPlusTest.db
 
 #----------------------------------------------------

@@ -6,6 +6,8 @@ record(ao, "$(P)$(R)")
     field(OUT,  "@asyn($(PORT),$(TAG),$(TIMEOUT=1))SPIIPLUS_WRITE_REAL_VAR")
     field(FLNK, "$(P)$(R)_RBV")
     field(PREC, "$(PREC=4)")
+    # Only set PINI to YES if autosave is used
+    field(PINI, "$(PINI=NO)")
 }
 
 record(ai, "$(P)$(R)_RBV")

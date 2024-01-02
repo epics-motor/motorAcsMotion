@@ -1,14 +1,14 @@
 
 file {
-	name="SPiiPlusAxisHoming.adl"
+	name="/home/beams3/KPETERSN/development/epics-motor/motorAcsMotion/acsMotionApp/op/adl/SPiiPlusAxisHoming.adl"
 	version=030111
 }
 display {
 	object {
-		x=748
-		y=302
-		width=400
-		height=400
+		x=739
+		y=294
+		width=350
+		height=200
 	}
 	clr=14
 	bclr=4
@@ -89,27 +89,157 @@ display {
 }
 text {
 	object {
-		x=16
-		y=32
+		x=124
+		y=3
 		width=100
-		height=17
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="($(P)$(M))"
+	align="horiz. centered"
+}
+menu {
+	object {
+		x=241
+		y=32
+		width=97
+		height=27
+	}
+	control {
+		chan="$(P)$(M):homingMethod.VAL"
+		clr=14
+		bclr=51
+	}
+}
+text {
+	object {
+		x=6
+		y=63
+		width=230
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+		fill="outline"
+	}
+	textix="Homing Max Dist"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=6
+		y=32
+		width=230
+		height=25
 	}
 	"basic attribute" {
 		clr=14
 		fill="outline"
 	}
 	textix="Homing Method"
+	align="horiz. centered"
 }
-menu {
+text {
 	object {
-		x=121
-		y=32
-		width=100
-		height=18
+		x=6
+		y=94
+		width=230
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+		fill="outline"
+	}
+	textix="Homing Offset Pos"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=6
+		y=125
+		width=230
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+		fill="outline"
+	}
+	textix="Homing Offset Neg"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=6
+		y=156
+		width=230
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+		fill="outline"
+	}
+	textix="Homing Curr Limit"
+	align="horiz. centered"
+}
+"text entry" {
+	object {
+		x=241
+		y=63
+		width=94
+		height=27
 	}
 	control {
-		chan="$(P)$(M):homingMethod.VAL"
+		chan="$(P)$(M):homingMaxDist.VAL"
 		clr=14
 		bclr=51
+	}
+	limits {
+	}
+}
+"text entry" {
+	object {
+		x=241
+		y=94
+		width=94
+		height=27
+	}
+	control {
+		chan="$(P)$(M):homingOffsetPos.VAL"
+		clr=14
+		bclr=51
+	}
+	limits {
+	}
+}
+"text entry" {
+	object {
+		x=241
+		y=125
+		width=94
+		height=27
+	}
+	control {
+		chan="$(P)$(M):homingOffsetNeg.VAL"
+		clr=14
+		bclr=51
+	}
+	limits {
+	}
+}
+"text entry" {
+	object {
+		x=241
+		y=156
+		width=94
+		height=27
+	}
+	control {
+		chan="$(P)$(M):homingCurrLimit.VAL"
+		clr=14
+		bclr=51
+	}
+	limits {
 	}
 }

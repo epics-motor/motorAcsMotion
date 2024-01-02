@@ -1,0 +1,14 @@
+
+grecord(longout,"$(P)$(C)$(R)")
+{
+        field(DTYP,"asynUInt32Digital")
+        field(OUT,"@asynMask($(PORT) $(CHAN) 0xffffffff)DIGITAL_OUTPUT")
+}
+
+record(longin,"$(P)$(C)$(R)_RBV")
+{
+        field(PINI, "YES")
+        field(DTYP,"asynUInt32Digital")
+        field(INP,"@asynMask($(PORT) $(CHAN) 0xffffffff)DIGITAL_OUTPUT")
+        field(SCAN, "$(SCAN)")
+}

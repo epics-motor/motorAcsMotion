@@ -8,10 +8,13 @@ include $(TOP)/configure/CONFIG
 
 DBD += AcsMotionSupport.dbd
 
-LIBRARY_IOC = AcsMotion
+LIBRARY_IOC_DEFAULT = AcsMotion
+LIBRARY_IOC_vxWorks = -nil-
 
 SRCS += SPiiPlusBinComm.cpp
+SRCS += SPiiPlusCommDriver.cpp
 SRCS += SPiiPlusDriver.cpp
+SRCS += SPiiPlusAuxDriver.cpp
 
 AcsMotion_LIBS += motor asyn
 AcsMotion_LIBS += $(EPICS_BASE_IOC_LIBS)

@@ -1,2 +1,5 @@
 $(P)$(M):homingMethod.VAL
-
+$(P)$(M):homingMaxDist.VAL
+$(P)$(M):homingOffsetPos.VAL
+$(P)$(M):homingOffsetNeg.VAL
+$(P)$(M):homingCurrLimit.VAL

@@ -69,15 +69,29 @@ pattern
 file "$(TOP)/db/SPiiPlusHoming.db"
 {
 pattern
-{M,   PORT, ADDR, TIMEOUT,    VAL}
-{m1,  ACS1,    0,     2.0,    0}
-{m2,  ACS1,    1,     2.0,    0}
-{m3,  ACS1,    2,     2.0,    0}
-{m4,  ACS1,    3,     2.0,    0}
-{m5,  ACS1,    4,     2.0,    0}
-{m6,  ACS1,    5,     2.0,    0}
-{m7,  ACS1,    6,     2.0,    0}
-{m8,  ACS1,    7,     2.0,    0}
+{M,   PORT, ADDR, TIMEOUT,    VAL,   MAX_DIST, OFFSET_POS, OFFSET_NEG, CURR_LIMIT}
+{m1,  ACS1,    0,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+{m2,  ACS1,    1,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+{m3,  ACS1,    2,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+{m4,  ACS1,    3,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+{m5,  ACS1,    4,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+{m6,  ACS1,    5,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+{m7,  ACS1,    6,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+{m8,  ACS1,    7,     2.0,    0,     0.0,      0.0,        0.0,        0.0}
+}
+
+file "$(TOP)/db/SPiiPlusJogging.db"
+{
+pattern
+{M}
+{m1}
+{m2}
+{m3}
+{m4}
+{m5}
+{m6}
+{m7}
+{m8}
 }
 
 # These records work, but the initial values are all zero.  Maybe HOPR/LOPR/DRVH/DRVL need to be set?
@@ -109,7 +123,23 @@ pattern
 {m8,  ACS1,    7,    4}
 }
 
+### The feedback database is helpful for troubleshooting encoder problems
+#file "$(TOP)/db/SPiiPlusFeedback.db"
+#{
+#pattern
+#{M,   PORT, ADDR, PREC, SCAN}
+#{m1,  ACS1,    0,    6,    2}
+#{m2,  ACS1,    1,    6,    2}
+#{m3,  ACS1,    2,    6,    2}
+#{m4,  ACS1,    3,    6,    2}
+#{m5,  ACS1,    4,    6,    2}
+#{m6,  ACS1,    5,    6,    2}
+#{m7,  ACS1,    6,    6,    2}
+#{m8,  ACS1,    7,    6,    2}
+#}
+
 ### The following databases are useful if programs are running on the ACS controller
+## PINI can be set to YES for IOCs that use autosave so that global var output records initialize properly
 #file "$(TOP)/db/SPiiPlusIntVar.db"
 #{
 #pattern
@@ -117,6 +147,7 @@ pattern
 #{c0:1001I,  "Int 1",    ACS1,  1001}
 #}
 #
+## PINI can be set to YES for IOCs that use autosave so that global var output records initialize properly
 #file "$(TOP)/db/SPiiPlusRealVar.db"
 #{
 #pattern
