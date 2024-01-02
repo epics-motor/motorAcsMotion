@@ -1922,12 +1922,12 @@ asynStatus SPiiPlusController::runProfile()
   // Assign PEG engine to an encoder
   // ASSIGNPEG axis, engines_to_encoders_code, gp_out_assign_code
   cmd << "ASSIGNPEG " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
-  status = writeReadAck(cmd);
+  status = pComm_->writeReadAck(cmd);
   
   // Assign PEG output to output pins
   // ASSIGNPOUTS axis, output_index, bit_code
   cmd << "ASSIGNPOUTS " << pulseAxis << ", " << outputIndex << ", " << poutsBitCode;
-  status = writeReadAck(cmd);
+  status = pComm_->writeReadAck(cmd);
   
   /* Define trajectory output pulses */
   
@@ -1973,7 +1973,7 @@ asynStatus SPiiPlusController::runProfile()
   // PEG_I axis, width, first_point, interval, last_point
   asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, startPulsePos, endPulsePos, numPulses, pulseInterval);
   cmd << "PEG_I " << pulseAxis << ", " << pulseWidth << ", " << startPulsePos << ", " << pulseInterval << ", " << endPulsePos;
-  status = writeReadAck(cmd);
+  status = pComm_->writeReadAck(cmd);
   
   // Wait for PEGREADY 
   while (pAxes_[pulseAxis]->pegReady_ == 0)
@@ -2265,7 +2265,7 @@ asynStatus SPiiPlusController::stopPEG(int pulseAxis)
   // static const char *functionName = "stopPEG";  
   
   cmd << "STOPPEG " << pulseAxis;
-  status = writeReadAck(cmd);
+  status = pComm_->writeReadAck(cmd);
   
   return status;
 }
