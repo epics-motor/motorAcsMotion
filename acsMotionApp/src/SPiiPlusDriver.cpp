@@ -1974,6 +1974,13 @@ asynStatus SPiiPlusController::runProfile()
   asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, startPulsePos, endPulsePos, numPulses, pulseInterval);
   cmd << "PEG_I " << pulseAxis << ", " << pulseWidth << ", " << startPulsePos << ", " << pulseInterval << ", " << endPulsePos;
   status = pComm_->writeReadAck(cmd);
+  // Should a failed PEG_I command cause the scan to fail?  Yes, for now.
+  if (status)
+  {
+    executeOK = false;
+    strcpy(message, "Aborting due to PEG_I error");
+    goto done;
+  }
   
   // Wait for PEGREADY 
   while (pAxes_[pulseAxis]->pegReady_ == 0)
