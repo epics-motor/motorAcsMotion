@@ -9,16 +9,15 @@
 
 #include <iocsh.h>
 #include <epicsThread.h>
+#include <epicsString.h>
+#include <cantProceed.h>
 
 #include <asynOctetSyncIO.h>
-
 #include "asynDriver.h"
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
 #include <epicsExport.h>
-#include <epicsString.h>
-#include <cantProceed.h>
 
 // SPiiPlusDriver.h includes SPiiPlusCommDriver.h
 #include "SPiiPlusDriver.h"
