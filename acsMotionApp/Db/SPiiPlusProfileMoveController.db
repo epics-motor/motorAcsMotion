@@ -1,0 +1,40 @@
+# PulseMode was an mbbi in trajectoryScan.db -- why?
+record(mbbo,"$(P)$(R)PulseMode") {
+    field(DTYP, "asynInt32")
+    field(DESC,"Pulse mode")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=4))SPIIPLUS_PM_PULSE_MODE")
+    field(VAL, "0")
+    field(ZRVL, "0")
+    field(ZRST, "Fixed")
+    field(ONVL, "1")
+    field(ONST, "Array")
+    field(TWVL, "2")
+    field(TWST, "TrajPts")
+    field(THVL, "3")
+    field(THST, "None")
+    field(PINI, "YES")
+}
+
+record(waveform,"$(P)$(R)PulsePositions") {
+    field(DESC,"Output-pulse positions")
+    field(DTYP, "asynFloat64ArrayOut")
+    field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))SPIIPLUS_PM_PULSE_POS")
+    field(NELM, "$(NPULSES)")
+    field(FTVL, "DOUBLE")
+    #field(PREC, "$(PREC)")
+    field(PREC, "3")
+    field(FLNK, "$(P)$(R)NewPulsePositions")
+}
+
+grecord(ao,"$(P)$(R)NewPulsePositions") {
+    field(DESC,"New pulse positions loaded")
+    field(MDEL,"-1")
+    field(PREC, "3")
+}
+
+// This probably isn't needed, since the numPulses from the base class can be used instead
+grecord(longout,"$(P)$(R)NumPulsePositions") {
+    field(DTYP, "asynInt32")
+    field(DESC,"Num pulse positions to load")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=4))SPIIPLUS_PM_NUM_PULSES")
+}
