@@ -40,3 +40,8 @@ int readInt32ArrayCmd(char *output, const char *var, int idx1start, int idx1end,
 
 int readInt32SliceCmd(char *output, int slice, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *outBytes, int *inBytes, int *dataBytes);
 int readInt32SliceCmd(char *output, int slice, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, bool checksum, int *outBytes, int *inBytes, int *dataBytes);
+
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes);
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, bool checksum, int slice, int *remainingSlices, int *outBytes, int *inBytes);
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes);
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, double *data, bool checksum, int slice, int *remainingSlices, int *outBytes, int *inBytes);

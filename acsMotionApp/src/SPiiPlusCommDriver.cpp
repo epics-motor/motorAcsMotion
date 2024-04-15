@@ -297,6 +297,7 @@ asynStatus SPiiPlusComm::writeReadErrorMessage(char* errNoReply)
 
 // NOTE: readBytes the number of data bytes that were read, excluding the command header and suffix
 // NOTE: there is no error checking on inBytes and outBytes
+// FYI: motor/motorApp/MotorSrc/asynMotorController.h:#define MAX_CONTROLLER_STRING_SIZE 256
 asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool *sliceAvailable)
 {
 	char outString[MAX_CONTROLLER_STRING_SIZE];
@@ -411,9 +412,73 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer)
 	return status;
 }
 
+/*
+ * This method is used for writing binary arrays, which can be quite large and is
+ * called one time for each packet that needs to be sent.  The controller only 
+ * response with an acknowledgement.
+ */
+asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *input, int inBytes)
+{
+	size_t nwrite, nread;
+	int eomReason;
+	asynStatus status;
+	static const char *functionName = "writeReadAckBinary";
+	
+	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
+	
+	lock();
+	
+	// Clear the EOS characters
+	pasynOctetSyncIO->setInputEos(pasynUserComm_, "", 0);
+	pasynOctetSyncIO->setOutputEos(pasynUserComm_, "", 0);
+	
+	// Flush the receive buffer
+	status = pasynOctetSyncIO->flush(pasynUserComm_);
+	
+	// Send the command
+	status = pasynOctetSyncIO->write(pasynUserComm_, output, outBytes, SPIIPLUS_ARRAY_TIMEOUT, &nwrite);
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
+	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
+
+	// The reply from the controller is 2 bytes (ack & command ID)
+	status = pasynOctetSyncIO->read(pasynUserComm_, input, inBytes, SPIIPLUS_CMD_TIMEOUT, &nread, &eomReason);
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
+	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
+	
+	if (status == asynSuccess)
+	{
+		// Check for an error reply -- this overwrites the buffer if an error occurs
+		/*
+		status = binaryErrorCheck(input);
+		if (status == asynError)
+		{
+			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
+		}
+		*/
+		
+		// TODO: add a check here comparing the sent command ID with the read command ID
+	}
+	else
+	{
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (asyn): status=%i, nread=%li\n", driverName, functionName, status, nread);
+	}
+	
+	// Restore the EOS characters
+	pasynOctetSyncIO->setInputEos(pasynUserComm_, "\r", 1);
+	pasynOctetSyncIO->setOutputEos(pasynUserComm_, "\r", 1);
+	
+	unlock();
+	
+	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
+	
+	return status;
+}
+
 asynStatus SPiiPlusComm::getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
 {
-	char outString[MAX_CONTROLLER_STRING_SIZE];
+	//char outString[MAX_CONTROLLER_STRING_SIZE];
 	char command[MAX_MESSAGE_LEN];
 	asynStatus status;
 	int remainingBytes;
@@ -426,7 +491,7 @@ asynStatus SPiiPlusComm::getDoubleArray(char *output, const char *var, int idx1s
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
 	
-	std::fill(outString, outString + MAX_CONTROLLER_STRING_SIZE, '\0');
+	//std::fill(outString, outString + MAX_CONTROLLER_STRING_SIZE, '\0');
 	
 	// Create the command to query array data. This could be the only command
 	// that needs to be sent or it could be the first of many.
@@ -470,9 +535,72 @@ asynStatus SPiiPlusComm::getDoubleArray(char *output, const char *var, int idx1s
 	return status;
 }
 
+asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
+{
+	char *inBuff;
+	char *command;
+	asynStatus status;
+	int outBytes, inBytes;
+	int slice=0;
+	int remainingSlices;
+	int numSlices;
+	static const char *functionName = "putDoubleArray";
+	
+	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
+	
+	command = (char *)calloc(MAX_PACKET_SIZE, sizeof(char));
+	// Is MAX_PACKET_SIZE unnecessarily large for the Ack / error reply?
+	inBuff = (char *)calloc(MAX_PACKET_DATA, sizeof(char));
+	
+	/* 
+	 * Unlike getDoubleArray, which parses the reply from the controller to determine if there is another
+	 * slice to be read, putDoubleArray is responsible for keeping track of how many slices need to be sent.
+	 * This is complicated by the fact that the command + data to be written (not including the prefix or 
+	 * suffix) is limited (by GETCONF(99,8)--but is usually 1400).  The command varies becaues it includes
+	 * the variable name and array indices.
+	 */
+	
+	// Create the command to send the first packet of array data. This could be the only 
+	// command that needs to be sent or it could be the first of many.  Slice is always 0 here
+	// but it gets omitted from the command if only one packet needs to be sent.
+	writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes);
+	numSlices = remainingSlices + 1;
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, numSlices);
+	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, numSlices);
+	
+	// Send the command
+	status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
+	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
+	
+	// Send the remaining packets, if necessary
+	while (remainingSlices)
+	{
+		// Created the command to send the next slice (packet)
+		slice += 1;
+		writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes);
+		
+		// Send the command
+		status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
+		
+		asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
+	}
+	
+	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
+	
+	free(command);
+	free(inBuff);
+	
+	// The returnd status is the status of the last packet set to the controller
+	return status;
+}
+
 asynStatus SPiiPlusComm::getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
 {
-	char outString[MAX_CONTROLLER_STRING_SIZE];
+	//char outString[MAX_CONTROLLER_STRING_SIZE];
 	char command[MAX_MESSAGE_LEN];
 	asynStatus status;
 	int remainingBytes;
@@ -485,7 +613,7 @@ asynStatus SPiiPlusComm::getIntegerArray(char *output, const char *var, int idx1
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
 	
-	std::fill(outString, outString + MAX_CONTROLLER_STRING_SIZE, '\0');
+	//std::fill(outString, outString + MAX_CONTROLLER_STRING_SIZE, '\0');
 	
 	// Create the command to query array data. This could be the only command
 	// that needs to be sent or it could be the first of many.

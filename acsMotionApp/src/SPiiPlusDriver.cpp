@@ -2684,14 +2684,33 @@ asynStatus SPiiPlusController::test()
 {
   asynStatus status;
   char* buffer=NULL;
-  
+  double* data=NULL;
+  long maxDoubles;
+  long dataSize;
+  int i;
   static const char *functionName = "test";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: calling test function\n", driverName, functionName);
   
   buffer = (char *)calloc(MAX_BINARY_READ_LEN, sizeof(char));
   
-  status = pComm_->getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
+  // MAX_BINARY_READ_LEN is in bytes so we need to calculate how many doubles that will hold
+  maxDoubles = floorl(MAX_BINARY_READ_LEN/sizeof(double));
+  data = (double *)calloc(maxDoubles, sizeof(double));
+  
+  //status = pComm_->getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
+  
+  // Create test data
+  dataSize = 101;
+  for (i=0; i<dataSize; i++)
+  {
+      data[i] = i * 1.0;
+  }
+  
+  // Note: it is assumed that data has enough values to fill the specified array
+  status = pComm_->putDoubleArray(data, "testVar", 0, dataSize-1, 0, 0);
+  
+  // IAMHERE
   
   free(buffer);
   

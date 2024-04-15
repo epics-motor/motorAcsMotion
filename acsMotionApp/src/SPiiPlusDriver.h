@@ -14,6 +14,7 @@
 
 // Maximum number of bytes that can be returned by a binary read
 #define MAX_BINARY_READ_LEN 65536
+#define MAX_BINARY_WRITE_LEN 65536
 #define MAX_PACKET_SIZE 1405
 #define MAX_PACKET_DATA 1400
 //

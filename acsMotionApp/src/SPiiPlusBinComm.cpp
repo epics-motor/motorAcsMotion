@@ -320,7 +320,7 @@ int readInt32SliceCmd(char *output, int slice, const char *var, int idx1start, i
 int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes)
 {
 	int status;
-	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, false, outBytes, inBytes, dataBytes);
+	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, false, slice, remainingSlices, outBytes, inBytes);
 	return status;
 }
 
@@ -328,7 +328,7 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, bool checksum, int slice, int *remainingSlices, int *outBytes, int *inBytes)
 {
 	int status;
-	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, checksum, outBytes, inBytes, dataBytes);
+	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, checksum, slice, remainingSlices, outBytes, inBytes);
 	return status;
 }
 
@@ -336,7 +336,7 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes)
 {
 	int status;
-	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, idx2start, idx2end, data, false, outBytes, inBytes, dataBytes);
+	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, idx2start, idx2end, data, false, slice, remainingSlices, outBytes, inBytes);
 	return status;
 }
 
@@ -352,7 +352,9 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	int cmdSize;
 	bool multiPacket;
 	int numDoubles;
+	int maxDoublesPerPacket=0;
 	int dataBytes;
+	int numPackets;
 	int packetDataBytes;
 	
 	// The number of doubles to be written to the specified variable
@@ -446,7 +448,8 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	
 	// data
 	strncpy(output+8+asciiVarSize, "/%", 2);
-	memcpy(output+8+asciiVarSize+2, packetDataBytes);
+	// The data offset should always be a multiple of the maxDoublesPerPacket
+	memcpy(output+8+asciiVarSize+2, data+(slice*maxDoublesPerPacket*DOUBLE_DATA_SIZE), packetDataBytes);
 	
 	// end
 	output[8+asciiVarSize+2+packetDataBytes] = FRAME_END;
