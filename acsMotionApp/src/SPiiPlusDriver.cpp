@@ -2701,7 +2701,8 @@ asynStatus SPiiPlusController::test()
   //status = pComm_->getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
   
   // Create test data
-  dataSize = 101;
+  //dataSize = 101;
+  dataSize = 2000;
   for (i=0; i<dataSize; i++)
   {
       data[i] = i * 1.0;

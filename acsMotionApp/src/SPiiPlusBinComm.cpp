@@ -356,6 +356,7 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	int dataBytes;
 	int numPackets;
 	int packetDataBytes;
+	int dataOffset;
 	
 	// The number of doubles to be written to the specified variable
 	numDoubles = (idx1end - idx1start + 1) * (idx2end - idx2start + 1);
@@ -405,7 +406,9 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 		maxDoublesPerPacket = floorl((MAX_PACKET_DATA - asciiVarSize - 8) / DOUBLE_DATA_SIZE);
 		
 		// Take the ceill because one last packet is needed for the remainder
-		numPackets = ceill(numDoubles / maxDoublesPerPacket);
+		// NOTE: both numDoubles and maxDoublesPerPacket are ints, so we 
+		//       multiply by 1.0 to avoid truncation problems
+		numPackets = ceill(1.0 * numDoubles / maxDoublesPerPacket);
 		
 		// Slices are 0-indexed
 		*remainingSlices = numPackets - slice - 1;
@@ -442,14 +445,15 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	output[2] = (cmdSize >> 0) & 0xFF;
 	output[3] = (cmdSize >> 8) & 0xFF;
 	// command
-	strncpy(output+4, "%>>", 3);
+	memcpy(output+4, "%>>", 3);
 	output[7] = DOUBLE_DATA_SIZE;
 	strncpy(output+8, varst.str().c_str(), asciiVarSize);
 	
 	// data
-	strncpy(output+8+asciiVarSize, "/%", 2);
+	memcpy(output+8+asciiVarSize, "/%", 2);
 	// The data offset should always be a multiple of the maxDoublesPerPacket
-	memcpy(output+8+asciiVarSize+2, data+(slice*maxDoublesPerPacket*DOUBLE_DATA_SIZE), packetDataBytes);
+	dataOffset = slice * maxDoublesPerPacket;
+	memcpy(output+8+asciiVarSize+2, data+dataOffset, packetDataBytes);
 	
 	// end
 	output[8+asciiVarSize+2+packetDataBytes] = FRAME_END;
