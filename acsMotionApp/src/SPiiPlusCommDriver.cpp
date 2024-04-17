@@ -439,25 +439,23 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 	status = pasynOctetSyncIO->write(pasynUserComm_, output, outBytes, SPIIPLUS_ARRAY_TIMEOUT, &nwrite);
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
+	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
 
 	// The reply from the controller is 2 bytes (ack & command ID)
 	// NOTE: the comand timeout is too short, but the array timeout might be overkill
 	status = pasynOctetSyncIO->read(pasynUserComm_, input, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
+	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
 	
 	if (status == asynSuccess)
 	{
 		// Check for an error reply -- this overwrites the buffer if an error occurs
-		/*
 		status = binaryErrorCheck(input);
 		if (status == asynError)
 		{
 			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
 		}
-		*/
 		
 		// TODO: add a check here comparing the sent command ID with the read command ID
 	}
@@ -559,12 +557,12 @@ asynStatus SPiiPlusComm::globalVarCheck(const char *var, int idx1start, int idx1
 	if ((idx2end - idx2start) > 0)
 	{
 		// The var is a 2D array
-		cmd << "?" << var << "(" << (idx1end-1) << ")(" << (idx2end-1) << ")";
+		cmd << "?" << var << "(" << idx1end << ")(" << idx2end << ")";
 	}
 	else if ((idx1end - idx1start) > 0)
 	{
 		// The var is a 1D array
-		cmd << "?" << var << "(" << (idx1end-1) << ")";
+		cmd << "?" << var << "(" << idx1end << ")";
 	}
 	else
 	{
@@ -636,12 +634,12 @@ asynStatus SPiiPlusComm::createGlobalRealVar(const char *var, int idx1start, int
 	if ((idx2end - idx2start) > 0)
 	{
 		// There is a 2nd array dimension
-		cmd << "global REAL " << var << "(" << idx1end << ")(" << idx2end << ")";
+		cmd << "global REAL " << var << "(" << (idx1end+1) << ")(" << (idx2end+1) << ")";
 	}
 	else if ((idx1end - idx1start) > 0)
 	{
 		// There is a 1st array dimension
-		cmd << "global REAL " << var << "(" << idx1end << ")";
+		cmd << "global REAL " << var << "(" << (idx1end+1) << ")";
 	}
 	else
 	{
@@ -722,7 +720,7 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
+	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
 	
 	// Send the remaining packets, if necessary
 	while (remainingSlices)
@@ -735,7 +733,7 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 		status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
 		
 		asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
-		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
+		//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
 	}
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
