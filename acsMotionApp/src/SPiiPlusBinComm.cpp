@@ -316,27 +316,27 @@ int readInt32SliceCmd(char *output, int slice, const char *var, int idx1start, i
 
 /* WIP: Implement array writing */
 
-//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,        &data,         0,     &remainingSlices,          &out,          &in)
-int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes)
+//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,        &data,         0,     &remainingSlices,          &out,          &in,     &dataBytes)
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes, int *dataBytes)
 {
 	int status;
-	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, false, slice, remainingSlices, outBytes, inBytes);
+	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, false, slice, remainingSlices, outBytes, inBytes, dataBytes);
 	return status;
 }
 
-//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,        &data,         false,         0,     &remainingSlices,          &out,          &in)
-int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, bool checksum, int slice, int *remainingSlices, int *outBytes, int *inBytes)
+//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,        &data,         false,         0,     &remainingSlices,          &out,          &in,     &dataBytes)
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, double *data, bool checksum, int slice, int *remainingSlices, int *outBytes, int *inBytes, int *dataBytes)
 {
 	int status;
-	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, checksum, slice, remainingSlices, outBytes, inBytes);
+	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, 0, 0, data, checksum, slice, remainingSlices, outBytes, inBytes, dataBytes);
 	return status;
 }
 
-//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,             0,           0,        &data,         0,     &remainingSlices,          &out,          &in)
-int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes)
+//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,             0,           0,        &data,         0,     &remainingSlices,          &out,          &in,     &dataBytes)
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, double *data, int slice, int *remainingSlices, int *outBytes, int *inBytes, int *dataBytes)
 {
 	int status;
-	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, idx2start, idx2end, data, false, slice, remainingSlices, outBytes, inBytes);
+	status = writeFloat64ArrayCmd(output, var, idx1start, idx1end, idx2start, idx2end, data, false, slice, remainingSlices, outBytes, inBytes, dataBytes);
 	return status;
 }
 
@@ -344,8 +344,8 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
  * Create a binary write command to write a 64-bit real array to the controller
  * Note: outBytes and inBytes are the number of bytes including the command header and suffix
  */
-//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,             0,           0,        &data,         false,         0,     &remainingSlices,          &out,          &in)
-int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, double *data, bool checksum, int slice, int *remainingSlices, int *outBytes, int *inBytes)
+//  writeFloat64ArrayCmd(      buffer,          "APOS",             0,           7,             0,           0,        &data,         false,         0,     &remainingSlices,          &out,          &in,     &dataBytes)
+int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end, double *data, bool checksum, int slice, int *remainingSlices, int *outBytes, int *inBytes, int *dataBytes)
 {
 	std::stringstream varst;
 	int asciiVarSize;
@@ -353,16 +353,17 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	bool multiPacket;
 	int numDoubles;
 	int maxDoublesPerPacket=0;
-	int dataBytes;
+	int totalDataBytes;
 	int numPackets;
 	int packetDataBytes;
 	int dataOffset;
+	int offset;
 	
 	// The number of doubles to be written to the specified variable
 	numDoubles = (idx1end - idx1start + 1) * (idx2end - idx2start + 1);
 	
 	// The number of bytes to be written to the specified variable (not including the header and suffix)
-	dataBytes = numDoubles * DOUBLE_DATA_SIZE;
+	totalDataBytes = numDoubles * DOUBLE_DATA_SIZE;
 	
 	// The variable string part of the command
 	varst << var << "(" << idx1start << "," << idx1end << ")(" << idx2start << "," << idx2end << ")";
@@ -386,12 +387,12 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	 */
 	
 	// Check if only one packet is needed
-	if ((asciiVarSize + 6 + dataBytes) <= MAX_PACKET_DATA)
+	if ((asciiVarSize + 6 + totalDataBytes) <= MAX_PACKET_DATA)
 	{
 		multiPacket = false;
 		*remainingSlices = 0;
 		// All the data fits into the packet
-		packetDataBytes = dataBytes;
+		packetDataBytes = totalDataBytes;
 		cmdSize = asciiVarSize + 6 + packetDataBytes;
 	}
 	else
@@ -436,33 +437,53 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	 *   where XX XX is the command length (little endian)
 	 */
 	
-	// header
-	output[0] = FRAME_START;
-	if (multiPacket)
-		output[1] = WRITE_LD_ARRAY_CMD;
-	else
-		output[1] = WRITE_D_ARRAY_CMD;
-	output[2] = (cmdSize >> 0) & 0xFF;
-	output[3] = (cmdSize >> 8) & 0xFF;
-	// command
-	memcpy(output+4, "%>>", 3);
-	output[7] = DOUBLE_DATA_SIZE;
-	strncpy(output+8, varst.str().c_str(), asciiVarSize);
+	offset = 0;
 	
+	// header
+	output[offset] = FRAME_START;
+	offset += 1;
+	if (multiPacket)
+		output[offset] = WRITE_LD_ARRAY_CMD;
+	else
+		output[offset] = WRITE_D_ARRAY_CMD;
+	offset += 1;
+	output[offset] = (cmdSize >> 0) & 0xFF;
+	offset += 1;
+	output[offset] = (cmdSize >> 8) & 0xFF;
+	offset += 1;
+	// command
+	if (multiPacket)
+	{
+		output[offset] = '%';
+		offset += 1;
+		output[offset] = slice;
+		offset += 1;
+	}
+	memcpy(output+offset, "%>>", 3);
+	offset += 3;
+	output[offset] = DOUBLE_DATA_SIZE;
+	offset += 1;
+	strncpy(output+offset, varst.str().c_str(), asciiVarSize);
+	offset += asciiVarSize;
 	// data
-	memcpy(output+8+asciiVarSize, "/%", 2);
+	memcpy(output+offset, "/%", 2);
+	offset += 2;
 	// The data offset should always be a multiple of the maxDoublesPerPacket
 	dataOffset = slice * maxDoublesPerPacket;
-	memcpy(output+8+asciiVarSize+2, data+dataOffset, packetDataBytes);
+	memcpy(output+offset, data+dataOffset, packetDataBytes);
+	offset += packetDataBytes;
 	
 	// end
-	output[8+asciiVarSize+2+packetDataBytes] = FRAME_END;
+	output[offset] = FRAME_END;
+	offset += 1;
 	
 	// The number of bytes in the binary write command
-	*outBytes = 8+asciiVarSize+2+packetDataBytes+1;
+	*outBytes = offset;
 	
 	// the commands to write binary arrays always return two bytes
 	*inBytes = 2;
+	
+	*dataBytes = packetDataBytes;
 	
 	return packetDataBytes;
 }

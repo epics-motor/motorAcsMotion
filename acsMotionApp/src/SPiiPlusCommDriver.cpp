@@ -442,7 +442,8 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
 
 	// The reply from the controller is 2 bytes (ack & command ID)
-	status = pasynOctetSyncIO->read(pasynUserComm_, input, inBytes, SPIIPLUS_CMD_TIMEOUT, &nread, &eomReason);
+	// NOTE: the comand timeout is too short, but the array timeout might be overkill
+	status = pasynOctetSyncIO->read(pasynUserComm_, input, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
 	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
@@ -535,18 +536,166 @@ asynStatus SPiiPlusComm::getDoubleArray(char *output, const char *var, int idx1s
 	return status;
 }
 
+asynStatus SPiiPlusComm::globalVarCheck(const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *errNo)
+{
+	std::stringstream cmd;
+	std::stringstream val_convert;
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	asynStatus status;
+	size_t response;
+	std::fill(inString, inString + 256, '\0');
+	static const char *functionName = "globalVarCheck";
+	
+	/*
+	 * There is no command to check for the existence of a variable.
+	 * A workaround for this is to try to access the last element of
+	 * array.  There are three possible outcomes:
+	 * 1. A value is returned (the global array exists and is at least as large as it needs to be)
+	 * 2. Error #1064 is returned (the global array doesn't exist and can be easily created)
+	 * 3. Error #1035 is returned (the global variable exists, but the array isn't large enough)
+	 */
+	
+	// 
+	if ((idx2end - idx2start) > 0)
+	{
+		// The var is a 2D array
+		cmd << "?" << var << "(" << (idx1end-1) << ")(" << (idx2end-1) << ")";
+	}
+	else if ((idx1end - idx1start) > 0)
+	{
+		// The var is a 1D array
+		cmd << "?" << var << "(" << (idx1end-1) << ")";
+	}
+	else
+	{
+		// The var is a scaler value
+		cmd << "?" << var << "(0)";
+	}
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	
+	lock();
+	status = writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
+	
+	if (status == asynSuccess)
+	{
+		if (inString[0] != '?')
+		{
+			/* Command succeeded */
+			
+			// The variable exists and is large enough to hold the data 
+			*errNo = 0;
+		}
+		else
+		{
+			/* Command returned an error */
+			
+			// Overwrite the '?' so the conversion can succeed
+			inString[0] = ' ';
+			// Convert the response string into an integer
+			val_convert << std::string(inString);
+			val_convert >> *errNo;
+			
+			// This isn't an ASYN_TRACE_ERROR message, but the user might want to see it for troubleshooting
+			asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Command failed: %s\n", driverName, functionName, cmd.str().c_str());
+			
+			if (*errNo == 1064)
+			{
+				/* The variable doesn't exist, but it can be created. The calling method should create the variable, since it knows the data type. */
+				// status is already asynSuccess here
+				status = asynSuccess;
+			}
+			else if (*errNo == 1035)
+			{
+				/* The variable exists, but it isn't large enough */
+				status = asynError;
+			}
+			else
+			{
+				// An unexpected error occurred.  Let the user know.
+				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Unexpected error! errNo = %i\n", driverName, functionName, *errNo);
+				status = asynError;
+			}
+		}
+	}
+	
+	return status;
+}
+
+// TODO: make a more sophistcated version of this method that accepts an integer tag argument
+asynStatus SPiiPlusComm::createGlobalRealVar(const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
+{
+	std::stringstream cmd;
+	asynStatus status;
+	//static const char *functionName = "createGlobalRealVar";
+	 
+	if ((idx2end - idx2start) > 0)
+	{
+		// There is a 2nd array dimension
+		cmd << "global REAL " << var << "(" << idx1end << ")(" << idx2end << ")";
+	}
+	else if ((idx1end - idx1start) > 0)
+	{
+		// There is a 1st array dimension
+		cmd << "global REAL " << var << "(" << idx1end << ")";
+	}
+	else
+	{
+		// The var is a scaler value
+		cmd << "global REAL " << var;
+	}
+	
+	status = writeReadAck(cmd);
+	
+	return status;
+}
+
 asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1start, int idx1end, int idx2start, int idx2end)
 {
 	char *inBuff;
 	char *command;
 	asynStatus status;
-	int outBytes, inBytes;
+	int errNo;
+	int outBytes, inBytes, dataBytes;
 	int slice=0;
 	int remainingSlices;
 	int numSlices;
 	static const char *functionName = "putDoubleArray";
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
+	
+	// TODO: how to handle local variables?
+	
+	// Confirm the global variable exists and is large enough to hold the
+	// array to be written to it.
+	status = globalVarCheck(var, idx1start, idx1end, idx2start, idx2end, &errNo);
+	
+	if (status == asynSuccess)
+	{
+		// Check the error number
+		if (errNo == 1064)
+		{
+			// The variable doesn't exist and can be created
+			status = createGlobalRealVar(var, idx1start, idx1end, idx2start, idx2end);
+			
+			if (status != asynSuccess)
+			{
+				// TODO: add asyn error message
+				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Failed to create gobal variable: %s\n", driverName, functionName, var);
+				return asynError;
+			}
+		}
+	}
+	else
+	{
+		// Variable isn't large enough to hold the data; can't proceed.
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Global variable exists but isn't large enough: %s\n", driverName, functionName, var);
+		return asynError;
+	}
 	
 	command = (char *)calloc(MAX_PACKET_SIZE, sizeof(char));
 	// Is MAX_PACKET_SIZE unnecessarily large for the Ack / error reply?
@@ -563,7 +712,7 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	// Create the command to send the first packet of array data. This could be the only 
 	// command that needs to be sent or it could be the first of many.  Slice is always 0 here
 	// but it gets omitted from the command if only one packet needs to be sent.
-	writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes);
+	writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes, &dataBytes);
 	numSlices = remainingSlices + 1;
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, numSlices);
@@ -572,21 +721,21 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	// Send the command
 	status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
 	
-	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
+	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
 	
 	// Send the remaining packets, if necessary
 	while (remainingSlices)
 	{
 		// Created the command to send the next slice (packet)
 		slice += 1;
-		writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes);
+		writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes, &dataBytes);
 		
 		// Send the command
 		status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
 		
-		asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
-		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: outBytes = %i; status = %i\n", driverName, functionName, slice, outBytes, status);
+		asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
 	}
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
