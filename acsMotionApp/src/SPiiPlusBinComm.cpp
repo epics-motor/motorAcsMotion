@@ -358,6 +358,8 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	int packetDataBytes;
 	int dataOffset;
 	int offset;
+	char sliceStr[3] = {0, 0, 0};
+	int sliceSize;
 	
 	// The number of doubles to be written to the specified variable
 	numDoubles = (idx1end - idx1start + 1) * (idx2end - idx2start + 1);
@@ -456,8 +458,11 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	{
 		output[offset] = '%';
 		offset += 1;
+		
+		sliceSize = sprintf(sliceStr, "%i", slice);
 		output[offset] = slice;
-		offset += 1;
+		memcpy(output+offset, sliceStr, sliceSize);
+		offset += sliceSize;
 	}
 	memcpy(output+offset, "%>>", 3);
 	offset += 3;
