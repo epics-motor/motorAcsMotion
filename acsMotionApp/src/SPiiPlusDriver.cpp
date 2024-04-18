@@ -2708,6 +2708,19 @@ asynStatus SPiiPlusController::test()
       data[i] = i * 1.0;
   }
   
+  /*
+  // create larger test data
+  dataSize = 100000;
+  buffer = (char *)calloc(dataSize*sizeof(double), sizeof(char));
+  maxDoubles = dataSize;
+  data = (double *)calloc(maxDoubles, sizeof(double));
+  
+  for (i=0; i<dataSize; i++)
+  {
+      data[i] = i * 1.0;
+  }
+  */
+  
   // Note: it is assumed that data has enough values to fill the specified array
   status = pComm_->putDoubleArray(data, "testVar", 0, dataSize-1, 0, 0);
   
