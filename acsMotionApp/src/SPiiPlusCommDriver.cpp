@@ -419,8 +419,9 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer)
  */
 asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *input, int inBytes)
 {
-	size_t nwrite, nread;
+	size_t nwrite, nread, extraRead;
 	int eomReason;
+	int commandID;
 	asynStatus status;
 	static const char *functionName = "writeReadAckBinary";
 	
@@ -435,29 +436,50 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 	// Flush the receive buffer
 	status = pasynOctetSyncIO->flush(pasynUserComm_);
 	
+	// Save the command ID
+	commandID = output[1];
+	
 	// Send the command
 	status = pasynOctetSyncIO->write(pasynUserComm_, output, outBytes, SPIIPLUS_ARRAY_TIMEOUT, &nwrite);
 	
-	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
-	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; output bytes = %i\n", driverName, functionName, status, outBytes);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; output bytes = %i, nwrite = %li\n", driverName, functionName, status, outBytes, nwrite);
 
-	// The reply from the controller is 2 bytes (ack & command ID)
-	// NOTE: the comand timeout is too short, but the array timeout might be overkill
-	status = pasynOctetSyncIO->read(pasynUserComm_, input, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
+	// A successful reply from the controller is 2 bytes (ack & command ID) 
+	// NOTE: the comand timeout is too short and the array timeout is overkill
+	status = pasynOctetSyncIO->read(pasynUserComm_, input, inBytes, SPIIPLUS_ACK_TIMEOUT, &nread, &eomReason);
 	
-	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
-	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: status = %i; input bytes = %i\n", driverName, functionName, status, inBytes);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i; input bytes = %i, nread = %li\n", driverName, functionName, status, inBytes, nread);
 	
+	// A successful read doesn't necessarily mean the command succeeded
 	if (status == asynSuccess)
 	{
-		// Check for an error reply -- this overwrites the buffer if an error occurs
-		status = binaryErrorCheck(input);
-		if (status == asynError)
+		// Confirm write was successful
+		if ((unsigned char)input[0] != ACKNOWLEDGE)
 		{
-			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
-		}
+			// Error messages are more than 2 characters and we only read 2 so far. Read the rest now.
+			status = pasynOctetSyncIO->read(pasynUserComm_, input+inBytes, MAX_MESSAGE_LEN, SPIIPLUS_ACK_TIMEOUT, &extraRead, &eomReason);
+			
+			asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,    "%s:%s: status = %i; extraRead = %li, eomReason = %i\n", driverName, functionName, status, extraRead, eomReason);
+			
+			// Check for an error reply -- this overwrites the buffer if an error occurs
+			status = binaryErrorCheck(input);
+			if (status == asynError)
+			{
+				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
+			}
 		
-		// TODO: add a check here comparing the sent command ID with the read command ID
+		}
+		else
+		{
+			if (input[1] == commandID)
+			{
+				asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Command ID matches: write ID = %i, read ID = %i\n", driverName, functionName, commandID, input[1]);
+			}
+			else
+			{
+				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Command ID mismatch: write ID = %i, read ID = %i\n", driverName, functionName, commandID, input[1]);
+			}
+		}
 	}
 	else
 	{
@@ -668,6 +690,12 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	
 	// TODO: how to handle local variables?
 	
+	/*
+	 * TODO: if the slice index is really limited to a single ascii character representation
+	 * of an integer, this method needs to be a lot smarter about determining how many
+	 * 10-packet transmissions are needed to send the entire array.
+	 */
+	
 	// Confirm the global variable exists and is large enough to hold the
 	// array to be written to it.
 	status = globalVarCheck(var, idx1start, idx1end, idx2start, idx2end, &errNo);
@@ -696,7 +724,7 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	}
 	
 	command = (char *)calloc(MAX_PACKET_SIZE, sizeof(char));
-	// Is MAX_PACKET_SIZE unnecessarily large for the Ack / error reply?
+	// Is MAX_PACKET_SIZE unnecessarily large for the Ack / error reply?  Ack is 2 bytes. Error is longer, but not that long.
 	inBuff = (char *)calloc(MAX_PACKET_DATA, sizeof(char));
 	
 	/* 

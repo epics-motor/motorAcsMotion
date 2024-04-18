@@ -485,7 +485,7 @@ int writeFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1e
 	// The number of bytes in the binary write command
 	*outBytes = offset;
 	
-	// the commands to write binary arrays always return two bytes
+	// the commands to write binary arrays always return two bytes, however errors are longer
 	*inBytes = 2;
 	
 	*dataBytes = packetDataBytes;

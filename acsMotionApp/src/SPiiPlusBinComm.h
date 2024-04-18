@@ -24,6 +24,7 @@
 #define WRITE_LD_END_CMD	0x39
 #define WRITE_LI_ARRAY_CMD	0x3A
 #define WRITE_LI_SLICE_CMD	0x3B
+#define ACKNOWLEDGE		0xe9
 
 int readFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, int *outBytes, int *inBytes, int *dataBytes);
 int readFloat64ArrayCmd(char *output, const char *var, int idx1start, int idx1end, bool checksum, int *outBytes, int *inBytes, int *dataBytes);

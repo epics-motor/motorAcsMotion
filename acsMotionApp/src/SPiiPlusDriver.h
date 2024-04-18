@@ -8,6 +8,7 @@
 #define SPIIPLUS_MAX_AXES 64
 #define SPIIPLUS_MAX_DC_AXES 8
 #define SPIIPLUS_CMD_TIMEOUT 0.05
+#define SPIIPLUS_ACK_TIMEOUT 0.2
 #define SPIIPLUS_ARRAY_TIMEOUT 10.0
 #define MAX_MESSAGE_LEN   256
 #define MAX_ACCEL_SEGMENTS 20
@@ -15,29 +16,6 @@
 // Maximum number of bytes that can be returned by a binary read
 #define MAX_BINARY_READ_LEN 65536
 #define MAX_BINARY_WRITE_LEN 65536
-#define MAX_PACKET_SIZE 1405
-#define MAX_PACKET_DATA 1400
-//
-#define FRAME_START 		0xd3
-#define FRAME_END 		0xd6
-#define INT_DATA_SIZE 		0x04
-#define DOUBLE_DATA_SIZE	0x08
-#define READ_D_ARRAY_CMD	0xf0
-#define READ_I_ARRAY_CMD	0xf1
-#define READ_LD_ARRAY_CMD	0x41
-#define READ_LD_SLICE_CMD	0x42
-#define READ_LI_ARRAY_CMD	0x44
-#define READ_LI_SLICE_CMD	0x45
-#define SLICE_AVAILABLE		0x80
-/*
-#define WRITE_I_ARRAY_CMD	0xf3
-#define WRITE_D_ARRAY_CMD	0xf2
-#define WRITE_LD_ARRAY_CMD	0x37
-#define WRITE_LD_SLICE_CMD	0x38
-#define WRITE_LD_END_CMD	0x39
-#define WRITE_LI_ARRAY_CMD	0x3A
-#define WRITE_LI_SLICE_CMD	0x3B
-*/
 
 // The following values need to match the homingMethod mbbo record
 #define MBBO_HOME_NONE			0
