@@ -556,7 +556,7 @@ asynStatus SPiiPlusComm::getDoubleArray(char *output, const char *var, int idx1s
 	return status;
 }
 
-asynStatus SPiiPlusComm::globalVarCheck(const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *errNo)
+asynStatus SPiiPlusComm::globalVarCheck(const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *dimensions, int *numElements, int *errNo)
 {
 	std::stringstream cmd;
 	std::stringstream val_convert;
@@ -580,16 +580,22 @@ asynStatus SPiiPlusComm::globalVarCheck(const char *var, int idx1start, int idx1
 	{
 		// The var is a 2D array
 		cmd << "?" << var << "(" << idx1end << ")(" << idx2end << ")";
+		*dimensions = 2;
+		*numElements = (idx1end - idx1start + 1) * (idx2end - idx1start + 1);
 	}
 	else if ((idx1end - idx1start) > 0)
 	{
 		// The var is a 1D array
 		cmd << "?" << var << "(" << idx1end << ")";
+		*dimensions = 1;
+		*numElements = idx1end - idx1start + 1;
 	}
 	else
 	{
 		// The var is a scaler value
 		cmd << "?" << var << "(0)";
+		*dimensions = 0;
+		*numElements = 1;
 	}
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
@@ -679,26 +685,22 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	char *inBuff;
 	char *command;
 	asynStatus status;
-	int errNo;
-	int outBytes, inBytes, dataBytes;
+	int dimensions, numElements, errNo;
+	int outBytes, inBytes, packetDoubles;
 	int slice=0;
 	int remainingSlices;
 	int numSlices;
+	int sentDoubles=0;
+	int dataOffset=0;
 	static const char *functionName = "putDoubleArray";
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
 	
 	// TODO: how to handle local variables?
 	
-	/*
-	 * TODO: if the slice index is really limited to a single ascii character representation
-	 * of an integer, this method needs to be a lot smarter about determining how many
-	 * 10-packet transmissions are needed to send the entire array.
-	 */
-	
 	// Confirm the global variable exists and is large enough to hold the
 	// array to be written to it.
-	status = globalVarCheck(var, idx1start, idx1end, idx2start, idx2end, &errNo);
+	status = globalVarCheck(var, idx1start, idx1end, idx2start, idx2end, &dimensions, &numElements, &errNo);
 	
 	if (status == asynSuccess)
 	{
@@ -731,14 +733,15 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	 * Unlike getDoubleArray, which parses the reply from the controller to determine if there is another
 	 * slice to be read, putDoubleArray is responsible for keeping track of how many slices need to be sent.
 	 * This is complicated by the fact that the command + data to be written (not including the prefix or 
-	 * suffix) is limited (by GETCONF(99,8)--but is usually 1400).  The command varies becaues it includes
-	 * the variable name and array indices.
+	 * suffix) is limited (by GETCONF(99,8)--but is usually 1400).  The command varies because it includes
+	 * the variable name and array indices.  It is also complicated by the fact that only 10 slices can be
+	 * sent (the slice index is a single-character representation of an integer).
 	 */
 	
 	// Create the command to send the first packet of array data. This could be the only 
 	// command that needs to be sent or it could be the first of many.  Slice is always 0 here
 	// but it gets omitted from the command if only one packet needs to be sent.
-	writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes, &dataBytes);
+	writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes, &packetDoubles);
 	numSlices = remainingSlices + 1;
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, numSlices);
@@ -746,22 +749,51 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	
 	// Send the command
 	status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
+	sentDoubles += packetDoubles;
 	
-	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
-	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
+	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
 	
 	// Send the remaining packets, if necessary
 	while (remainingSlices)
 	{
-		// Created the command to send the next slice (packet)
 		slice += 1;
-		writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data, slice, &remainingSlices, &outBytes, &inBytes, &dataBytes);
+		
+		// Update the start indices when the 10th packet is reached, because the slice index needs to be reset to zero
+		if (slice == 10)
+		{
+			// Reset the slice index
+			slice = 0;
+			
+			// Use sentDoubles to determine new indices
+			if (dimensions == 1)
+			{
+				idx1start = sentDoubles;
+				dataOffset = sentDoubles;
+			}
+			else if (dimensions == 2)
+			{
+				// Integer math will truncate this value
+				idx2start = sentDoubles / (idx1end+1);
+				idx1start = sentDoubles % (idx1end+1);
+				dataOffset = sentDoubles;
+			}
+			
+			// Share the new indices
+			asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, remainingSlices);
+			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, remainingSlices);
+		}
+		
+		
+		// Created the command to send the next slice (packet)
+		writeFloat64ArrayCmd(command, var, idx1start, idx1end, idx2start, idx2end, data+dataOffset, slice, &remainingSlices, &outBytes, &inBytes, &packetDoubles);
 		
 		// Send the command
 		status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
+		sentDoubles += packetDoubles;
 		
-		asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
-		//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: dataBytes = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, dataBytes, outBytes, status);
+		asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
 	}
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);

@@ -27,7 +27,7 @@ public:
   asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
   asynStatus writeReadAckBinary(char *output, int outBytes, char *input, int inBytes);
   asynStatus binaryErrorCheck(char *buffer);
-  asynStatus globalVarCheck(const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *errNo);
+  asynStatus globalVarCheck(const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *dimensions, int *numElements, int *errNo);
   asynStatus createGlobalRealVar(const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
 
 protected:
