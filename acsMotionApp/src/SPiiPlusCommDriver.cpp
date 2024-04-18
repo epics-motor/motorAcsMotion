@@ -745,14 +745,14 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 	numSlices = remainingSlices + 1;
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, numSlices);
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, numSlices);
+	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, numSlices);
 	
 	// Send the command
 	status = writeReadAckBinary((char*)command, outBytes, inBuff, inBytes);
 	sentDoubles += packetDoubles;
 	
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
+	//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
 	
 	// Send the remaining packets, if necessary
 	while (remainingSlices)
@@ -773,6 +773,8 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 			}
 			else if (dimensions == 2)
 			{
+				/* NOTE: writing 2D data is currently broken after the 10th packet/slice */
+				
 				// Integer math will truncate this value
 				idx2start = sentDoubles / (idx1end+1);
 				idx1start = sentDoubles % (idx1end+1);
@@ -781,7 +783,7 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 			
 			// Share the new indices
 			asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, remainingSlices);
-			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, remainingSlices);
+			//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: var = %s, ((%i, %i), (%i, %i)), slices = %i\n", driverName, functionName, var, idx1start, idx1end, idx2start, idx2end, remainingSlices);
 		}
 		
 		
@@ -793,7 +795,7 @@ asynStatus SPiiPlusComm::putDoubleArray(double *data, const char *var, int idx1s
 		sentDoubles += packetDoubles;
 		
 		asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
-		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
+		//asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,    "%s:%s: Slice %i write: packetDoubles = %i; outBytes = %i; status = %i\n", driverName, functionName, slice, packetDoubles, outBytes, status);
 	}
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);

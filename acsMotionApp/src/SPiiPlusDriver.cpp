@@ -2723,8 +2723,13 @@ asynStatus SPiiPlusController::test()
   
   // Note: it is assumed that data has enough values to fill the specified array
   status = pComm_->putDoubleArray(data, "testVar", 0, dataSize-1, 0, 0);
-  
-  // IAMHERE
+  /*
+  // 2D testing
+  // This results in a real(500)(4) array and the data from the 11th packet doesn't get appended properly
+  //status = pComm_->putDoubleArray(data, "testVar", 0, dataSize/4-1, 0, 4-1);
+  // This results in a real(4)(500) array and the data from the 11th packet doesn't get appended properly
+  //status = pComm_->putDoubleArray(data, "testVar", 0, 4-1, 0, dataSize/4-1);
+  */
   
   free(buffer);
   
