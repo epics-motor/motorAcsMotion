@@ -1750,7 +1750,17 @@ asynStatus SPiiPlusController::buildProfile()
     
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      // The user-specified pulse array is already in the correct form -- nothing to do here
+      // The user-specified pulse array is already in the correct form. Send it
+      // to the controller now, to minimize delays when executing the profile.
+      // NOTE: maxProfilePulses is used instead of numPulses because the global
+      // variable might not exist in the controller yet and the user can modify
+      // The number of pulses at any time.
+      status = pComm_->putDoubleArray(profilePulses_, "pulsePos", 0, maxProfilePulses_-1, 0, 0);
+      if (status) {
+        buildOK = false;
+        sprintf(message, "Error writing pulse positions, status=%d\n", status);
+        goto done;
+      }
     }
     else
     {
@@ -2237,7 +2247,15 @@ asynStatus SPiiPlusController::runProfile()
   // TODO: store the pulseAxis to pulseAxis_ at build time to avoid problems with a profile built using one pulseAxis and executed using another
   // Assign PEG engine to an encoder
   // ASSIGNPEG axis, engines_to_encoders_code, gp_out_assign_code
-  cmd << "ASSIGNPEG " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
+  if (pulseMode == 1)
+  {
+    // ASSIGNPEG/f is required if PEG_R/d will be used
+    cmd << "ASSIGNPEG/f " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
+  }
+  else
+  {
+    cmd << "ASSIGNPEG " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
+  }
   status = pComm_->writeReadAck(cmd);
   
   // Assign PEG output to output pins
@@ -2263,11 +2281,17 @@ asynStatus SPiiPlusController::runProfile()
   {
     // PEG_R peg_engine width mode first_index last_index POS_ARRAY
     
-    // TODO: implement writing arrays to the controller using binary 
-    // communication so that PEG_R can be implemented efficiently.
-    executeOK = false;
-    strcpy(message, "Aborting due to PEG_R not implemented yet");
-    goto done;
+    // TODO: is 0x4444 the correct mode? Is pulseAxis the correct peg_engine argument?
+    // NOTE: ASSIGNPEG's /f switch is also required
+    cmd << "PEG_R/d" << pulseAxis << ", " << pulseWidth << ", " << "0x4444" << ", " << "0" << ", " << (numPulses-1) << ", " << "pulsePos";
+    status = pComm_->writeReadAck(cmd);
+    // Should a failed PEG_R command cause the scan to fail?  Yes, for now.
+    if (status)
+    {
+      executeOK = false;
+      strcpy(message, "Aborting due to PEG_R not implemented yet");
+      goto done;
+    }
   }
   else if (pulseMode == 3)
   {
