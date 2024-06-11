@@ -1,0 +1,16 @@
+record(bo,"$(P)$(M):disableSetPos") {
+    field(DESC, "Disable set position")
+    field(DTYP, "asynInt32")
+    field(OUT,  "@asyn($(PORT),$(ADDR))SPIIPLUS_DISABLE_SET_POS")
+    field(ZNAM, "Off")
+    field(ONAM, "On")
+    field(VAL,  1)
+    field(PINI, "YES")
+}
+
+# Also tell autosave to never restore the position, which is redundant
+# NOTE: this only takes effect if RSTM hasn't been autosaved yet
+record(motor,"$(P)$(M)") {
+    field(RSTM, "Never")
+}
+

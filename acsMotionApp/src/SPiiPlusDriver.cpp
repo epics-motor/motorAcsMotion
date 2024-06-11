@@ -98,6 +98,8 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusHomingOffsetNegString,            asynParamFloat64,   &SPiiPlusHomingOffsetNeg_);
 	createParam(SPiiPlusHomingCurrLimitString,            asynParamFloat64,   &SPiiPlusHomingCurrLimit_);
 	//
+	createParam(SPiiPlusDisableSetPosString,              asynParamInt32, &SPiiPlusDisableSetPos_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize this variable to avoid freeing random memory
@@ -856,11 +858,23 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	asynStatus status;
+	int disableSetPos;
 	std::stringstream cmd;
+	static const char *functionName = "setPosition";
 	
-	// The controller automatically updates APOS and FPOS when RPOS is updated 
-	cmd << "SET RPOS(" << axisNo_ << ")=" << (position * resolution_);
-	status = controller->pComm_->writeReadAck(cmd);
+	controller->getIntegerParam(axisNo_, controller->SPiiPlusDisableSetPos_, &disableSetPos);
+	
+	if (!disableSetPos)
+	{
+	  // The controller automatically updates APOS and FPOS when RPOS is updated 
+	  cmd << "SET RPOS(" << axisNo_ << ")=" << (position * resolution_);
+	  status = controller->pComm_->writeReadAck(cmd);
+	}
+	else
+	{
+	  asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Changing the position of axis %i is disabled; Ignoring requested position: %lf\n", driverName, functionName, axisNo_, (position * resolution_));
+	  status = asynError;
+	}
 	
 	return status;
 }

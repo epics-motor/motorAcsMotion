@@ -141,7 +141,9 @@
 #define SPiiPlusHomingOffsetNegString          "SPIIPLUS_HOMING_OFFSET_NEG"
 #define SPiiPlusHomingCurrLimitString          "SPIIPLUS_HOMING_CURR_LIMIT"
 //
-#define SPiiPlusTestString                      "SPIIPLUS_TEST"
+#define SPiiPlusDisableSetPosString            "SPIIPLUS_DISABLE_SET_POS"
+//
+#define SPiiPlusTestString                     "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
     const char *programName;
@@ -285,6 +287,8 @@ protected:
 	int SPiiPlusHomingOffsetPos_;
 	int SPiiPlusHomingOffsetNeg_;
 	int SPiiPlusHomingCurrLimit_;
+	//
+	int SPiiPlusDisableSetPos_;
 	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
