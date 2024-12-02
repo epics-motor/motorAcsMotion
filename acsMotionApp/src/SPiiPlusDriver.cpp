@@ -152,7 +152,8 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		
 		// axis resolution (used to convert motor record steps into controller EGU)
 		// TODO: how should nanomotion piezo ceramic motors (bit 7 of mflags) be handled?
-		if ((pAxes_[index]->brushl_ == 0) && (pAxes_[index]->linear_ == 0))
+		// TODO: does the following logic fail to identify non-PD steppers that aren't microstepping as stepper motors?
+		if ((pAxes_[index]->micro_ > 0) || ((pAxes_[index]->stepper_ > 0)  && (pAxes_[index]->stepenc_ == 0)))
 		{
 			// Use the stepper factor as the resolution for stepper motors
 			pAxes_[index]->resolution_ = stepperFactor_[index];
