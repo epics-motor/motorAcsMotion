@@ -6,6 +6,7 @@ $(P)$(M):RPOS.PREC
 $(P)$(M):EPOS.PREC
 $(P)$(M):FPOS.PREC
 $(P)$(M):F2POS.PREC
+$(P)$(M):VPOS.PREC
 $(P)$(M):ROFFS.PREC
 $(P)$(M):EOFFS.PREC
 $(P)$(M):E2OFFS.PREC
@@ -20,6 +21,7 @@ $(P)$(M):RPOS.SCAN
 $(P)$(M):EPOS.SCAN
 $(P)$(M):FPOS.SCAN
 $(P)$(M):F2POS.SCAN
+$(P)$(M):VPOS.SCAN
 $(P)$(M):ROFFS.SCAN
 $(P)$(M):EOFFS.SCAN
 $(P)$(M):E2OFFS.SCAN

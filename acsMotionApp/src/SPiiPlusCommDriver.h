@@ -25,6 +25,7 @@ public:
   asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
   asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
   asynStatus binaryErrorCheck(char *buffer);
+  asynStatus isVariableDefined(bool *isDefined, const char *var);
 
 protected:
   //int something_;
