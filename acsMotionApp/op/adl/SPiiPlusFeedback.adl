@@ -8,7 +8,7 @@ display {
 		x=238
 		y=101
 		width=680
-		height=250
+		height=300
 	}
 	clr=14
 	bclr=4
@@ -957,6 +957,175 @@ composite {
 					format="string"
 					limits {
 					}
+				}
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=18
+		y=232
+		width=370
+		height=45
+	}
+	"composite name"=""
+	children {
+		composite {
+			object {
+				x=18
+				y=232
+				width=370
+				height=20
+			}
+			"composite name"=""
+			children {
+				text {
+					object {
+						x=18
+						y=232
+						width=100
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="VPOS"
+					align="horiz. centered"
+				}
+				text {
+					object {
+						x=153
+						y=232
+						width=100
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="VFP"
+					align="horiz. centered"
+				}
+				text {
+					object {
+						x=288
+						y=232
+						width=100
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="EFAC"
+					align="horiz. centered"
+				}
+				text {
+					object {
+						x=123
+						y=232
+						width=25
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="="
+					align="horiz. centered"
+				}
+				text {
+					object {
+						x=258
+						y=232
+						width=25
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="*"
+					align="horiz. centered"
+				}
+			}
+		}
+		composite {
+			object {
+				x=18
+				y=257
+				width=370
+				height=20
+			}
+			"composite name"=""
+			children {
+				"text update" {
+					object {
+						x=18
+						y=257
+						width=100
+						height=20
+					}
+					monitor {
+						chan="$(P)$(M):VPOS.VAL"
+						clr=54
+						bclr=4
+					}
+					align="horiz. centered"
+					limits {
+					}
+				}
+				"text update" {
+					object {
+						x=288
+						y=257
+						width=100
+						height=20
+					}
+					monitor {
+						chan="$(P)$(M):EFAC.VAL"
+						clr=54
+						bclr=4
+					}
+					align="horiz. centered"
+					limits {
+					}
+				}
+				text {
+					object {
+						x=123
+						y=257
+						width=25
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="="
+					align="horiz. centered"
+				}
+				text {
+					object {
+						x=153
+						y=257
+						width=100
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="VFP"
+					align="horiz. centered"
+				}
+				text {
+					object {
+						x=258
+						y=257
+						width=25
+						height=20
+					}
+					"basic attribute" {
+						clr=14
+					}
+					textix="*"
+					align="horiz. centered"
 				}
 			}
 		}

@@ -91,6 +91,7 @@
 #define SPIIPLUS_MFLAGS_BRUSHL              (1<<8)
 #define SPIIPLUS_MFLAGS_BRUSHOK             (1<<9)
 #define SPIIPLUS_MFLAGS_PHASE2              (1<<10)
+#define SPIIPLUS_MFLAGS_DEFCON              (1<<17)
 #define SPIIPLUS_MFLAGS_LINEAR              (1<<21)
 #define SPIIPLUS_MFLAGS_ABSCOMM             (1<<22)
 #define SPIIPLUS_MFLAGS_HALL                (1<<27)
@@ -121,6 +122,7 @@
 #define SPiiPlusEncPosString                   "SPIIPLUS_ENC_POS"
 #define SPiiPlusFdbkPosString                  "SPIIPLUS_FDBK_POS"
 #define SPiiPlusFdbk2PosString                 "SPIIPLUS_FDBK2_POS"
+#define SPiiPlusVFdbkPosString                 "SPIIPLUS_VFDBK_POS"
 //
 #define SPiiPlusRefOffsetString                "SPIIPLUS_REF_OFFSET"
 #define SPiiPlusEncOffsetString                "SPIIPLUS_ENC_OFFSET"
@@ -135,6 +137,7 @@
 #define SPiiPlusSetEnc2OffsetString            "SPIIPLUS_SET_ENC2_OFFSET"
 //
 #define SPiiPlusFWVersionString                "SPIIPLUS_FW_VERSION"
+#define SPiiPlusVFdbkPosSupportString          "SPIIPLUS_VFDBK_POS_SUPPORT"
 //
 #define SPiiPlusHomingMaxDistString            "SPIIPLUS_HOMING_MAX_DIST"
 #define SPiiPlusHomingOffsetPosString          "SPIIPLUS_HOMING_OFFSET_POS"
@@ -193,6 +196,7 @@ private:
 	int brushl_;			// MFLAGS, bit 8
 	int brushok_;			// MFLAGS, bit 9
 	int phase2_;			// MFLAGS, bit 10
+	int defcon_;			// MFLAGS, bit 17
 	int linear_;			// MFLAGS, bit 21
 	int abscomm_;			// MFLAGS, bit 22
 	int hall_;			// MFLAGS, bit 27
@@ -243,6 +247,8 @@ protected:
 	SPiiPlusAxis **pAxes_;       /**< Array of pointers to axis objects */
 	SPiiPlusComm *pComm_;
 	std::string instring;
+	bool virtualFeedbackPositionSupported_;
+	bool anyAxisVirtual_;
 	
 	#define FIRST_SPIIPLUS_PARAM SPiiPlusHomingMethod_
 	int SPiiPlusHomingMethod_;
@@ -268,6 +274,7 @@ protected:
 	int SPiiPlusEncPos_;
 	int SPiiPlusFdbkPos_;
 	int SPiiPlusFdbk2Pos_;
+	int SPiiPlusVFdbkPos_;
 	//
 	int SPiiPlusRefOffset_;
 	int SPiiPlusEncOffset_;
@@ -282,6 +289,7 @@ protected:
 	int SPiiPlusSetEnc2Offset_;
 	//
 	int SPiiPlusFWVersion_;
+	int SPiiPlusVFdbkPosSupport_;
 	//
 	int SPiiPlusHomingMaxDist_;
 	int SPiiPlusHomingOffsetPos_;
@@ -326,6 +334,7 @@ private:
 	epicsFloat64 referencePosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 feedbackPosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 feedback2Position_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 virtualFeedbackPosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 referenceOffset_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 encoderOffset_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 encoder2Offset_[SPIIPLUS_MAX_AXES];

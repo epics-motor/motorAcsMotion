@@ -88,6 +88,15 @@ record(ai,"$(P)$(M):F2POS") {
     field(SCAN, "$(SCAN=2)")
 }
 
+record(ai,"$(P)$(M):VPOS") {
+    field(DESC, "Virtual Feedback Position")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_VFDBK_POS")
+    field(PREC, "$(PREC=4)")
+    field(PINI, "1")
+    field(SCAN, "$(SCAN=2)")
+}
+
 record(ai,"$(P)$(M):ROFFS") {
     field(DESC, "Reference Offset")
     field(DTYP, "asynFloat64")
