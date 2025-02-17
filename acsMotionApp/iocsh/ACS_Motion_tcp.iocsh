@@ -21,7 +21,7 @@
 #- ###################################################
 
 # ACS MP4U ethernet connection settings
-drvAsynIPPortConfigure("$(INSTANCE)_ETH","$(IP_ADDR):$(PORT=701)",0,0,0)
+drvAsynIPPortConfigure("$(INSTANCE)_ETH","$(IP_ADDR):$(TCP_PORT=701)",0,0,0)
 asynOctetSetInputEos( "$(INSTANCE)_ETH", -1, "\r")
 asynOctetSetOutputEos("$(INSTANCE)_ETH", -1, "\r")
 
