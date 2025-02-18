@@ -201,6 +201,7 @@ private:
 	int abscomm_;			// MFLAGS, bit 22
 	int hall_;			// MFLAGS, bit 27
 	double resolution_;		// STEPF
+	bool virtual_;			// Is virtual axis
 	
 friend class SPiiPlusController;
 };
@@ -208,7 +209,7 @@ friend class SPiiPlusController;
 class epicsShareClass SPiiPlusController : public asynMotorController
 {
 public:
-	SPiiPlusController(const char* ACSPort, const char* asynPort, int numAxes, double moving_poll, double idle_poll);
+	SPiiPlusController(const char* ACSPort, const char* asynPort, int numAxes, double moving_poll, double idle_poll, const char* virtualAxisList);
 	asynStatus readInt32(asynUser *pasynUser, epicsInt32 *value);
 	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
