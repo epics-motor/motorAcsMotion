@@ -18,6 +18,9 @@
 #- POLL_PERIOD        - Optional: Poll period (s)
 #-                    Default: 1.0
 #-
+#- VIRTUAL_AXES     - Optional: Comma-separated list of virtual axes (e.g., "0,7,10")
+#-                    Default: ""
+#-
 #- ###################################################
 
 # ACS MP4U ethernet connection settings
@@ -25,7 +28,7 @@ drvAsynIPPortConfigure("$(INSTANCE)_ETH","$(IP_ADDR):$(TCP_PORT=701)",0,0,0)
 asynOctetSetInputEos( "$(INSTANCE)_ETH", -1, "\r")
 asynOctetSetOutputEos("$(INSTANCE)_ETH", -1, "\r")
 
-AcsMotionConfig("$(INSTANCE)", "$(INSTANCE)_ETH", $(NUM_AXES=1), $(MOVING_POLL=$(POLL_PERIOD=1.0)), $(IDLE_POLL=$(POLL_PERIOD=1.0)))
+AcsMotionConfig("$(INSTANCE)", "$(INSTANCE)_ETH", $(NUM_AXES=1), $(MOVING_POLL=$(POLL_PERIOD=1.0)), $(IDLE_POLL=$(POLL_PERIOD=1.0)), "$(VIRTUAL_AXES=)")
 
 SPiiPlusCreateProfile("$(INSTANCE)", $(MAX_POINTS=2000))
 
