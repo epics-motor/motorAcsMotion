@@ -9,16 +9,16 @@
 
 #include <iocsh.h>
 #include <epicsThread.h>
+#include <epicsStdlib.h>
+#include <epicsString.h>
+#include <cantProceed.h>
 
 #include <asynOctetSyncIO.h>
-
 #include "asynDriver.h"
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
 #include <epicsExport.h>
-#include <epicsString.h>
-#include <cantProceed.h>
 
 // SPiiPlusDriver.h includes SPiiPlusCommDriver.h
 #include "SPiiPlusDriver.h"
@@ -35,7 +35,8 @@ static void SPiiPlusProfileThreadC(void *pPvt);
 #endif
 
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
-                                             double movingPollPeriod, double idlePollPeriod)
+                                             double movingPollPeriod, double idlePollPeriod,
+                                             const char* virtualAxisList)
  : asynMotorController(ACSPortName, numAxes, NUM_SPIIPLUS_PARAMS, 0, 0, ASYN_CANBLOCK | ASYN_MULTIDEVICE, 1, 0, 0),
  drvUser_(NULL),
  initialized_(false)
@@ -79,6 +80,7 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusEncPosString,                     asynParamFloat64,   &SPiiPlusEncPos_);
 	createParam(SPiiPlusFdbkPosString,                    asynParamFloat64,   &SPiiPlusFdbkPos_);
 	createParam(SPiiPlusFdbk2PosString,                   asynParamFloat64,   &SPiiPlusFdbk2Pos_);
+	createParam(SPiiPlusVFdbkPosString,                   asynParamFloat64,   &SPiiPlusVFdbkPos_);
 	//
 	createParam(SPiiPlusRefOffsetString,                  asynParamFloat64,   &SPiiPlusRefOffset_);
 	createParam(SPiiPlusEncOffsetString,                  asynParamFloat64,   &SPiiPlusEncOffset_);
@@ -93,11 +95,14 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusSetEnc2OffsetString,              asynParamFloat64,   &SPiiPlusSetEnc2Offset_);
 	//
 	createParam(SPiiPlusFWVersionString,                  asynParamOctet,     &SPiiPlusFWVersion_);
+	createParam(SPiiPlusVFdbkPosSupportString,            asynParamInt32,     &SPiiPlusVFdbkPosSupport_);
 	//
 	createParam(SPiiPlusHomingMaxDistString,              asynParamFloat64,   &SPiiPlusHomingMaxDist_);
 	createParam(SPiiPlusHomingOffsetPosString,            asynParamFloat64,   &SPiiPlusHomingOffsetPos_);
 	createParam(SPiiPlusHomingOffsetNegString,            asynParamFloat64,   &SPiiPlusHomingOffsetNeg_);
 	createParam(SPiiPlusHomingCurrLimitString,            asynParamFloat64,   &SPiiPlusHomingCurrLimit_);
+	//
+	createParam(SPiiPlusDisableSetPosString,              asynParamInt32, &SPiiPlusDisableSetPos_);
 	//
 	createParam(SPiiPlusPulseModeString,                  asynParamInt32,     &SPiiPlusPulseMode_);
 	createParam(SPiiPlusPulsePosString,                   asynParamFloat64Array, &SPiiPlusPulsePos_);
@@ -124,6 +129,41 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	pComm_->writeReadStr(cmd, firmwareVersion_);
 	setStringParam(SPiiPlusFWVersion_, firmwareVersion_);
 	
+	// Determine whether virtual axis feedback positions are supported
+	virtualFeedbackPositionSupported_ = false;
+	pComm_->isVariableDefined(&virtualFeedbackPositionSupported_, "VPOS");
+	setIntegerParam(SPiiPlusVFdbkPosSupport_, virtualFeedbackPositionSupported_);
+	
+	// Create the axes and set them as not virtual
+	for (int index = 0; index < numAxes; index += 1)
+	{
+		new SPiiPlusAxis(this, index);
+		pAxes_[index]->virtual_ = false;
+	}
+	
+	// Parse the virtual axis list and set the listed axes as virtual
+	char *tmpVirtualAxisList = epicsStrDup(virtualAxisList);
+	char *strtok_rLast;
+	anyAxisVirtual_ = false;
+	for (char *p = epicsStrtok_r(tmpVirtualAxisList, ",", &strtok_rLast); p != NULL; p = epicsStrtok_r(NULL, ",", &strtok_rLast))
+	{
+		long index;
+		int status = epicsParseLong(p, &index, 10, NULL);
+		if (status != 0)
+		{
+			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Invalid virtual axis list axis \"%s\"; ignoring\n", driverName, functionName, p);
+			continue;
+		}
+		if (index < 0 || index >= numAxes)
+		{
+			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Virtual axis list axis %ld out of range; ignoring\n", driverName, functionName, index);
+			continue;
+		}
+		pAxes_[index]->virtual_ = true;
+		anyAxisVirtual_ = true;
+	}
+	free(tmpVirtualAxisList);
+	
 	// Query setup parameters
 	pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
 	pComm_->getDoubleArray((char *)stepperFactor_, "STEPF", 0, numAxes_-1, 0, 0);
@@ -134,8 +174,6 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	
 	for (int index = 0; index < numAxes; index += 1)
 	{
-		new SPiiPlusAxis(this, index);
-		
 		// Parse the setup parameters
 		// Bit 0 is #DUMMY (dummy axis)
 		pAxes_[index]->dummy_ = motorFlags_[index] & SPIIPLUS_MFLAGS_DUMMY;
@@ -157,6 +195,8 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		pAxes_[index]->brushok_ = motorFlags_[index] & SPIIPLUS_MFLAGS_BRUSHOK;
 		// Bit 10 is #PHASE2 (2-phase motor)
 		pAxes_[index]->phase2_ = motorFlags_[index] & SPIIPLUS_MFLAGS_PHASE2;
+		// Bit 17 is #DEFCON (default connection)
+		pAxes_[index]->defcon_ = motorFlags_[index] & SPIIPLUS_MFLAGS_DEFCON;
 		// Bit 21 is #LINEAR (linear motor)
 		pAxes_[index]->linear_ = motorFlags_[index] & SPIIPLUS_MFLAGS_LINEAR;
 		// Bit 22 is #ABSCOMM (absolute encoder commutation)
@@ -166,14 +206,15 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 		
 		// axis resolution (used to convert motor record steps into controller EGU)
 		// TODO: how should nanomotion piezo ceramic motors (bit 7 of mflags) be handled?
-		if ((pAxes_[index]->brushl_ == 0) && (pAxes_[index]->linear_ == 0))
+		// TODO: does the following logic fail to identify non-PD steppers that aren't microstepping as stepper motors?
+		if (!pAxes_[index]->virtual_ && ((pAxes_[index]->micro_ > 0) || ((pAxes_[index]->stepper_ > 0)  && (pAxes_[index]->stepenc_ == 0))))
 		{
 			// Use the stepper factor as the resolution for stepper motors
 			pAxes_[index]->resolution_ = stepperFactor_[index];
 		}
 		else
 		{
-			// Use the encoder factor as the resolution for brushless and linear motors
+			// Use the encoder factor as the resolution for brushless and linear motors and virtual axes
 			// TODO: how to handle mutliple encoders?
 			pAxes_[index]->resolution_ = encoderFactor_[index];
 		}
@@ -512,6 +553,12 @@ asynStatus SPiiPlusController::poll()
 	status = pComm_->getDoubleArray((char *)feedback2Position_, "F2POS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
+	if (virtualFeedbackPositionSupported_ && anyAxisVirtual_)
+	{
+		status = pComm_->getDoubleArray((char *)virtualFeedbackPosition_, "VPOS", 0, numAxes_-1, 0, 0);
+		if (status != asynSuccess) return status;
+	}
+	
 	/* offsets */
 	// RPOS = 0 if MFLAGS(index).#DEFCON=1
 	status = pComm_->getDoubleArray((char *)referenceOffset_, "ROFFS", 0, numAxes_-1, 0, 0);
@@ -689,6 +736,22 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		setIntegerParam(controller->motorStatusLowLimit_, 0);
 		setIntegerParam(controller->motorStatusHighLimit_, 0);
 	}
+	else if (virtual_)
+	{
+		if (controller->virtualFeedbackPositionSupported_)
+		{
+			// VPOS (queried in controller poll method)
+			setDoubleParam(controller->motorEncoderPosition_, controller->virtualFeedbackPosition_[axisNo_] / controller->encoderFactor_[axisNo_]);
+		}
+		else
+		{
+			// APOS (queried in controller poll method)
+			setDoubleParam(controller->motorEncoderPosition_, (controller->axisPosition_[axisNo_] / resolution_));
+		}
+		// Faults are disabled for virtual axes
+		setIntegerParam(controller->motorStatusLowLimit_, 0);
+		setIntegerParam(controller->motorStatusHighLimit_, 0);
+	}
 	else
 	{
 		// FPOS (queried in controller poll method) = FP * EFAC + EOFFS
@@ -724,7 +787,7 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	//int open_loop;
 	//int in_pos;
 	
-	if (dummy_)
+	if (dummy_ || virtual_)
 	{
 		enabled = 0;
 		motion = controller->axisStatus_[axisNo_] & (1<<5);
@@ -792,6 +855,7 @@ asynStatus SPiiPlusAxis::updateFeedbackParams()
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusEncPos_, controller->encoderPosition_[axisNo_]);
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusFdbkPos_, controller->feedbackPosition_[axisNo_]);
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusFdbk2Pos_, controller->feedback2Position_[axisNo_]);
+	controller->setDoubleParam(axisNo_, controller->SPiiPlusVFdbkPos_, controller->virtualFeedbackPosition_[axisNo_]);
 	//
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusRefOffset_, controller->referenceOffset_[axisNo_]);
 	controller->setDoubleParam(axisNo_, controller->SPiiPlusEncOffset_, controller->encoderOffset_[axisNo_]);
@@ -904,11 +968,29 @@ asynStatus SPiiPlusAxis::setPosition(double position)
 {
 	SPiiPlusController* controller = (SPiiPlusController*) pC_;
 	asynStatus status;
+	int disableSetPos;
 	std::stringstream cmd;
+	static const char *functionName = "setPosition";
 	
-	// The controller automatically updates APOS and FPOS when RPOS is updated 
-	cmd << "SET RPOS(" << axisNo_ << ")=" << (position * resolution_);
-	status = controller->pComm_->writeReadAck(cmd);
+	if (virtual_)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i position change not supported because axis is virtual\n", driverName, functionName, axisNo_);
+		return asynError;
+	}
+	
+	controller->getIntegerParam(axisNo_, controller->SPiiPlusDisableSetPos_, &disableSetPos);
+	
+	if (!disableSetPos)
+	{
+	  // The controller automatically updates APOS and FPOS when RPOS is updated 
+	  cmd << "SET RPOS(" << axisNo_ << ")=" << (position * resolution_);
+	  status = controller->pComm_->writeReadAck(cmd);
+	}
+	else
+	{
+	  asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Changing the position of axis %i is disabled; Ignoring requested position: %lf\n", driverName, functionName, axisNo_, (position * resolution_));
+	  status = asynError;
+	}
 	
 	return status;
 }
@@ -921,6 +1003,12 @@ asynStatus SPiiPlusAxis::setEncoderOffset(double newEncoderOffset)
 	double oldEncoderOffset;
 	const char* sign;
 	static const char *functionName = "setEncoderOffset";
+	
+	if (virtual_)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i encoder offset change not supported because axis is virtual\n", driverName, functionName, axisNo_);
+		return asynError;
+	}
 	
 	// We can't use getDoubleParam to get the old encoder 2 offset because it has already been updated
 	oldEncoderOffset = pC_->encoderOffset_[axisNo_];
@@ -952,6 +1040,12 @@ asynStatus SPiiPlusAxis::setEncoder2Offset(double newEncoder2Offset)
 	double oldEncoder2Offset;
 	const char* sign;
 	static const char *functionName = "setEncoder2Offset";
+	
+	if (virtual_)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i encoder 2 offset change not supported because axis is virtual\n", driverName, functionName, axisNo_);
+		return asynError;
+	}
 	
 	// We can't use getDoubleParam to get the old encoder 2 offset because it has already been updated
 	oldEncoder2Offset = pC_->encoder2Offset_[axisNo_];
@@ -995,7 +1089,7 @@ asynStatus SPiiPlusAxis::setClosedLoop(bool closedLoop)
 	asynStatus status=asynSuccess;
 	std::stringstream cmd;
 	
-	if (!dummy_)
+	if (!dummy_ && !virtual_)
 	{
 		/*
 		Enable/disable the axis instead of changing the closed-loop state.
@@ -1031,6 +1125,12 @@ asynStatus SPiiPlusAxis::home(double minVelocity, double maxVelocity, double acc
 	epicsFloat64 homingOffset;
 	epicsFloat64 homingCurrLimit;
 	static const char *functionName = "home";
+	
+	if (virtual_)
+	{
+		asynPrint(pC_->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axis %i home not supported because axis is virtual\n", driverName, functionName, axisNo_);
+		return asynError;
+	}
 	
 	controller->getIntegerParam(axisNo_, controller->SPiiPlusHomingMethod_, &mbboHomingMethod);
 	controller->getDoubleParam(axisNo_, controller->SPiiPlusHomingMaxDist_, &homingMaxDistance);
@@ -1241,6 +1341,7 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "    brushl:  %i\n", brushl_);
   fprintf(fp, "    brushok  %i\n", brushok_);
   fprintf(fp, "    phase2:  %i\n", phase2_);
+  fprintf(fp, "    defcon:  %i\n", defcon_);
   fprintf(fp, "    linear:  %i\n", linear_);
   fprintf(fp, "    abscomm:  %i\n", abscomm_);
   fprintf(fp, "    hall:  %i\n", hall_);
@@ -1249,6 +1350,7 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "  homing method: %i\n", homingMethod);
   fprintf(fp, "  max velocity: %lf\n", controller->maxVelocity_[axisNo_]);
   fprintf(fp, "  max acceleration: %lf\n", controller->maxAcceleration_[axisNo_]);
+  fprintf(fp, "  virtual: %s\n", virtual_ ? "Yes" : "No");
   fprintf(fp, "Encoder info for axis %i:\n", axisNo_);
   fprintf(fp, "  encoder type: %i\n", controller->encoderType_[axisNo_]);
   fprintf(fp, "  encoder resolution: %.6e\n", controller->encoderFactor_[axisNo_]);
@@ -1262,6 +1364,7 @@ void SPiiPlusAxis::report(FILE *fp, int level)
   fprintf(fp, "  encoder position: %lf\n", controller->encoderPosition_[axisNo_]);
   fprintf(fp, "  feedback position: %lf\n", controller->feedbackPosition_[axisNo_]);
   fprintf(fp, "  feedback 2 position: %lf\n", controller->feedback2Position_[axisNo_]);
+  fprintf(fp, "  virtual feedback position: %lf\n", controller->virtualFeedbackPosition_[axisNo_]);
   fprintf(fp, "Status for axis %i:\n", axisNo_);
   fprintf(fp, "  moving: %i\n", moving_);
   fprintf(fp, "  axis status: %i\n", controller->axisStatus_[axisNo_]);
@@ -2203,11 +2306,28 @@ asynStatus SPiiPlusController::runProfile()
     
     // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
     if (pAxes_[profileAxes_[i]]->dummy_)
+    {
       // use the desired position for dummy axes, since FPOS and PE are always zero
       posData = "APOS";
+    }
+    else if (pAxes_[profileAxes_[i]]->virtual_)
+    {
+      if (virtualFeedbackPositionSupported_)
+      {
+        // use the virtual feedback position for virtual axes
+        posData = "VPOS";
+      }
+      else
+      {
+        // use the desired position for virtual axes when virtual feedback positions are not supported
+        posData = "APOS";
+      }
+    }
     else
+    {
       // use the feedback position for real motors
       posData = "FPOS";
+    }
     cmd << "DC/sw " << profileAxes_[i] << ",DC_DATA_" << (i+1) << "," << maxProfilePoints_ << ",";
     cmd << lround(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[i] << "),PE(" << profileAxes_[i] << "),TIME";
     status = pComm_->writeReadAck(cmd);
@@ -2777,6 +2897,7 @@ void SPiiPlusController::report(FILE *fp, int level)
   fprintf(fp, "    moving poll period: %lf\n", movingPollPeriod_);
   fprintf(fp, "    idle poll period: %lf\n", idlePollPeriod_);
   fprintf(fp, "    firmware version: %s\n", firmwareVersion_);
+  fprintf(fp, "    virtual feedback position support: %s\n", virtualFeedbackPositionSupported_ ? "Yes" : "No");
   fprintf(fp, "\n");
   
   // Print more axis detail if level = 1
@@ -2789,9 +2910,9 @@ void SPiiPlusController::report(FILE *fp, int level)
   fprintf(fp, "====================================\n");
 }
 
-static void AcsMotionConfig(const char* acs_port, const char* asyn_port, int num_axes, double moving_rate, double idle_rate)
+static void AcsMotionConfig(const char* acs_port, const char* asyn_port, int num_axes, double moving_rate, double idle_rate, const char* virtual_axis_list)
 {
-	new SPiiPlusController(acs_port, asyn_port, num_axes, moving_rate, idle_rate);
+	new SPiiPlusController(acs_port, asyn_port, num_axes, moving_rate, idle_rate, virtual_axis_list);
 }
 
 
@@ -2837,14 +2958,15 @@ static const iocshArg configArg1 = {"asyn port name", iocshArgString};
 static const iocshArg configArg2 = {"num axes", iocshArgInt};
 static const iocshArg configArg3 = {"Moving polling rate", iocshArgDouble};
 static const iocshArg configArg4 = {"Idle polling rate", iocshArgDouble};
+static const iocshArg configArg5 = {"Virtual axis list", iocshArgString};
 
-static const iocshArg * const AcsMotionConfigArgs[5] = {&configArg0, &configArg1, &configArg2, &configArg3, &configArg4};
+static const iocshArg * const AcsMotionConfigArgs[6] = {&configArg0, &configArg1, &configArg2, &configArg3, &configArg4, &configArg5};
 
-static const iocshFuncDef configAcsMotion = {"AcsMotionConfig", 5, AcsMotionConfigArgs};
+static const iocshFuncDef configAcsMotion = {"AcsMotionConfig", 6, AcsMotionConfigArgs};
 
 static void AcsMotionCallFunc(const iocshArgBuf *args)
 {
-    AcsMotionConfig(args[0].sval, args[1].sval, args[2].ival, args[3].dval, args[4].dval);
+    AcsMotionConfig(args[0].sval, args[1].sval, args[2].ival, args[3].dval, args[4].dval, args[5].sval);
 }
 
 // Register all the commands users can call from the command line

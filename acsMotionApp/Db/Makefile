@@ -28,6 +28,7 @@ DB += SPiiPlusRealVar.db
 DB += SPiiPlusProgram.db
 DB += SPiiPlusAxisExtra.db
 DB += SPiiPlusFeedback.db
+DB += SPiiPlusDisableSetPos.db
 DB += SPiiPlusPEG.db
 DB += SPiiPlusTest.db
 

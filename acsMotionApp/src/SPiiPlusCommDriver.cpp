@@ -5,10 +5,13 @@
 
 #include <iocsh.h>
 #include <epicsThread.h>
-#include <epicsExport.h>
-
 #include <asynPortDriver.h>
 #include <asynOctetSyncIO.h>
+
+#include "asynMotorController.h"
+#include "asynMotorAxis.h"
+
+#include <epicsExport.h>
 
 #include "SPiiPlusBinComm.h"
 // SPiiPlusDriver.h includes SPiiPlusCommDriver.h
@@ -408,6 +411,34 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer)
 		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error #%i\n", driverName, functionName, errNo);
 		status = asynError;
 	}
+	
+	return status;
+}
+
+asynStatus SPiiPlusComm::isVariableDefined(bool *isDefined, const char *var)
+{
+	static const char *functionName = "isVariableDefined";
+	std::stringstream cmd;
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	
+	cmd << "?" << var;
+	std::fill(inString, inString + 256, '\0');
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, cmd.str().c_str());
+	
+	size_t response;
+	lock();
+	asynStatus status = writeReadController(cmd.str().c_str(), inString, 256, &response, -1);
+	unlock();
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
+	
+	*isDefined = (inString[0] != '?');
+	
+	// clear the command stringstream
+	cmd.str("");
+	cmd.clear();
 	
 	return status;
 }

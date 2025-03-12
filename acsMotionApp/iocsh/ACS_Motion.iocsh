@@ -16,6 +16,9 @@
 #- POLL_RATE        - Optional: Poll rate (s)
 #-                    Default: 1.0
 #-
+#- VIRTUAL_AXES     - Optional: Comma-separated list of virtual axes (e.g., "0,7,10")
+#-                    Default: ""
+#-
 #- BAUD             - Optional: Communication baud rate
 #-                    Default: 19200
 #- ###################################################
@@ -25,7 +28,7 @@ iocshLoad("$(IP)/iocsh/setSerialParams.iocsh", "PORT=$(PORT), BAUD=$(BAUD=19200)
 asynOctetSetInputEos( "$(PORT)", -1, "\r")
 asynOctetSetOutputEos("$(PORT)", -1, "\r")
 
-AcsMotionConfig("$(INSTANCE)", "$(PORT)", $(NUM_AXES=1), $(MOVING_POLL=$(POLL_RATE=1.0)), $(IDLE_POLL=$(POLL_RATE=1.0)))
+AcsMotionConfig("$(INSTANCE)", "$(PORT)", $(NUM_AXES=1), $(MOVING_POLL=$(POLL_RATE=1.0)), $(IDLE_POLL=$(POLL_RATE=1.0)), "$(VIRTUAL_AXES=)")
 
 SPiiPlusCreateProfile("$(INSTANCE)", $(MAX_POINTS=2000), $(MAX_PULSES=2000))
 
