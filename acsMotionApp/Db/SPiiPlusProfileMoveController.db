@@ -32,7 +32,7 @@ grecord(ao,"$(P)$(R)NewPulsePositions") {
     field(PREC, "3")
 }
 
-// This probably isn't needed, since the numPulses from the base class can be used instead
+# This probably isn't needed, since the numPulses from the base class can be used instead
 grecord(longout,"$(P)$(R)NumPulsePositions") {
     field(DTYP, "asynInt32")
     field(DESC,"Num pulse positions to load")
