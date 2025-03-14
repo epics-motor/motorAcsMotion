@@ -2,7 +2,7 @@
 record(mbbo,"$(P)$(R)PulseMode") {
     field(DTYP, "asynInt32")
     field(DESC,"Pulse mode")
-    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=4))SPIIPLUS_PM_PULSE_MODE")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=4))SPIIPLUS_PULSE_MODE")
     field(VAL, "0")
     field(ZRVL, "0")
     field(ZRST, "Fixed")
@@ -18,7 +18,7 @@ record(mbbo,"$(P)$(R)PulseMode") {
 record(waveform,"$(P)$(R)PulsePositions") {
     field(DESC,"Output-pulse positions")
     field(DTYP, "asynFloat64ArrayOut")
-    field(INP,  "@asyn($(PORT),$(ADDR),$(TIMEOUT))SPIIPLUS_PM_PULSE_POS")
+    field(INP,  "@asyn($(PORT),0,$(TIMEOUT))SPIIPLUS_PULSE_POS")
     field(NELM, "$(NPULSES)")
     field(FTVL, "DOUBLE")
     #field(PREC, "$(PREC)")
@@ -36,5 +36,5 @@ grecord(ao,"$(P)$(R)NewPulsePositions") {
 grecord(longout,"$(P)$(R)NumPulsePositions") {
     field(DTYP, "asynInt32")
     field(DESC,"Num pulse positions to load")
-    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=4))SPIIPLUS_PM_NUM_PULSES")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=4))SPIIPLUS_NUM_PULSES")
 }

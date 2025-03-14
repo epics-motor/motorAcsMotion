@@ -48,8 +48,8 @@ pattern
 file "$(TOP)/db/SPiiPlusProfileMoveController.db"
 {
 pattern
-{R,     PORT, NPULSES, TIMEOUT}
-{pm1:,  ACS1,    2000,     2.0}
+{R,     PORT, NPULSES, TIMEOUT, PREC}
+{pm1:,  ACS1,    2000,     2.0,    4}
 }
 
 file "$(TOP)/db/SPiiPlusPEG.db"
