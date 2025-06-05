@@ -7,13 +7,13 @@
 #- NUM_AXES         - Optional: Number of axes to create for this controller
 #-                    Default: 1
 #-
-#- MOVING_POLL      - Optional: Moving poll rate (s)
-#-                    Default: POLL_RATE
+#- MOVING_POLL      - Optional: Moving poll period (s)
+#-                    Default: POLL_PERIOD or 0.1 s
 #- 
-#- IDLE_POLL        - Optional: Idle poll rate (s)
-#-                    Default: POLL_RATE
+#- IDLE_POLL        - Optional: Idle poll period (s)
+#-                    Default: POLL_PERIOD or 1.0 s
 #-
-#- POLL_RATE        - Optional: Poll rate (s)
+#- POLL_PERIOD        - Optional: Poll period (s)
 #-                    Default: 1.0
 #-
 #- VIRTUAL_AXES     - Optional: Comma-separated list of virtual axes (e.g., "0,7,10")
@@ -28,7 +28,7 @@ iocshLoad("$(IP)/iocsh/setSerialParams.iocsh", "PORT=$(PORT), BAUD=$(BAUD=19200)
 asynOctetSetInputEos( "$(PORT)", -1, "\r")
 asynOctetSetOutputEos("$(PORT)", -1, "\r")
 
-AcsMotionConfig("$(INSTANCE)", "$(PORT)", $(NUM_AXES=1), $(MOVING_POLL=$(POLL_RATE=1.0)), $(IDLE_POLL=$(POLL_RATE=1.0)), "$(VIRTUAL_AXES=)")
+AcsMotionConfig("$(INSTANCE)", "$(PORT)", $(NUM_AXES=1), $(MOVING_POLL=$(POLL_PERIOD=0.1)), $(IDLE_POLL=$(POLL_PERIOD=1.0)), "$(VIRTUAL_AXES=)")
 
 SPiiPlusCreateProfile("$(INSTANCE)", $(MAX_POINTS=2000))
 
