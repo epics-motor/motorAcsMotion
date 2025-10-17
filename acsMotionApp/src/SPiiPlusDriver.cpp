@@ -1822,12 +1822,16 @@ void SPiiPlusController::profileThread()
   int status;
   
   /* Is the idle poll period frequent enough to stop the profileMove thread before the IOC stops? */
-  timeout = idlePollPeriod_;
+  timeout = movingPollPeriod_;
 
   while (true) {
     /* Exit the thread if the IOC is shutting down */
+    lock()
     if (shuttingDown_) {
+      unlock();
       break;
+    } else {
+      unlock();
     }
     
     status = epicsEventWaitWithTimeout(profileExecuteEvent_, timeout);
