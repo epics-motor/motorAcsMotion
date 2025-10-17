@@ -1818,9 +1818,23 @@ static void SPiiPlusProfileThreadC(void *pPvt)
 /* Function which runs in its own thread to execute profiles */ 
 void SPiiPlusController::profileThread()
 {
+  double timeout;
+  int status;
+  
+  /* Is the idle poll period frequent enough to stop the profileMove thread before the IOC stops? */
+  timeout = idlePollPeriod_;
+
   while (true) {
-    epicsEventWait(profileExecuteEvent_);
-    runProfile();
+    /* Exit the thread if the IOC is shutting down */
+    if (shuttingDown_) {
+      break;
+    }
+    
+    status = epicsEventWaitWithTimeout(profileExecuteEvent_, timeout);
+    if (status == epicsEventWaitOK) {
+      /* We got an event, rather than a timeout */
+      runProfile();
+    }
   }
 }
 
