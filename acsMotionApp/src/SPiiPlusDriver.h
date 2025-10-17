@@ -98,7 +98,7 @@
 
 
 
-// drvInfo strings for extra parameters that the XPS controller supports
+// drvInfo strings for extra parameters that the ACS controller supports
 #define SPiiPlusHomingMethodString             "SPIIPLUS_HOMING_METHOD"
 #define SPiiPlusMaxVelocityString              "SPIIPLUS_MAX_VELOCITY"
 #define SPiiPlusMaxAccelerationString          "SPIIPLUS_MAX_ACCELERATION"

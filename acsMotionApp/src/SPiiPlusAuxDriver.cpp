@@ -4,6 +4,7 @@
 
 #include <iocsh.h>
 #include <epicsThread.h>
+#include <epicsExit.h>
 
 // asynMotorController.h includes asynPortDriver.h
 #include <asynMotorController.h>
@@ -23,6 +24,14 @@ static void SPiiPlusAuxIOThreadC(void *pPvt)
   pAux->pollerThread();
 }
 
+static void shutdownCallback(void *pPvt)
+{
+  SPiiPlusController *pC = static_cast<SPiiPlusController *>(pPvt);
+
+  pC->lock();
+  pC->shuttingDown_ = 1;
+  pC->unlock();
+}
 
 SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortName, int numChannels, double pollPeriod)
   : asynPortDriver(ACSAuxPortName, numChannels, 
@@ -41,6 +50,9 @@ SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortNam
   strcat(ACSCommPortName, ACSCommPortSuffix);
   
   pComm_ = new SPiiPlusComm(ACSCommPortName, asynPortName, numChannels);
+  
+  /* Set an EPICS exit handler that will shut down polling before asyn kills the IP sockets */
+  epicsAtExit(shutdownCallback, pC_);
   
   /*
    * MP4U controllers have significantly larger arrays for the AIN, AOUT, IN and OUT commands than the controller
@@ -194,6 +206,12 @@ void SPiiPlusAuxIO::pollerThread()
 
   while(1) { 
     lock();
+    
+    // Stop the thread if the IOC is shutting down
+    if (shuttingDown_) {
+      unlock();
+      break;
+    }
     
     // assume status is good
     status = asynSuccess;
