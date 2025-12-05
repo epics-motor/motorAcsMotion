@@ -1581,18 +1581,21 @@ asynStatus SPiiPlusController::buildProfile()
   int status;
   bool buildOK=true;
   //bool verifyOK=true;
+  int moveMode;
   int numPoints;
-  int startPulses;
-  int endPulses;
-  int numPulses;
+  int timeMode;
+  double timePerPoint;
+  double accelTime;
   int pulseMode;
   int pulseAxis;
+  int numPulses;
+  int startPulses;
+  int endPulses;
   double pulseAxisCurrentPos;
   double pulseAxisCurrentRawPos;
   //int numElements;
   //double trajVel;
   //double D0, D1, T0, T1;
-  int moveMode;
   char message[MAX_MESSAGE_LEN];
   int buildStatus;
   double maxVelocity;
@@ -1607,13 +1610,11 @@ asynStatus SPiiPlusController::buildProfile()
   double preVelocity[SPIIPLUS_MAX_AXES], postVelocity[SPIIPLUS_MAX_AXES];
   double preTime, postTime;
   double preDistance, postDistance;
-  double accelTime;
   std::string axisList;
   int useAxis;
   std::stringstream cmd;
   SPiiPlusAxis *pPulseAxis;
-  
-    
+  SPiiPlusAxis *axis;
   static const char *functionName = "buildProfile";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
@@ -1632,6 +1633,8 @@ asynStatus SPiiPlusController::buildProfile()
   // Get asyn parameters
   getIntegerParam(profileMoveMode_,    &moveMode);
   getIntegerParam(profileNumPoints_,   &numPoints);
+  getIntegerParam(profileTimeMode_,    &timeMode);
+  getDoubleParam(profileFixedTime_,    &timePerPoint);
   getDoubleParam(profileAcceleration_, &accelTime);
   getIntegerParam(SPiiPlusPulseMode_,  &pulseMode);
   getIntegerParam(SPiiPlusPulseAxis_,  &pulseAxis);
@@ -1680,6 +1683,25 @@ asynStatus SPiiPlusController::buildProfile()
   sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
   setStringParam(profileBuildMessage_, message);
   callParamCallbacks();
+  
+  // These messages should eventually be changed to something other than ASYN_TRACE_ERROR
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\n", driverName, functionName);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tnumPoints = %i\n", driverName, functionName, numPoints);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tnumPulses = %i\n", driverName, functionName, numPulses);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tstartPulses = %i\n", driverName, functionName, startPulses);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tendPulses = %i\n", driverName, functionName, endPulses);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\ttimeMode = %i\n", driverName, functionName, timeMode);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\ttimePerPoint = %f\n", driverName, functionName, timePerPoint);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\taccelerationTime = %f\n", driverName, functionName, accelTime);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tmoveMode = %i\n", driverName, functionName, moveMode);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseMode = %i\n", driverName, functionName, pulseMode);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseAxis = %i\n", driverName, functionName, pulseAxis);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tnumPulses = %i, numPulses_ = %i\n", driverName, functionName, numPulses, numPulses_);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseSrc = %i\n", driverName, functionName, pulseSrc);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseOut = %i\n", driverName, functionName, pulseOut);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseDir = %i\n", driverName, functionName, pulseDir);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseLen = %lf\n", driverName, functionName, pulseLen);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulsePeriod = %lf\n", driverName, functionName, pulsePeriod);
   
   /* We create trajectories with extra elements at the beginning and at the end.
    * The distance and time of the prepended elements are defined so that the motors will
@@ -1768,28 +1790,51 @@ asynStatus SPiiPlusController::buildProfile()
   for (j=0; j<profileAxes_.size(); j++)
   {
     // j != axis index
-    idx = profileAxes_[j];     
+    idx = profileAxes_[j];
+    axis = pAxes_[idx];
 
-    pAxes_[idx]->profilePreDistance_  =  0.5 * preVelocity[idx]  * preTimeMax;
-    pAxes_[idx]->profilePostDistance_ =  0.5 * postVelocity[idx] * postTimeMax;
+    axis->profilePreDistance_  =  0.5 * preVelocity[idx]  * preTimeMax;
+    axis->profilePostDistance_ =  0.5 * postVelocity[idx] * postTimeMax;
     
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      pAxes_[idx]->profileStartPos_ = pAxes_[idx]->profilePositions_[0] - pAxes_[idx]->profilePreDistance_;
-      pAxes_[idx]->profileFlybackPos_ = pAxes_[idx]->profilePositions_[numPoints-1];
+      axis->profileStartPos_ = axis->profilePositions_[0] - axis->profilePreDistance_;
+      axis->profileFlybackPos_ = axis->profilePositions_[numPoints-1];
     }
     else
     {
-      pAxes_[idx]->profileStartPos_ = -pAxes_[idx]->profilePreDistance_;
-      pAxes_[idx]->profileFlybackPos_ = -pAxes_[idx]->profilePostDistance_;
+      axis->profileStartPos_ = -axis->profilePreDistance_;
+      axis->profileFlybackPos_ = -axis->profilePostDistance_;
     }
     
     // populate the profileAccelPositions_ and profileDecelPositions_ arrays
     createAccDecPositions(pAxes_[idx], moveMode, numPoints, preTimeMax, postTimeMax, preVelocity[idx], postVelocity[idx]);
+
+    // For debugging
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\taxis = %i\n", driverName, functionName, idx);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tpreVelocity = %f\n", driverName, functionName, preVelocity[idx]);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofilePreDistance_ = %f\n", driverName, functionName, axis->profilePreDistance_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofileStartPos_ = %f\n", driverName, functionName, axis->profileStartPos_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tpostVelocity = %f\n", driverName, functionName, postVelocity[idx]);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofilePostDistance_ = %f\n", driverName, functionName, axis->profilePostDistance_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofileFlybackPos_ = %f\n", driverName, functionName, axis->profileFlybackPos_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofileTotalDistance_ = %f\n", driverName, functionName, axis->profileTotalDistance_);
   }
   
   // populate the fullProfileTimes_ and fullProfilePositions_ arrays
   assembleFullProfile(numPoints);
+  
+  // sanity check the full profile
+  //for (j=0; j<profileAxes_.size(); j++)
+  //{
+  //  // j != axis index
+  //  idx = profileAxes_[j];
+  //  axis = pAxes_[idx];
+  //  for (i=0; i<fullProfileSize_; i++)
+  //  {
+  //    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tAxis %d; fullProfilePositions_[%d] = %f, fullProfileTimes_[%d] = %f\n", driverName, functionName, idx, i, axis->fullProfilePositions_[i], i, fullProfileTimes_[i]);
+  //  }
+  //}
   
   /*
    * Turn the profilePulses_ array into an array of displacements in the correct format
