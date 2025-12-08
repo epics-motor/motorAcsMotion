@@ -1887,7 +1887,7 @@ asynStatus SPiiPlusController::buildProfile()
     }
     
     // The pulse position tracking will start at the starting position, so the nth pulse will occur at the end of the nth segment
-    pulseSpacing_ = totalDistance / numPulses;
+    pulseSpacing_ = totalDistance / (numPulses - 1);
   }
   else if (pulseMode == 1)
   {
@@ -1961,7 +1961,7 @@ asynStatus SPiiPlusController::buildProfile()
     }
     
     // The pulse position tracking will start at the user-specified starting waypoint; the last pulse will occur at the end of the user-specified ending waypoint
-    pulseSpacing_ = totalDistance / numPulses;
+    pulseSpacing_ = totalDistance / (numPulses - 1);
   } 
   else if (pulseMode == 3)
   {
@@ -2421,18 +2421,22 @@ asynStatus SPiiPlusController::runProfile()
   {
     cmd << "ASSIGNPEG " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
   }
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
   status = pComm_->writeReadAck(cmd);
   
   // Assign PEG output to output pins
   // ASSIGNPOUTS axis, output_index, bit_code
   cmd << "ASSIGNPOUTS " << pulseAxis << ", " << outputIndex << ", " << poutsBitCode;
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
   status = pComm_->writeReadAck(cmd);
   
   if ((pulseMode == 0) || (pulseMode == 2))
   {
     // PEG_I axis, width, first_point, interval, last_point
-    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, pulseStartPos_, pulseEndPos_, numPulses, pulseSpacing_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, pulseStartPos_, pulseEndPos_, numPulses, pulseSpacing_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, pulseStartPos_, pulseEndPos_, numPulses, pulseSpacing_);
     cmd << "PEG_I " << pulseAxis << ", " << pulseWidth << ", " << pulseStartPos_ << ", " << pulseSpacing_ << ", " << pulseEndPos_;
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     // Should a failed PEG_I command cause the scan to fail?  Yes, for now.
     if (status)
@@ -2449,6 +2453,7 @@ asynStatus SPiiPlusController::runProfile()
     // TODO: is 0x4444 the correct mode? Is pulseAxis the correct peg_engine argument?
     // NOTE: ASSIGNPEG's /f switch is also required
     cmd << "PEG_R/d" << pulseAxis << ", " << pulseWidth << ", " << "0x4444" << ", " << "0" << ", " << (numPulses-1) << ", " << "pulsePos";
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     // Should a failed PEG_R command cause the scan to fail?  Yes, for now.
     if (status)
@@ -2466,7 +2471,8 @@ asynStatus SPiiPlusController::runProfile()
   // Wait for PEGREADY 
   while (pAxes_[pulseAxis]->pegReady_ == 0)
   {
-    asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
     // Sleep to give the poller time to reread the the axis status
     epicsThreadSleep(0.1);
   }
@@ -2495,6 +2501,7 @@ asynStatus SPiiPlusController::runProfile()
     cmd << "PATH/twr ";
   }
   cmd << axesToString(profileAxes_);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
   status = pComm_->writeReadAck(cmd);
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: point buffer fill start\n", driverName, functionName);
@@ -2504,6 +2511,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Create and send the point command (should this be ptIdx+1?)
     cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     // Increment the counter of points that have been loaded
@@ -2516,6 +2524,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     while (ptLoadedIdx < fullProfileSize_)
@@ -2547,6 +2556,7 @@ asynStatus SPiiPlusController::runProfile()
         
         // Create and send the point command (should this be ptIdx+1?)
         cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
+        //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
         status = pComm_->writeReadAck(cmd);
       }
       
@@ -2571,16 +2581,19 @@ asynStatus SPiiPlusController::runProfile()
     
     // End the point sequence
     cmd << "ENDS " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
   }
   else
   {
     // End the point sequence
     cmd << "ENDS " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
   }
   
