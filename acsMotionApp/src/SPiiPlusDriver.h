@@ -180,6 +180,7 @@ public:
 	asynStatus setPosition(double position);
 	asynStatus setClosedLoop(bool closedLoop);
 	asynStatus defineProfile(double *positions, size_t numPoints);
+	asynStatus readbackProfile(size_t numPoints);
 	
 	asynStatus getMaxParams();
 	asynStatus updateFeedbackParams();

@@ -1275,7 +1275,6 @@ asynStatus SPiiPlusAxis::defineProfile(double *positions, size_t numPoints)
   return asynSuccess;
 }
 
-
 /** Function to correct the motor positions for a profile move. 
   * Called by SPiiPlusController::buildProfile
   * This reapplies the correct conversion from EPICS units
@@ -1312,6 +1311,41 @@ asynStatus SPiiPlusAxis::correctProfile(size_t numPoints)
     // Reconvert user-specified displacements from EPICS units to SPiiPLus units, ignoring the EPICS offset
     profilePositions_[i] = profilePositionsUser_[i] * scale * resolution_;
   }
+  return (asynStatus)status;
+}
+
+/** Function to correct the readback and following error positions for a profile move. 
+  * Called by SPiiPlusController::readbackProfile
+  * This converts from controller units to steps and then the readbackProfile method
+  * from the base class converts from steps to EPICS user units
+  * \param[in] numPoints The number of positions in the array.
+  */
+asynStatus SPiiPlusAxis::readbackProfile(size_t numPoints)
+{
+  size_t i;
+  double resolution;
+  double offset;
+  int direction;
+  double scale;  
+  int status = asynSuccess;
+  static const char *functionName = "readbackProfile";
+  
+  asynPrint(pasynUser_, ASYN_TRACE_FLOW,
+            "%s:%s: axis=%d, resolution=%f\n",
+            driverName, functionName, axisNo_, resolution_);
+
+  for (i=0; i<numPoints; i++)
+  {
+    // Convert controller units into steps
+    profileReadbacks_[i] = profileReadbacks_[i] / resolution_;
+    profileFollowingErrors_[i] = profileFollowingErrors_[i] / resolution_;
+  }
+  
+  // Call the base class to convert from steps to user units
+  // Note: the base class only updates pC->profileNumReadbacks_ elements of the arrays
+  asynMotorAxis::readbackProfile();
+  
+  // The base class always returns asynSuccess, so this method will too
   return (asynStatus)status;
 }
 
@@ -2347,6 +2381,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Zero the data array
     cmd << "FILL(0,DC_DATA_" << (i+1) << ")";
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
@@ -2375,6 +2410,7 @@ asynStatus SPiiPlusController::runProfile()
     }
     cmd << "DC/sw " << profileAxes_[i] << ",DC_DATA_" << (i+1) << "," << maxProfilePoints_ << ",";
     cmd << lround(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[i] << "),PE(" << profileAxes_[i] << "),TIME";
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
   }
   
@@ -2863,7 +2899,7 @@ asynStatus SPiiPlusController::readbackProfile()
   setIntegerParam(profileNumReadbacks_, maxProfilePoints_);
   /* Convert from controller to user units and post the arrays */
   for (i=0; i<numAxes_; i++) {
-    pAxes_[i]->readbackProfile();
+    pAxes_[i]->readbackProfile(maxProfilePoints_);
   }
   readbackStatus = readbackOK ?  PROFILE_STATUS_SUCCESS : PROFILE_STATUS_FAILURE;
   setIntegerParam(profileReadbackStatus_, readbackStatus);
