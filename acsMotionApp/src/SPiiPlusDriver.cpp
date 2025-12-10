@@ -2007,6 +2007,9 @@ asynStatus SPiiPlusController::buildProfile()
   
   // calculate the time interval for data collection
   calculateDataCollectionInterval();
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tfullProfileSize_ = %i, maxProfilePoints_ = %li, dataCollectionInterval_ = %f\n", driverName, functionName, fullProfileSize_, maxProfilePoints_, dataCollectionInterval_);
+
   // TODO: clear the data arrays heare instead of in runProfile?
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
@@ -2185,7 +2188,7 @@ void SPiiPlusController::sanityCheckProfile()
 void SPiiPlusController::calculateDataCollectionInterval()
 {
   int i;
-  double time;
+  double time = 0.0;
   // static const char *functionName = "calculateDataCollectionInterval";
   
   for (i=0; i<fullProfileSize_; i++)
@@ -2193,6 +2196,7 @@ void SPiiPlusController::calculateDataCollectionInterval()
     time += fullProfileTimes_[i];
   }
   
+  // Use all the available points for data collection
   dataCollectionInterval_ = time / maxProfilePoints_;
 }
 
