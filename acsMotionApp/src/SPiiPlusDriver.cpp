@@ -2200,13 +2200,17 @@ void SPiiPlusController::calculateDataCollectionInterval()
   dataCollectionInterval_ = time / maxProfilePoints_;
 }
 
-long int SPiiPlusController::calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses)
+long int SPiiPlusController::calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses, int pulseMode)
 {
   long int currentPulse;
   double rawPulse;
   //static const char *functionName = "calculateCurrentPulse";
 
-  if (currentPoint < startPulse)
+  if( pulseMode == 3)
+  {
+    currentPulse = 0;
+  }
+  else if (currentPoint < startPulse)
   {
     currentPulse = 0;
   }
@@ -2527,7 +2531,7 @@ asynStatus SPiiPlusController::runProfile()
   
   lock();
   setIntegerParam(profileCurrentPoint_, ptExecIdx);
-  setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx, startPulses, endPulses, numPulses));
+  setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx, startPulses, endPulses, numPulses, pulseMode));
   callParamCallbacks();
   unlock();
   
@@ -2608,7 +2612,7 @@ asynStatus SPiiPlusController::runProfile()
       if (ptExecIdx > numAccelSegments_)
       {
         setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
-        setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses));
+        setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses, pulseMode));
       }
       else
       {
@@ -2671,12 +2675,12 @@ asynStatus SPiiPlusController::runProfile()
     else if ((ptExecIdx >= numAccelSegments_) && (ptExecIdx < numAccelSegments_+numPoints))
     {
       setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
-      setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses));
+      setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses, pulseMode));
     }
     else
     {
       setIntegerParam(profileCurrentPoint_, numPoints);
-      setIntegerParam(profileActualPulses_, calculateCurrentPulse(numPoints, startPulses, endPulses, numPulses));
+      setIntegerParam(profileActualPulses_, calculateCurrentPulse(numPoints, startPulses, endPulses, numPulses, pulseMode));
     }
     callParamCallbacks();
     unlock();

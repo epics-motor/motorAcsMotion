@@ -257,7 +257,7 @@ public:
 	asynStatus definePulses(int pulseAxis, int moveMode, size_t numPulses);
 	asynStatus runProfile();
 	int getNumAccelSegments(double time);
-	long int calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses);
+	long int calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses, int pulseMode);
 	asynStatus readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value);
 	asynStatus writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value);
