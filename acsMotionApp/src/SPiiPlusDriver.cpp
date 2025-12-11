@@ -1930,21 +1930,8 @@ asynStatus SPiiPlusController::buildProfile()
     // so that problems aren't introduced by users who increase the number of 
     // pulses between building an executing the profileMove?
     
-    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
-    {
-      // The user-specified pulse array is already in the correct form. Send it
-      // to the controller now, to minimize delays when executing the profile.
-      // NOTE: maxProfilePulses is used instead of numPulses because the global
-      // variable might not exist in the controller yet and the user can modify
-      // The number of pulses at any time.
-      status = pComm_->putDoubleArray(profilePulses_, "pulsePos", 0, maxProfilePulses_-1, 0, 0);
-      if (status) {
-        buildOK = false;
-        sprintf(message, "Error writing pulse positions, status=%d\n", status);
-        goto done;
-      }
-    }
-    else
+    // profilePulses_ is in the correct format for absolute mode, but not relative mode
+    if (moveMode == PROFILE_MOVE_MODE_RELATIVE)
     {
       double current_pos = pulseAxisCurrentPos;
       
@@ -1954,6 +1941,17 @@ asynStatus SPiiPlusController::buildProfile()
         profilePulses_[i] = current_pos + profilePulses_[i];
         current_pos = profilePulses_[i];
       }
+    }
+    
+    // Send the pulse array now to minimize delays when executing the profile.
+    // NOTE: maxProfilePulses is used instead of numPulses because the global
+    // variable might not exist in the controller yet and the user can modify
+    // The number of pulses at any time.
+    status = pComm_->putDoubleArray(profilePulses_, "pulsePos", 0, maxProfilePulses_-1, 0, 0);
+    if (status) {
+      buildOK = false;
+      sprintf(message, "Error writing pulse positions, status=%d\n", status);
+      goto done;
     }
   }
   else if (pulseMode == 2)
