@@ -2492,7 +2492,7 @@ asynStatus SPiiPlusController::runProfile()
     
     // TODO: is 0x4444 the correct mode? Is pulseAxis the correct peg_engine argument?
     // NOTE: ASSIGNPEG's /f switch is also required
-    cmd << "PEG_R/d" << pulseAxis << ", " << pulseWidth << ", " << "0x4444" << ", " << "0" << ", " << (numPulses-1) << ", " << "pulsePos";
+    cmd << "PEG_R/d " << pulseAxis << ", " << pulseWidth << ", " << "0x4444" << ", " << "0" << ", " << (numPulses-1) << ", " << "pulsePos";
     asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     // Should a failed PEG_R command cause the scan to fail?  Yes, for now.
