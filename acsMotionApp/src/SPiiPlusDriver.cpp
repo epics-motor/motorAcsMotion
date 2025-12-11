@@ -2683,6 +2683,11 @@ asynStatus SPiiPlusController::runProfile()
   }
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: profile move is done\n", driverName, functionName);
+  if (pulseMode != 3)
+  {
+    // Stop PEG to avoid extra triggers when moving to the flyback position
+    status = stopPEG(pulseAxis);
+  }
   
   // Confirm that the motors are done moving?
   
