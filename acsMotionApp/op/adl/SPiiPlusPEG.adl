@@ -1,14 +1,14 @@
 
 file {
-	name="/home/beams3/KPETERSN/epics/motor-devel/current/motorAcsMotion/acsMotionApp/op/adl/SPiiPlusPEG.adl"
+	name="/home/beams3/KPETERSN/development/epics-motor/motorAcsMotion/acsMotionApp/op/adl/SPiiPlusPEG.adl"
 	version=030111
 }
 display {
 	object {
-		x=3157
-		y=95
-		width=350
-		height=220
+		x=106
+		y=518
+		width=400
+		height=260
 	}
 	clr=14
 	bclr=4
@@ -89,22 +89,22 @@ display {
 }
 text {
 	object {
-		x=124
+		x=0
 		y=3
-		width=100
-		height=14
+		width=400
+		height=35
 	}
 	"basic attribute" {
 		clr=14
 	}
-	textix="($(P)$(R))"
+	textix="($(P)$(R)) PEG"
 	align="horiz. centered"
 }
 text {
 	object {
-		x=7
-		y=32
-		width=130
+		x=10
+		y=80
+		width=180
 		height=25
 	}
 	"basic attribute" {
@@ -116,8 +116,8 @@ text {
 }
 "text entry" {
 	object {
-		x=142
-		y=32
+		x=195
+		y=80
 		width=94
 		height=25
 	}
@@ -131,8 +131,8 @@ text {
 }
 "text update" {
 	object {
-		x=241
-		y=32
+		x=294
+		y=80
 		width=100
 		height=25
 	}
@@ -147,9 +147,9 @@ text {
 }
 text {
 	object {
-		x=7
-		y=62
-		width=130
+		x=10
+		y=110
+		width=180
 		height=25
 	}
 	"basic attribute" {
@@ -161,8 +161,8 @@ text {
 }
 "text entry" {
 	object {
-		x=142
-		y=62
+		x=195
+		y=110
 		width=94
 		height=25
 	}
@@ -176,8 +176,8 @@ text {
 }
 "text update" {
 	object {
-		x=241
-		y=62
+		x=294
+		y=110
 		width=100
 		height=25
 	}
@@ -192,9 +192,9 @@ text {
 }
 text {
 	object {
-		x=7
-		y=92
-		width=130
+		x=10
+		y=140
+		width=180
 		height=25
 	}
 	"basic attribute" {
@@ -206,8 +206,8 @@ text {
 }
 "text entry" {
 	object {
-		x=142
-		y=92
+		x=195
+		y=140
 		width=94
 		height=25
 	}
@@ -222,8 +222,8 @@ text {
 }
 "text update" {
 	object {
-		x=241
-		y=92
+		x=294
+		y=140
 		width=100
 		height=25
 	}
@@ -239,9 +239,9 @@ text {
 }
 text {
 	object {
-		x=7
-		y=122
-		width=130
+		x=10
+		y=170
+		width=180
 		height=25
 	}
 	"basic attribute" {
@@ -253,8 +253,8 @@ text {
 }
 "text entry" {
 	object {
-		x=142
-		y=122
+		x=195
+		y=170
 		width=94
 		height=25
 	}
@@ -269,8 +269,8 @@ text {
 }
 "text update" {
 	object {
-		x=241
-		y=122
+		x=294
+		y=170
 		width=100
 		height=25
 	}
@@ -286,9 +286,9 @@ text {
 }
 text {
 	object {
-		x=7
-		y=152
-		width=130
+		x=10
+		y=200
+		width=180
 		height=25
 	}
 	"basic attribute" {
@@ -300,8 +300,8 @@ text {
 }
 "text entry" {
 	object {
-		x=142
-		y=152
+		x=195
+		y=200
 		width=94
 		height=25
 	}
@@ -315,8 +315,8 @@ text {
 }
 "text update" {
 	object {
-		x=241
-		y=152
+		x=294
+		y=200
 		width=100
 		height=25
 	}
@@ -331,9 +331,9 @@ text {
 }
 text {
 	object {
-		x=7
-		y=182
-		width=130
+		x=10
+		y=230
+		width=180
 		height=25
 	}
 	"basic attribute" {
@@ -345,8 +345,8 @@ text {
 }
 "text entry" {
 	object {
-		x=142
-		y=182
+		x=195
+		y=230
 		width=94
 		height=25
 	}
@@ -361,8 +361,8 @@ text {
 }
 "text update" {
 	object {
-		x=241
-		y=182
+		x=294
+		y=230
 		width=100
 		height=25
 	}
@@ -374,5 +374,32 @@ text {
 	align="horiz. centered"
 	format="string"
 	limits {
+	}
+}
+text {
+	object {
+		x=10
+		y=50
+		width=180
+		height=25
+	}
+	"basic attribute" {
+		clr=14
+		fill="outline"
+	}
+	textix="Pulse Mode"
+	align="horiz. centered"
+}
+menu {
+	object {
+		x=195
+		y=50
+		width=200
+		height=25
+	}
+	control {
+		chan="$(P)$(R)PulseMode.VAL"
+		clr=14
+		bclr=51
 	}
 }
