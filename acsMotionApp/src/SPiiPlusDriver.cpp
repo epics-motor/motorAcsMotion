@@ -2512,13 +2512,26 @@ asynStatus SPiiPlusController::runProfile()
     // What should happen here?
   }
   
-  // Wait for PEGREADY 
-  while (pAxes_[pulseAxis]->pegReady_ == 0)
+  if (pulseMode != 3)
   {
-    //asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
-    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
-    // Sleep to give the poller time to reread the the axis status
-    epicsThreadSleep(0.1);
+    // Wait for PEGREADY 
+    while (pAxes_[pulseAxis]->pegReady_ == 0)
+    {
+      //asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
+      asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
+      // Sleep to give the poller time to reread the the axis status
+      epicsThreadSleep(0.1);
+      
+      if (halted_)
+      {
+        aborted = true;
+        executeOK = false;
+        status = stopDataCollection();
+        status = stopPEG(pulseAxis);
+        strcpy(message, "Aborted during wait for PEGREADY");
+        goto done;
+      }
+    }
   }
   
   // wake up poller
