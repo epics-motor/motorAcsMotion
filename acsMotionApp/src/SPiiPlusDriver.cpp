@@ -2499,7 +2499,7 @@ asynStatus SPiiPlusController::runProfile()
     if (status)
     {
       executeOK = false;
-      strcpy(message, "Aborting due to PEG_R not implemented yet");
+      strcpy(message, "Aborting due to PEG_R error");
       goto done;
     }
   }
