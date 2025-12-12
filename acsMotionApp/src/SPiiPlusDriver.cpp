@@ -1826,7 +1826,7 @@ void SPiiPlusController::profileThread()
 
   while (true) {
     /* Exit the thread if the IOC is shutting down */
-    lock()
+    lock();
     if (shuttingDown_) {
       unlock();
       break;
