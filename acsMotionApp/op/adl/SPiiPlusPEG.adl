@@ -5,8 +5,8 @@ file {
 }
 display {
 	object {
-		x=106
-		y=518
+		x=211
+		y=59
 		width=400
 		height=260
 	}
@@ -90,316 +90,300 @@ display {
 text {
 	object {
 		x=0
-		y=3
+		y=10
 		width=400
 		height=35
 	}
 	"basic attribute" {
 		clr=14
 	}
-	textix="($(P)$(R)) PEG"
+	textix="$(P)$(R) PEG"
 	align="horiz. centered"
 }
-text {
+composite {
 	object {
 		x=10
-		y=80
-		width=180
-		height=25
+		y=72
+		width=384
+		height=175
 	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-	textix="Pulse Axis"
-	align="horiz. centered"
-}
-"text entry" {
-	object {
-		x=195
-		y=80
-		width=94
-		height=25
-	}
-	control {
-		chan="$(P)$(R)pulseAxis.VAL"
-		clr=14
-		bclr=51
-	}
-	limits {
-	}
-}
-"text update" {
-	object {
-		x=294
-		y=80
-		width=100
-		height=25
-	}
-	monitor {
-		chan="$(P)$(R)pulseAxis_RBV.VAL"
-		clr=54
-		bclr=3
-	}
-	align="horiz. centered"
-	limits {
-	}
-}
-text {
-	object {
-		x=10
-		y=110
-		width=180
-		height=25
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-	textix="Pulse Width (ms)"
-	align="horiz. centered"
-}
-"text entry" {
-	object {
-		x=195
-		y=110
-		width=94
-		height=25
-	}
-	control {
-		chan="$(P)$(R)pulseWidth.VAL"
-		clr=14
-		bclr=51
-	}
-	limits {
-	}
-}
-"text update" {
-	object {
-		x=294
-		y=110
-		width=100
-		height=25
-	}
-	monitor {
-		chan="$(P)$(R)pulseWidth_RBV.VAL"
-		clr=54
-		bclr=3
-	}
-	align="horiz. centered"
-	limits {
-	}
-}
-text {
-	object {
-		x=10
-		y=140
-		width=180
-		height=25
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-	textix="PEG encoder code"
-	align="horiz. centered"
-}
-"text entry" {
-	object {
-		x=195
-		y=140
-		width=94
-		height=25
-	}
-	control {
-		chan="$(P)$(R)pegEngEnc.VAL"
-		clr=14
-		bclr=51
-	}
-	format="string"
-	limits {
-	}
-}
-"text update" {
-	object {
-		x=294
-		y=140
-		width=100
-		height=25
-	}
-	monitor {
-		chan="$(P)$(R)pegEngEnc_RBV.VAL"
-		clr=54
-		bclr=3
-	}
-	align="horiz. centered"
-	format="string"
-	limits {
-	}
-}
-text {
-	object {
-		x=10
-		y=170
-		width=180
-		height=25
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-	textix="PEG Output Assignment"
-	align="horiz. centered"
-}
-"text entry" {
-	object {
-		x=195
-		y=170
-		width=94
-		height=25
-	}
-	control {
-		chan="$(P)$(R)pegOutAssign.VAL"
-		clr=14
-		bclr=51
-	}
-	format="string"
-	limits {
-	}
-}
-"text update" {
-	object {
-		x=294
-		y=170
-		width=100
-		height=25
-	}
-	monitor {
-		chan="$(P)$(R)pegOutAssign_RBV.VAL"
-		clr=54
-		bclr=3
-	}
-	align="horiz. centered"
-	format="string"
-	limits {
-	}
-}
-text {
-	object {
-		x=10
-		y=200
-		width=180
-		height=25
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-	textix="POUTS output index"
-	align="horiz. centered"
-}
-"text entry" {
-	object {
-		x=195
-		y=200
-		width=94
-		height=25
-	}
-	control {
-		chan="$(P)$(R)outputIndex.VAL"
-		clr=14
-		bclr=51
-	}
-	limits {
-	}
-}
-"text update" {
-	object {
-		x=294
-		y=200
-		width=100
-		height=25
-	}
-	monitor {
-		chan="$(P)$(R)outputIndex_RBV.VAL"
-		clr=54
-		bclr=3
-	}
-	align="horiz. centered"
-	limits {
-	}
-}
-text {
-	object {
-		x=10
-		y=230
-		width=180
-		height=25
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-	textix="POUTS bit code"
-	align="horiz. centered"
-}
-"text entry" {
-	object {
-		x=195
-		y=230
-		width=94
-		height=25
-	}
-	control {
-		chan="$(P)$(R)poutsBitCode.VAL"
-		clr=14
-		bclr=51
-	}
-	format="string"
-	limits {
-	}
-}
-"text update" {
-	object {
-		x=294
-		y=230
-		width=100
-		height=25
-	}
-	monitor {
-		chan="$(P)$(R)poutsBitCode_RBV.VAL"
-		clr=54
-		bclr=3
-	}
-	align="horiz. centered"
-	format="string"
-	limits {
-	}
-}
-text {
-	object {
-		x=10
-		y=50
-		width=180
-		height=25
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-	textix="Pulse Mode"
-	align="horiz. centered"
-}
-menu {
-	object {
-		x=195
-		y=50
-		width=200
-		height=25
-	}
-	control {
-		chan="$(P)$(R)PulseMode.VAL"
-		clr=14
-		bclr=51
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=10
+				y=72
+				width=180
+				height=25
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="Pulse Axis"
+			align="horiz. centered"
+		}
+		text {
+			object {
+				x=10
+				y=102
+				width=180
+				height=25
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="Pulse Width (ms)"
+			align="horiz. centered"
+		}
+		text {
+			object {
+				x=10
+				y=132
+				width=180
+				height=25
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="PEG encoder code"
+			align="horiz. centered"
+		}
+		text {
+			object {
+				x=10
+				y=162
+				width=180
+				height=25
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="PEG Output Assignment"
+			align="horiz. centered"
+		}
+		text {
+			object {
+				x=10
+				y=192
+				width=180
+				height=25
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="POUTS output index"
+			align="horiz. centered"
+		}
+		text {
+			object {
+				x=10
+				y=222
+				width=180
+				height=25
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="POUTS bit code"
+			align="horiz. centered"
+		}
+		"text entry" {
+			object {
+				x=195
+				y=222
+				width=94
+				height=25
+			}
+			control {
+				chan="$(P)$(R)poutsBitCode.VAL"
+				clr=14
+				bclr=51
+			}
+			format="string"
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=195
+				y=192
+				width=94
+				height=25
+			}
+			control {
+				chan="$(P)$(R)outputIndex.VAL"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=195
+				y=162
+				width=94
+				height=25
+			}
+			control {
+				chan="$(P)$(R)pegOutAssign.VAL"
+				clr=14
+				bclr=51
+			}
+			format="string"
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=195
+				y=132
+				width=94
+				height=25
+			}
+			control {
+				chan="$(P)$(R)pegEngEnc.VAL"
+				clr=14
+				bclr=51
+			}
+			format="string"
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=195
+				y=102
+				width=94
+				height=25
+			}
+			control {
+				chan="$(P)$(R)pulseWidth.VAL"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=195
+				y=72
+				width=94
+				height=25
+			}
+			control {
+				chan="$(P)$(R)pulseAxis.VAL"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=294
+				y=72
+				width=100
+				height=25
+			}
+			monitor {
+				chan="$(P)$(R)pulseAxis_RBV.VAL"
+				clr=54
+				bclr=3
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=294
+				y=102
+				width=100
+				height=25
+			}
+			monitor {
+				chan="$(P)$(R)pulseWidth_RBV.VAL"
+				clr=54
+				bclr=3
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=294
+				y=132
+				width=100
+				height=25
+			}
+			monitor {
+				chan="$(P)$(R)pegEngEnc_RBV.VAL"
+				clr=54
+				bclr=3
+			}
+			align="horiz. centered"
+			format="string"
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=294
+				y=162
+				width=100
+				height=25
+			}
+			monitor {
+				chan="$(P)$(R)pegOutAssign_RBV.VAL"
+				clr=54
+				bclr=3
+			}
+			align="horiz. centered"
+			format="string"
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=294
+				y=192
+				width=100
+				height=25
+			}
+			monitor {
+				chan="$(P)$(R)outputIndex_RBV.VAL"
+				clr=54
+				bclr=3
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=294
+				y=222
+				width=100
+				height=25
+			}
+			monitor {
+				chan="$(P)$(R)poutsBitCode_RBV.VAL"
+				clr=54
+				bclr=3
+			}
+			align="horiz. centered"
+			format="string"
+			limits {
+			}
+		}
 	}
 }
