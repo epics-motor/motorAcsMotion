@@ -104,10 +104,25 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	//
 	createParam(SPiiPlusDisableSetPosString,              asynParamInt32, &SPiiPlusDisableSetPos_);
 	//
+	createParam(SPiiPlusPulseModeString,                  asynParamInt32,     &SPiiPlusPulseMode_);
+	createParam(SPiiPlusPulsePosString,                   asynParamFloat64Array, &SPiiPlusPulsePos_);
+	createParam(SPiiPlusNumPulsesString,                  asynParamInt32,     &SPiiPlusNumPulses_);
+	//
+	createParam(SPiiPlusPulseAxisString,                  asynParamInt32,   &SPiiPlusPulseAxis_);
+	createParam(SPiiPlusPEGEngEncCodeString,              asynParamOctet,   &SPiiPlusPEGEngEncCode_);
+	createParam(SPiiPlusPEGOutAssignCodeString,           asynParamOctet,   &SPiiPlusPEGOutAssignCode_);
+	createParam(SPiiPlusPOUTSOutputIndexString,           asynParamInt32,   &SPiiPlusPOUTSOutputIndex_);
+	createParam(SPiiPlusPOUTSBitCodeString,               asynParamOctet,   &SPiiPlusPOUTSBitCode_);
+	createParam(SPiiPlusPulseWidthString,                 asynParamFloat64, &SPiiPlusPulseWidth_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
-	// Initialize this variable to avoid freeing random memory
+	// Initialize variables to avoid freeing random memory
 	fullProfileTimes_ = 0;
+	profilePulses_ = NULL;
+	profilePulsesUser_ = NULL;
+	profilePulsePositions_ = NULL;
+	maxProfilePoints_ = 0;
 	
 	// Query system info
 	cmd << "?VR";
@@ -468,6 +483,33 @@ asynStatus SPiiPlusController::writeFloat64(asynUser *pasynUser, epicsFloat64 va
   return status;
 }
 
+/** Called when asyn clients call pasynFloat64Array->write().
+  * \param[in] pasynUser pasynUser structure that encodes the reason and address.
+  * \param[in] value Pointer to the array to write.
+  * \param[in] nElements Number of elements to write. */
+asynStatus SPiiPlusController::writeFloat64Array(asynUser *pasynUser, epicsFloat64 *value,
+                                                  size_t nElements)
+{
+    int function = pasynUser->reason;
+    asynMotorAxis *pAxis;
+    asynStatus status = asynSuccess;
+    static const char *functionName = "writeFloat64Array";
+    
+    pAxis = getAxis(pasynUser);
+    if (!pAxis) return asynError;
+    
+    if (function == SPiiPlusPulsePos_) {
+        // Just copy the positions for now; calculations on the positions will occur when the profile is built
+        memcpy(profilePulsesUser_, value, nElements*sizeof(double));
+        // Do we want to store nElements?  The user might change (shorten) the number of pulses after writing the array.
+        numPulses_ = nElements;
+    } 
+    else {
+        status = asynMotorController::writeFloat64Array(pasynUser, value, nElements);
+    }
+    return status;
+}
+
 SPiiPlusAxis* SPiiPlusController::getAxis(asynUser *pasynUser)
 {
 	return static_cast<SPiiPlusAxis*>(asynMotorController::getAxis(pasynUser));
@@ -668,6 +710,9 @@ SPiiPlusAxis::SPiiPlusAxis(SPiiPlusController *pC, int axisNo)
 : asynMotorAxis(pC, axisNo),
   pC_(pC)
 {
+	// Initialize variables to avoid freeing random memory
+	profilePositionsUser_ = NULL;
+	
 	setIntegerParam(pC->motorStatusHasEncoder_, 1);
 	// Gain Support is required for setClosedLoop to be called
 	setIntegerParam(pC->motorStatusGainSupport_, 1);
@@ -734,6 +779,8 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	updateFeedbackParams();
 	
 	// AST (queried in controller poll method)
+	
+	pegReady_ = controller->axisStatus_[axisNo_] & SPIIPLUS_AXIS_STATUS_PEGREADY;
 	
 	int enabled;
 	int motion;
@@ -1209,6 +1256,14 @@ asynStatus SPiiPlusAxis::defineProfile(double *positions, size_t numPoints)
   asynStatus status;
   //static const char *functionName = "defineProfile";
   
+  /* 
+   * If the user positions are relative positions, the pulse positions
+   * should also be relative positions. Doesn't the conversion from EGU
+   * to steps break relative positions?
+   */
+  // Make a backup of the user-specified array, so that displacements can recalculated
+  memcpy(profilePositionsUser_, positions, numPoints*sizeof(double));
+  
   // Call the base class function (converts from EGU to steps)
   status = asynMotorAxis::defineProfile(positions, numPoints);
   if (status) return status;
@@ -1218,6 +1273,80 @@ asynStatus SPiiPlusAxis::defineProfile(double *positions, size_t numPoints)
     profilePositions_[i] = profilePositions_[i]*resolution_;
   }
   return asynSuccess;
+}
+
+/** Function to correct the motor positions for a profile move. 
+  * Called by SPiiPlusController::buildProfile
+  * This reapplies the correct conversion from EPICS units
+  * to SPiiPlus units for relative displacements.
+  * \param[in] numPoints The number of positions in the array.
+  */
+asynStatus SPiiPlusAxis::correctProfile(size_t numPoints)
+{
+  size_t i;
+  double resolution;
+  int direction;
+  double scale;  
+  int status = asynSuccess;
+  static const char *functionName = "correctProfile";
+  
+  asynPrint(pasynUser_, ASYN_TRACE_FLOW,
+            "%s:%s: axis=%d, numPoints=%d\n",
+            driverName, functionName, axisNo_, (int)numPoints);
+
+  if (numPoints > pC_->maxProfilePoints_) return asynError;
+
+  status |= pC_->getDoubleParam(axisNo_, pC_->motorRecResolution_, &resolution);
+  status |= pC_->getIntegerParam(axisNo_, pC_->motorRecDirection_, &direction);
+  asynPrint(pasynUser_, ASYN_TRACE_FLOW,
+            "%s:%s: axis=%d, status=%d, direction=%d, resolution=%f\n",
+            driverName, functionName, axisNo_, status, direction, resolution);
+  if (status) return asynError;
+  if (resolution == 0.0) return asynError;
+  
+  scale = 1.0/resolution;
+  if (direction != 0) scale = -scale;
+  for (i=0; i<numPoints; i++)
+  {
+    // Reconvert user-specified displacements from EPICS units to SPiiPLus units, ignoring the EPICS offset
+    profilePositions_[i] = profilePositionsUser_[i] * scale * resolution_;
+  }
+  return (asynStatus)status;
+}
+
+/** Function to correct the readback and following error positions for a profile move. 
+  * Called by SPiiPlusController::readbackProfile
+  * This converts from controller units to steps and then the readbackProfile method
+  * from the base class converts from steps to EPICS user units
+  * \param[in] numPoints The number of positions in the array.
+  */
+asynStatus SPiiPlusAxis::readbackProfile(size_t numPoints)
+{
+  size_t i;
+  double resolution;
+  double offset;
+  int direction;
+  double scale;  
+  int status = asynSuccess;
+  static const char *functionName = "readbackProfile";
+  
+  asynPrint(pasynUser_, ASYN_TRACE_FLOW,
+            "%s:%s: axis=%d, resolution=%f\n",
+            driverName, functionName, axisNo_, resolution_);
+
+  for (i=0; i<numPoints; i++)
+  {
+    // Convert controller units into steps
+    profileReadbacks_[i] = profileReadbacks_[i] / resolution_;
+    profileFollowingErrors_[i] = profileFollowingErrors_[i] / resolution_;
+  }
+  
+  // Call the base class to convert from steps to user units
+  // Note: the base class only updates pC->profileNumReadbacks_ elements of the arrays
+  asynMotorAxis::readbackProfile();
+  
+  // The base class always returns asynSuccess, so this method will too
+  return (asynStatus)status;
 }
 
 /** Reports on status of the axis
@@ -1357,8 +1486,7 @@ std::string SPiiPlusController::positionsToString(int positionIndex)
   return outputStr.str();
 }
 
-
-asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
+asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints, size_t maxProfilePulses)
 {
   int axis;
   SPiiPlusAxis *pAxis;
@@ -1373,13 +1501,34 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
    */
   if (fullProfileTimes_) free(fullProfileTimes_);
   fullProfileTimes_ = (double *)calloc(maxProfilePoints+(2*MAX_ACCEL_SEGMENTS)-1, sizeof(double));
+  
   for (axis=0; axis<numAxes_; axis++) {
     pAxis = getAxis(axis);
     if (!pAxis) continue;
+    
     if (pAxis->fullProfilePositions_) free(pAxis->fullProfilePositions_);
     pAxis->fullProfilePositions_ = (double *)calloc(maxProfilePoints+(2*MAX_ACCEL_SEGMENTS)-1, sizeof(double));
+    
+    if (pAxis->profilePositionsUser_) free(pAxis->profilePositionsUser_);
+    pAxis->profilePositionsUser_ = (double *)calloc(maxProfilePoints, sizeof(double));
   }
+  
+  // This sets maxProfilePoints_
   status = asynMotorController::initializeProfile(maxProfilePoints);
+  //
+  maxProfilePulses_ = maxProfilePulses;
+  
+  /*
+   *  Create pulse arrays
+   */
+  if (profilePulses_) free(profilePulses_);
+  profilePulses_ = (double *)calloc(maxProfilePulses, sizeof(double));
+  
+  if (profilePulsesUser_) free(profilePulsesUser_);
+  profilePulsesUser_ = (double *)calloc(maxProfilePulses, sizeof(double));
+  
+  if (profilePulsePositions_) free(profilePulsePositions_);
+  profilePulsePositions_ = (double *)calloc(maxProfilePulses, sizeof(double));
   
   // Create the arrays in the controller to hold the data that is recorded during profile moves
   for (i=0; i<SPIIPLUS_MAX_DC_AXES; i++)
@@ -1396,6 +1545,67 @@ asynStatus SPiiPlusController::initializeProfile(size_t maxProfilePoints)
   return status;
 }
 
+/** Function to define the pulse positions for a profile move. 
+  * Converts the positions from user units to steps, using the profileMotorOffset_, 
+  * profileMotorDirection_, and profileMotorResolution_ parameters. 
+  * \param[in] positions Array of pulse positions for the pulse axis in EPICS user units.
+  * \param[in] numPoints The number of pulse positions in the array.
+  */
+asynStatus SPiiPlusController::definePulses(int pulseAxis, int moveMode, size_t numPulses)
+{
+  size_t i;
+  double resolution;
+  double offset;
+  int direction;
+  double scale;
+  int status=0;
+  SPiiPlusAxis *axis;
+  static const char *functionName = "definePulses";
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: pulseAxis=%d, numPulses=%d, profilePulsesUser_[0]=%f\n",
+            driverName, functionName, pulseAxis, (int)numPulses, profilePulsesUser_[0]);
+
+  if (numPulses > maxProfilePulses_) return asynError;
+  
+  status |= getDoubleParam(pulseAxis, motorRecResolution_, &resolution);
+  status |= getDoubleParam(pulseAxis, motorRecOffset_, &offset);
+  status |= getIntegerParam(pulseAxis, motorRecDirection_, &direction);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: status=%d, offset=%f direction=%d, resolution=%f\n",
+            driverName, functionName, status, offset, direction, resolution);
+  if (status) return asynError;
+  if (resolution == 0.0) return asynError;
+  
+  axis = getAxis(pulseAxis);
+  
+  // Convert from EPICS user coordinates to pulseAxis Automation1 units.
+  scale = 1.0/resolution;
+  if (direction != 0) scale = -scale;
+  if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+  {
+    // The pulse positions are absolute positions
+    for (i=0; i<numPulses; i++)
+    {
+      profilePulses_[i] = (profilePulsesUser_[i] - offset) * scale * axis->resolution_;
+    }
+  }
+  else
+  {
+    // The pulse positions are relative displacements -- don't apply the offset
+    for (i=0; i<numPulses; i++)
+    {
+      profilePulses_[i] = profilePulsesUser_[i] * scale * axis->resolution_;
+    }
+  }
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: scale=%f, offset=%f, resolution_=%f, profilePulsesUser_[0]=%f, profilePulses_[0]=%f\n",
+            driverName, functionName, scale, offset, axis->resolution_, profilePulsesUser_[0], profilePulses_[0]);
+  
+  return asynSuccess;
+}
+
 /** Function to build a coordinated move of multiple axes. */
 asynStatus SPiiPlusController::buildProfile()
 {
@@ -1405,11 +1615,21 @@ asynStatus SPiiPlusController::buildProfile()
   int status;
   bool buildOK=true;
   //bool verifyOK=true;
+  int moveMode;
   int numPoints;
+  int timeMode;
+  double timePerPoint;
+  double accelTime;
+  int pulseMode;
+  int pulseAxis;
+  int numPulses;
+  int startPulses;
+  int endPulses;
+  double pulseAxisCurrentPos;
+  double pulseAxisCurrentRawPos;
   //int numElements;
   //double trajVel;
   //double D0, D1, T0, T1;
-  int moveMode;
   char message[MAX_MESSAGE_LEN];
   int buildStatus;
   double maxVelocity;
@@ -1424,18 +1644,17 @@ asynStatus SPiiPlusController::buildProfile()
   double preVelocity[SPIIPLUS_MAX_AXES], postVelocity[SPIIPLUS_MAX_AXES];
   double preTime, postTime;
   double preDistance, postDistance;
-  double accelTime;
-  //int axis
   std::string axisList;
   int useAxis;
   std::stringstream cmd;
+  SPiiPlusAxis *pPulseAxis;
+  SPiiPlusAxis *axis;
   static const char *functionName = "buildProfile";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW,
             "%s:%s: entry\n",
             driverName, functionName);
             
-
   // Call the base class method which will build the time array if needed
   asynMotorController::buildProfile();
   
@@ -1444,6 +1663,19 @@ asynStatus SPiiPlusController::buildProfile()
   setIntegerParam(profileBuildState_, PROFILE_BUILD_BUSY);
   setIntegerParam(profileBuildStatus_, PROFILE_STATUS_UNDEFINED);
   callParamCallbacks();
+  
+  // Get asyn parameters
+  getIntegerParam(profileMoveMode_,    &moveMode);
+  getIntegerParam(profileNumPoints_,   &numPoints);
+  getIntegerParam(profileTimeMode_,    &timeMode);
+  getDoubleParam(profileFixedTime_,    &timePerPoint);
+  getDoubleParam(profileAcceleration_, &accelTime);
+  getIntegerParam(SPiiPlusPulseMode_,  &pulseMode);
+  getIntegerParam(SPiiPlusPulseAxis_,  &pulseAxis);
+  getIntegerParam(profileNumPulses_,   &numPulses);
+  getIntegerParam(profileStartPulses_, &startPulses);
+  getIntegerParam(profileEndPulses_,   &endPulses);
+  getDoubleParam(pulseAxis,  motorPosition_,      &pulseAxisCurrentRawPos);
   
   // 
   profileAxes_.clear();
@@ -1463,6 +1695,14 @@ asynStatus SPiiPlusController::buildProfile()
     if (useAxis)
     {
       profileAxes_.push_back(i);
+      
+      if (moveMode == PROFILE_MOVE_MODE_RELATIVE)
+      {
+        // NOTE: the profile positions were converted from EPICS units to SPiiPlus units in 
+        // SPiiPlusAxis::defineProfile, however, the calculation was incorrect for relative 
+        // displacements.  Correct the calculation here.
+        pAxes_[i]->correctProfile(numPoints);
+      }
     }
   }
   
@@ -1478,6 +1718,25 @@ asynStatus SPiiPlusController::buildProfile()
   setStringParam(profileBuildMessage_, message);
   callParamCallbacks();
   
+  // These messages should eventually be changed to something other than ASYN_TRACE_ERROR
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\n", driverName, functionName);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tnumPoints = %i\n", driverName, functionName, numPoints);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tnumPulses = %i\n", driverName, functionName, numPulses);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tstartPulses = %i\n", driverName, functionName, startPulses);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tendPulses = %i\n", driverName, functionName, endPulses);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\ttimeMode = %i\n", driverName, functionName, timeMode);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\ttimePerPoint = %f\n", driverName, functionName, timePerPoint);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\taccelerationTime = %f\n", driverName, functionName, accelTime);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tmoveMode = %i\n", driverName, functionName, moveMode);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseMode = %i\n", driverName, functionName, pulseMode);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseAxis = %i\n", driverName, functionName, pulseAxis);
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tnumPulses = %i, numPulses_ = %i\n", driverName, functionName, numPulses, numPulses_);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseSrc = %i\n", driverName, functionName, pulseSrc);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseOut = %i\n", driverName, functionName, pulseOut);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseDir = %i\n", driverName, functionName, pulseDir);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulseLen = %lf\n", driverName, functionName, pulseLen);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tpulsePeriod = %lf\n", driverName, functionName, pulsePeriod);
+  
   /* We create trajectories with extra elements at the beginning and at the end.
    * The distance and time of the prepended elements are defined so that the motors will
    * accelerate from 0 to the velocity of the first "real" element in the user-specified
@@ -1485,12 +1744,9 @@ asynStatus SPiiPlusController::buildProfile()
    * Similarly, the distance and time of appended elements are defined so that the 
    * motors will decelerate from the velocity of the last "real" element to 0 
    * in the user-specified acceleration time. */
-
+  
   preTimeMax = 0.;
   postTimeMax = 0.;
-  getIntegerParam(profileNumPoints_, &numPoints);
-  getDoubleParam(profileAcceleration_, &accelTime);
-  getIntegerParam(profileMoveMode_, &moveMode);
   
   for (j=0; j<profileAxes_.size(); j++)
   {
@@ -1553,8 +1809,6 @@ asynStatus SPiiPlusController::buildProfile()
               maxAcceleration, preTimeMax, postTimeMax);
   }
   
-  getIntegerParam(profileMoveMode_, &moveMode);
-  
   // calculate the number of acceleration segments
   numAccelSegments_ = getNumAccelSegments(preTimeMax);
   numDecelSegments_ = getNumAccelSegments(postTimeMax);
@@ -1570,34 +1824,190 @@ asynStatus SPiiPlusController::buildProfile()
   for (j=0; j<profileAxes_.size(); j++)
   {
     // j != axis index
-    idx = profileAxes_[j];     
+    idx = profileAxes_[j];
+    axis = pAxes_[idx];
 
-    pAxes_[idx]->profilePreDistance_  =  0.5 * preVelocity[idx]  * preTimeMax;
-    pAxes_[idx]->profilePostDistance_ =  0.5 * postVelocity[idx] * postTimeMax;
+    axis->profilePreDistance_  =  0.5 * preVelocity[idx]  * preTimeMax;
+    axis->profilePostDistance_ =  0.5 * postVelocity[idx] * postTimeMax;
     
     if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
     {
-      pAxes_[idx]->profileStartPos_ = pAxes_[idx]->profilePositions_[0] - pAxes_[idx]->profilePreDistance_;
-      pAxes_[idx]->profileFlybackPos_ = pAxes_[idx]->profilePositions_[numPoints-1];
+      axis->profileStartPos_ = axis->profilePositions_[0] - axis->profilePreDistance_;
+      axis->profileFlybackPos_ = axis->profilePositions_[numPoints-1];
     }
     else
     {
-      pAxes_[idx]->profileStartPos_ = -pAxes_[idx]->profilePreDistance_;
-      pAxes_[idx]->profileFlybackPos_ = -pAxes_[idx]->profilePostDistance_;
+      axis->profileStartPos_ = -axis->profilePreDistance_;
+      axis->profileFlybackPos_ = -axis->profilePostDistance_;
     }
     
     // populate the profileAccelPositions_ and profileDecelPositions_ arrays
     createAccDecPositions(pAxes_[idx], moveMode, numPoints, preTimeMax, postTimeMax, preVelocity[idx], postVelocity[idx]);
+
+    // For debugging
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\taxis = %i\n", driverName, functionName, idx);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tpreVelocity = %f\n", driverName, functionName, preVelocity[idx]);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofilePreDistance_ = %f\n", driverName, functionName, axis->profilePreDistance_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofileStartPos_ = %f\n", driverName, functionName, axis->profileStartPos_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tpostVelocity = %f\n", driverName, functionName, postVelocity[idx]);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofilePostDistance_ = %f\n", driverName, functionName, axis->profilePostDistance_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofileFlybackPos_ = %f\n", driverName, functionName, axis->profileFlybackPos_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\t\tprofileTotalDistance_ = %f\n", driverName, functionName, axis->profileTotalDistance_);
   }
   
   // populate the fullProfileTimes_ and fullProfilePositions_ arrays
   assembleFullProfile(numPoints);
+  
+  // sanity check the full profile
+  //for (j=0; j<profileAxes_.size(); j++)
+  //{
+  //  // j != axis index
+  //  idx = profileAxes_[j];
+  //  axis = pAxes_[idx];
+  //  for (i=0; i<fullProfileSize_; i++)
+  //  {
+  //    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tAxis %d; fullProfilePositions_[%d] = %f, fullProfileTimes_[%d] = %f\n", driverName, functionName, idx, i, axis->fullProfilePositions_[i], i, fullProfileTimes_[i]);
+  //  }
+  //}
+  
+  /*
+   * Turn the profilePulses_ array into an array of displacements in the correct format
+   * 
+   * Notes: 
+   *   * user specified positions will be in EPICS user units
+   *   * numPulses is used instead of numPulses_ (the number of elements written to the pulse position array)
+   *     because the user might want to reduce the number of pulses without changing the array.
+   */
+  
+  pPulseAxis = getAxis(pulseAxis);
+  
+  // Convert pulse positions in EPICS user units to SPiiPlus units
+  definePulses(pulseAxis, moveMode, numPulses);
+  // Convert the raw position of the pulse axis into SPiiPlus units (needed for relative profiles) 
+  pulseAxisCurrentPos = pulseAxisCurrentRawPos * pPulseAxis->resolution_;
+  
+  if (pulseMode == 0)
+  {
+    /* Fixed Mode (divide trajectory by numPulses) will use PEG_I */
+    
+    double totalDistance = 0.0;
+    
+    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+    {
+      // The total distance is the difference between the final and initial user-specified positions
+      // Note: this probably doesn't work if the axis changes direction
+      totalDistance = pPulseAxis->profilePositions_[numPoints-1] - pPulseAxis->profilePositions_[0];
+      
+      // The start position is the 1st user-specified position
+      pulseStartPos_ = pPulseAxis->profilePositions_[0];
+      
+      // The end position is the last user-specified position
+      pulseEndPos_ =  pPulseAxis->profilePositions_[numPoints-1];
+    }
+    else
+    {
+      // The total distance is the sum of the displacements for each segment
+      // Note: this probably doesn't work if the axis changes direction
+      for (i=0; i<(numPoints-1); i++)
+      {
+        totalDistance += pPulseAxis->profilePositions_[i];
+      }
+      
+      // The start position is the motor's current position
+      pulseStartPos_ = pulseAxisCurrentPos;
+      
+      // The end position is the starting position + the user-specified displacement
+      pulseEndPos_ = pulseStartPos_ + totalDistance;
+    }
+    
+    // The pulse position tracking will start at the starting position, so the nth pulse will occur at the end of the nth segment
+    pulseSpacing_ = totalDistance / (numPulses - 1);
+  }
+  else if (pulseMode == 1)
+  {
+    /* Array Mode will use PEG_R */
+    // Should the number of pulses in the array be stored in a private variable
+    // so that problems aren't introduced by users who increase the number of 
+    // pulses between building an executing the profileMove?
+    
+    // profilePulses_ is in the correct format for absolute mode, but not relative mode
+    if (moveMode == PROFILE_MOVE_MODE_RELATIVE)
+    {
+      double current_pos = pulseAxisCurrentPos;
+      
+      // Convert the pulse displacements to absolute positions
+      for (i=0; i<numPulses; i++)
+      {
+        profilePulses_[i] = current_pos + profilePulses_[i];
+        current_pos = profilePulses_[i];
+      }
+    }
+    
+    // Send the pulse array now to minimize delays when executing the profile.
+    // NOTE: maxProfilePulses is used instead of numPulses because the global
+    // variable might not exist in the controller yet and the user can modify
+    // The number of pulses at any time.
+    status = pComm_->putDoubleArray(profilePulses_, "pulsePos", 0, maxProfilePulses_-1, 0, 0);
+    if (status) {
+      buildOK = false;
+      sprintf(message, "Error writing pulse positions, status=%d\n", status);
+      goto done;
+    }
+  }
+  else if (pulseMode == 2)
+  {
+    /* TrajPts Mode (get traj point positions) will use PEG_I */
+    
+    double totalDistance = 0.0;
+    
+    if (moveMode == PROFILE_MOVE_MODE_ABSOLUTE)
+    {
+      // The total distance is the difference between the user-specified end and start waypoints
+      // Note: this probably doesn't work if the axis changes direction
+      totalDistance = pPulseAxis->profilePositions_[endPulses] - pPulseAxis->profilePositions_[startPulses];
+      
+      // The start position is the 1st user-specified position
+      pulseStartPos_ = pPulseAxis->profilePositions_[startPulses];
+      
+      // The end position is the last user-specified position
+      pulseEndPos_ =  pPulseAxis->profilePositions_[endPulses];
+    }
+    else
+    {
+      // The start position is the pulse axis's current start position + displacements to the user-specified pulse start
+      pulseStartPos_ = pulseAxisCurrentPos;
+      for (i=0; i<startPulses; i++)
+      {
+        pulseStartPos_ += pPulseAxis->profilePositions_[i];
+      }
+      
+      // The end position is pulse start position + displacements to the user-specified pulse end
+      pulseEndPos_ = pulseStartPos_;
+      // There might be an off-by-one problem in the following loop
+      for (i=startPulses; i<endPulses; i++)
+      {
+        pulseEndPos_ += pPulseAxis->profilePositions_[i];
+      }
+      
+      totalDistance = pulseEndPos_ - pulseStartPos_;
+    }
+    
+    // The pulse position tracking will start at the user-specified starting waypoint; the last pulse will occur at the end of the user-specified ending waypoint
+    pulseSpacing_ = totalDistance / (numPulses - 1);
+  } 
+  else if (pulseMode == 3)
+  {
+    // None Mode - what should be done in this case?  Set numPulses to zero?  Zero the pulse array?
+  }
   
   // Sanity check
   //sanityCheckProfile();
   
   // calculate the time interval for data collection
   calculateDataCollectionInterval();
+  
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:\tfullProfileSize_ = %i, maxProfilePoints_ = %li, dataCollectionInterval_ = %f\n", driverName, functionName, fullProfileSize_, maxProfilePoints_, dataCollectionInterval_);
+
   // TODO: clear the data arrays heare instead of in runProfile?
   
   // POINT commands have this syntax: POINT (0,1,5), 1000,2000,3000, 500
@@ -1776,7 +2186,7 @@ void SPiiPlusController::sanityCheckProfile()
 void SPiiPlusController::calculateDataCollectionInterval()
 {
   int i;
-  double time;
+  double time = 0.0;
   // static const char *functionName = "calculateDataCollectionInterval";
   
   for (i=0; i<fullProfileSize_; i++)
@@ -1784,7 +2194,40 @@ void SPiiPlusController::calculateDataCollectionInterval()
     time += fullProfileTimes_[i];
   }
   
+  // Use all the available points for data collection
   dataCollectionInterval_ = time / maxProfilePoints_;
+}
+
+long int SPiiPlusController::calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses, int pulseMode)
+{
+  long int currentPulse;
+  double rawPulse;
+  //static const char *functionName = "calculateCurrentPulse";
+
+  if( pulseMode == 3)
+  {
+    currentPulse = 0;
+  }
+  else if (currentPoint < startPulse)
+  {
+    currentPulse = 0;
+  }
+  else if (currentPoint > endPulse)
+  {
+    currentPulse = numPulses;
+  }
+  else
+  {
+    /*
+     * currentPulse = (currentPoint - startPulse) * ( (numPulses - 1) / (endPulse - startPulse) ) + 1
+     */
+    rawPulse = (currentPoint - startPulse) * ( (numPulses - 1) / (double)(endPulse - startPulse) ) + 1;
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: rawPulse = %lf, currentPoint = %i, startPulse = %i, endPulse = %i, numPulses = %i\n", driverName, functionName, rawPulse, currentPoint, startPulse, endPulse, numPulses);
+
+    currentPulse = lrint(rawPulse);
+  }
+  
+  return currentPulse;
 }
 
 /** Function to execute a coordinated move of multiple axes. */
@@ -1821,9 +2264,12 @@ asynStatus SPiiPlusController::runProfile()
   int startPulses, endPulses;
   //int lastTime;
   int numPoints, numPulses;
-  //int numElements;
+  int numElements;
   int executeStatus;
-  //double pulsePeriod;
+  int pulseAxis, outputIndex;
+  int pulseMode;
+  std::string pegEngEncCode, pegOutAssignCode, poutsBitCode;
+  double pulseWidth;
   double position;
   //double time;
   int i;
@@ -1854,10 +2300,19 @@ asynStatus SPiiPlusController::runProfile()
   asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisList = %s\n", driverName, functionName, axesToString(profileAxes_).c_str());
   
   lock();
+  // These are also used by buildProfile
   getIntegerParam(profileStartPulses_, &startPulses);
   getIntegerParam(profileEndPulses_,   &endPulses);
   getIntegerParam(profileNumPoints_,   &numPoints);
   getIntegerParam(profileNumPulses_,   &numPulses);
+  getIntegerParam(SPiiPlusPulseMode_,  &pulseMode);
+  getIntegerParam(SPiiPlusPulseAxis_,  &pulseAxis);
+  // These aren't used by buildProfile
+  getStringParam(SPiiPlusPEGEngEncCode_,     pegEngEncCode);
+  getStringParam(SPiiPlusPEGOutAssignCode_,  pegOutAssignCode);
+  getIntegerParam(SPiiPlusPOUTSOutputIndex_, &outputIndex);
+  getStringParam(SPiiPlusPOUTSBitCode_,      poutsBitCode);
+  getDoubleParam(SPiiPlusPulseWidth_,        &pulseWidth);
   
   sprintf(message, "Selected axes: %s", motorsToString(profileAxes_).c_str()); 
   setStringParam(profileExecuteMessage_, message);
@@ -1932,6 +2387,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Zero the data array
     cmd << "FILL(0,DC_DATA_" << (i+1) << ")";
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     // DC/sw DC_DATA_#,maxProfilePoints_,3,FPOS(a),PE(a),TIME
@@ -1960,6 +2416,7 @@ asynStatus SPiiPlusController::runProfile()
     }
     cmd << "DC/sw " << profileAxes_[i] << ",DC_DATA_" << (i+1) << "," << maxProfilePoints_ << ",";
     cmd << lround(dataCollectionInterval_ * 1000.0) << "," << posData << "(" << profileAxes_[i] << "),PE(" << profileAxes_[i] << "),TIME";
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
   }
   
@@ -1975,8 +2432,106 @@ asynStatus SPiiPlusController::runProfile()
   cmd << "GO " << axesToString(profileAxes_);
   status = pComm_->writeReadAck(cmd);
   
-  // configure pulse output
+  // Configure pulse output (does this need to happen before data recording is setup/started?)
 
+  /* The number of user-specified trajectory elements is numPoints-1
+     The actual number of is greater due to the accel and decel elements added in assembleFullProfile */
+  numElements = numPoints - 1;
+  
+  // TODO: move this to buildProfile?
+  // TODO: only enforce this for the correct pulse modes
+  // Check valid range of start and end pulses;  these start at 1, not 0.
+  // numElements+1 is the first deceleration element
+  if ((startPulses < 1)           || (startPulses > numElements+1) ||
+      (endPulses   < startPulses) || (endPulses   > numElements+1)) {
+    executeOK = false;
+    sprintf(message, "Error: start or end pulses outside valid range");
+    goto done;
+  }
+  
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: pulseAxis=%i, pegEngEncCode=%s, pegOutAssignCode=%s, outputIndex=%i, poutsBitCode=%s\n", driverName, functionName, pulseAxis, pegEngEncCode.c_str(), pegOutAssignCode.c_str(), outputIndex, poutsBitCode.c_str());
+  
+  // TODO: store the pulseAxis to pulseAxis_ at build time to avoid problems with a profile built using one pulseAxis and executed using another
+  // Assign PEG engine to an encoder
+  // ASSIGNPEG axis, engines_to_encoders_code, gp_out_assign_code
+  if (pulseMode == 1)
+  {
+    // ASSIGNPEG/f is required if PEG_R/d will be used
+    cmd << "ASSIGNPEG/f " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
+  }
+  else
+  {
+    cmd << "ASSIGNPEG " << pulseAxis << ", " << pegEngEncCode << ", " << pegOutAssignCode;
+  }
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
+  status = pComm_->writeReadAck(cmd);
+  
+  // Assign PEG output to output pins
+  // ASSIGNPOUTS axis, output_index, bit_code
+  cmd << "ASSIGNPOUTS " << pulseAxis << ", " << outputIndex << ", " << poutsBitCode;
+  asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
+  status = pComm_->writeReadAck(cmd);
+  
+  if ((pulseMode == 0) || (pulseMode == 2))
+  {
+    // PEG_I axis, width, first_point, interval, last_point
+    //asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, pulseStartPos_, pulseEndPos_, numPulses, pulseSpacing_);
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: startPulsePos=%f, endPulsePos=%f, numElements=%i, pulseInterval=%f\n", driverName, functionName, pulseStartPos_, pulseEndPos_, numPulses, pulseSpacing_);
+    cmd << "PEG_I " << pulseAxis << ", " << pulseWidth << ", " << pulseStartPos_ << ", " << pulseSpacing_ << ", " << pulseEndPos_;
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
+    status = pComm_->writeReadAck(cmd);
+    // Should a failed PEG_I command cause the scan to fail?  Yes, for now.
+    if (status)
+    {
+      executeOK = false;
+      strcpy(message, "Aborting due to PEG_I error");
+      goto done;
+    }
+  }
+  else if (pulseMode == 1)
+  {
+    // PEG_R peg_engine width mode first_index last_index POS_ARRAY
+    
+    // TODO: is 0x4444 the correct mode? Is pulseAxis the correct peg_engine argument?
+    // NOTE: ASSIGNPEG's /f switch is also required
+    cmd << "PEG_R/d " << pulseAxis << ", " << pulseWidth << ", " << "0x4444" << ", " << "0" << ", " << (numPulses-1) << ", " << "pulsePos";
+    asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
+    status = pComm_->writeReadAck(cmd);
+    // Should a failed PEG_R command cause the scan to fail?  Yes, for now.
+    if (status)
+    {
+      executeOK = false;
+      strcpy(message, "Aborting due to PEG_R error");
+      goto done;
+    }
+  }
+  else if (pulseMode == 3)
+  {
+    // What should happen here?
+  }
+  
+  if (pulseMode != 3)
+  {
+    // Wait for PEGREADY 
+    while (pAxes_[pulseAxis]->pegReady_ == 0)
+    {
+      //asynPrint(this->pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
+      asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: axisStatus(%i).#PEGREAD = %i\n", driverName, functionName, pulseAxis, pAxes_[pulseAxis]->pegReady_);
+      // Sleep to give the poller time to reread the the axis status
+      epicsThreadSleep(0.1);
+      
+      if (halted_)
+      {
+        aborted = true;
+        executeOK = false;
+        status = stopDataCollection();
+        status = stopPEG(pulseAxis);
+        strcpy(message, "Aborted during wait for PEGREADY");
+        goto done;
+      }
+    }
+  }
+  
   // wake up poller
   //wakeupPoller();
   
@@ -1987,6 +2542,7 @@ asynStatus SPiiPlusController::runProfile()
   
   lock();
   setIntegerParam(profileCurrentPoint_, ptExecIdx);
+  setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx, startPulses, endPulses, numPulses, pulseMode));
   callParamCallbacks();
   unlock();
   
@@ -2000,6 +2556,7 @@ asynStatus SPiiPlusController::runProfile()
     cmd << "PATH/twr ";
   }
   cmd << axesToString(profileAxes_);
+  //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
   status = pComm_->writeReadAck(cmd);
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: point buffer fill start\n", driverName, functionName);
@@ -2009,6 +2566,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Create and send the point command (should this be ptIdx+1?)
     cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     // Increment the counter of points that have been loaded
@@ -2021,6 +2579,7 @@ asynStatus SPiiPlusController::runProfile()
   {
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     while (ptLoadedIdx < fullProfileSize_)
@@ -2030,6 +2589,7 @@ asynStatus SPiiPlusController::runProfile()
         aborted = true;
         executeOK = false;
         status = stopDataCollection();
+        status = stopPEG(pulseAxis);
         strcpy(message, "Aborted during profile move");
         goto done;
       }
@@ -2051,6 +2611,7 @@ asynStatus SPiiPlusController::runProfile()
         
         // Create and send the point command (should this be ptIdx+1?)
         cmd << "POINT " << axesToString(profileAxes_) << ", " << positionsToString(ptIdx) << ", " << lround(fullProfileTimes_[ptIdx] * 1000.0);
+        //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
         status = pComm_->writeReadAck(cmd);
       }
       
@@ -2060,25 +2621,34 @@ asynStatus SPiiPlusController::runProfile()
       lock();
       // Only report the current point of the user-specified array
       if (ptExecIdx > numAccelSegments_)
+      {
         setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
+        setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses, pulseMode));
+      }
       else
+      {
         setIntegerParam(profileCurrentPoint_, 0);
+        setIntegerParam(profileActualPulses_, 0);
+      }
       callParamCallbacks();
       unlock();
     }
     
     // End the point sequence
     cmd << "ENDS " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
   }
   else
   {
     // End the point sequence
     cmd << "ENDS " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
     
     // Send the GO command
     cmd << "GO " << axesToString(profileAxes_);
+    //asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s\n", driverName, functionName, cmd.str().c_str());
     status = pComm_->writeReadAck(cmd);
   }
   
@@ -2090,6 +2660,7 @@ asynStatus SPiiPlusController::runProfile()
       aborted = true;
       executeOK = false;
       status = stopDataCollection();
+      status = stopPEG(pulseAxis);
       strcpy(message, "Aborted during profile move");
       goto done;
     }
@@ -2107,17 +2678,31 @@ asynStatus SPiiPlusController::runProfile()
     lock();
     // Stop updating current point when numPoints is reached
     if (ptExecIdx < numAccelSegments_)
+    {
       // This only gets executed if the user-specified profile has very few points in it
       setIntegerParam(profileCurrentPoint_, 0);
+      setIntegerParam(profileActualPulses_, 0);
+    }
     else if ((ptExecIdx >= numAccelSegments_) && (ptExecIdx < numAccelSegments_+numPoints))
+    {
       setIntegerParam(profileCurrentPoint_, ptExecIdx-numAccelSegments_);
+      setIntegerParam(profileActualPulses_, calculateCurrentPulse(ptExecIdx-numAccelSegments_, startPulses, endPulses, numPulses, pulseMode));
+    }
     else
+    {
       setIntegerParam(profileCurrentPoint_, numPoints);
+      setIntegerParam(profileActualPulses_, calculateCurrentPulse(numPoints, startPulses, endPulses, numPulses, pulseMode));
+    }
     callParamCallbacks();
     unlock();
   }
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: profile move is done\n", driverName, functionName);
+  if (pulseMode != 3)
+  {
+    // Stop PEG to avoid extra triggers when moving to the flyback position
+    status = stopPEG(pulseAxis);
+  }
   
   // Confirm that the motors are done moving?
   
@@ -2234,6 +2819,18 @@ asynStatus SPiiPlusController::stopDataCollection()
   return status;
 }
 
+asynStatus SPiiPlusController::stopPEG(int pulseAxis)
+{
+  asynStatus status;
+  std::stringstream cmd;
+  // static const char *functionName = "stopPEG";  
+  
+  cmd << "STOPPEG " << pulseAxis;
+  status = pComm_->writeReadAck(cmd);
+  
+  return status;
+}
+
 /** Function to abort a profile. */
 asynStatus SPiiPlusController::abortProfile()
 {
@@ -2326,7 +2923,7 @@ asynStatus SPiiPlusController::readbackProfile()
   setIntegerParam(profileNumReadbacks_, maxProfilePoints_);
   /* Convert from controller to user units and post the arrays */
   for (i=0; i<numAxes_; i++) {
-    pAxes_[i]->readbackProfile();
+    pAxes_[i]->readbackProfile(maxProfilePoints_);
   }
   readbackStatus = readbackOK ?  PROFILE_STATUS_SUCCESS : PROFILE_STATUS_FAILURE;
   setIntegerParam(profileReadbackStatus_, readbackStatus);
@@ -2349,14 +2946,52 @@ asynStatus SPiiPlusController::test()
 {
   asynStatus status;
   char* buffer=NULL;
-  
+  double* data=NULL;
+  long maxDoubles;
+  long dataSize;
+  int i;
   static const char *functionName = "test";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: calling test function\n", driverName, functionName);
   
   buffer = (char *)calloc(MAX_BINARY_READ_LEN, sizeof(char));
   
-  status = pComm_->getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
+  // MAX_BINARY_READ_LEN is in bytes so we need to calculate how many doubles that will hold
+  maxDoubles = floorl(MAX_BINARY_READ_LEN/sizeof(double));
+  data = (double *)calloc(maxDoubles, sizeof(double));
+  
+  //status = pComm_->getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
+  
+  // Create test data
+  //dataSize = 101;
+  dataSize = 2000;
+  for (i=0; i<dataSize; i++)
+  {
+      data[i] = i * 1.0;
+  }
+  
+  /*
+  // create larger test data
+  dataSize = 100000;
+  buffer = (char *)calloc(dataSize*sizeof(double), sizeof(char));
+  maxDoubles = dataSize;
+  data = (double *)calloc(maxDoubles, sizeof(double));
+  
+  for (i=0; i<dataSize; i++)
+  {
+      data[i] = i * 1.0;
+  }
+  */
+  
+  // Note: it is assumed that data has enough values to fill the specified array
+  status = pComm_->putDoubleArray(data, "testVar", 0, dataSize-1, 0, 0);
+  /*
+  // 2D testing
+  // This results in a real(500)(4) array and the data from the 11th packet doesn't get appended properly
+  //status = pComm_->putDoubleArray(data, "testVar", 0, dataSize/4-1, 0, 4-1);
+  // This results in a real(4)(500) array and the data from the 11th packet doesn't get appended properly
+  //status = pComm_->putDoubleArray(data, "testVar", 0, 4-1, 0, dataSize/4-1);
+  */
   
   free(buffer);
   
@@ -2403,7 +3038,8 @@ extern "C"
 {
 
 asynStatus SPiiPlusCreateProfile(const char *SPiiPlusName,         /* specify which controller by port name */
-                            int maxPoints)               /* maximum number of profile points */
+                            int maxPoints,               /* maximum number of profile points */
+                            int maxPulses)               /* maximum number of profile pulses */
 {
   SPiiPlusController *pC;
   static const char *functionName = "SPiiPlusCreateProfile";
@@ -2415,7 +3051,7 @@ asynStatus SPiiPlusCreateProfile(const char *SPiiPlusName,         /* specify wh
     return asynError;
   }
   pC->lock();
-  pC->initializeProfile(maxPoints);
+  pC->initializeProfile(maxPoints, maxPulses);
   pC->unlock();
   return asynSuccess;
 }
@@ -2423,14 +3059,15 @@ asynStatus SPiiPlusCreateProfile(const char *SPiiPlusName,         /* specify wh
 // Profile Setup arguments
 static const iocshArg SPiiPlusCreateProfileArg0 = {"ACS port name", iocshArgString};
 static const iocshArg SPiiPlusCreateProfileArg1 = {"Max points", iocshArgInt};
+static const iocshArg SPiiPlusCreateProfileArg3 = {"Max pulses", iocshArgInt};
 
-static const iocshArg * const SPiiPlusCreateProfileArgs[2] = {&SPiiPlusCreateProfileArg0, &SPiiPlusCreateProfileArg1};
+static const iocshArg * const SPiiPlusCreateProfileArgs[3] = {&SPiiPlusCreateProfileArg0, &SPiiPlusCreateProfileArg1, &SPiiPlusCreateProfileArg1};
 
-static const iocshFuncDef configSPiiPlusProfile = {"SPiiPlusCreateProfile", 2, SPiiPlusCreateProfileArgs};
+static const iocshFuncDef configSPiiPlusProfile = {"SPiiPlusCreateProfile", 3, SPiiPlusCreateProfileArgs};
 
 static void configSPiiPlusProfileCallFunc(const iocshArgBuf *args)
 {
-    SPiiPlusCreateProfile(args[0].sval, args[1].ival);
+    SPiiPlusCreateProfile(args[0].sval, args[1].ival, args[2].ival);
 }
 
 // ACS Setup arguments

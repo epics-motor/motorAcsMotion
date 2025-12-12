@@ -8,35 +8,14 @@
 #define SPIIPLUS_MAX_AXES 64
 #define SPIIPLUS_MAX_DC_AXES 8
 #define SPIIPLUS_CMD_TIMEOUT 0.05
+#define SPIIPLUS_ACK_TIMEOUT 0.2
 #define SPIIPLUS_ARRAY_TIMEOUT 10.0
 #define MAX_MESSAGE_LEN   256
 #define MAX_ACCEL_SEGMENTS 20
 
 // Maximum number of bytes that can be returned by a binary read
 #define MAX_BINARY_READ_LEN 65536
-#define MAX_PACKET_SIZE 1405
-#define MAX_PACKET_DATA 1400
-//
-#define FRAME_START 		0xd3
-#define FRAME_END 		0xd6
-#define INT_DATA_SIZE 		0x04
-#define DOUBLE_DATA_SIZE	0x08
-#define READ_D_ARRAY_CMD	0xf0
-#define READ_I_ARRAY_CMD	0xf1
-#define READ_LD_ARRAY_CMD	0x41
-#define READ_LD_SLICE_CMD	0x42
-#define READ_LI_ARRAY_CMD	0x44
-#define READ_LI_SLICE_CMD	0x45
-#define SLICE_AVAILABLE		0x80
-/*
-#define WRITE_I_ARRAY_CMD	0xf3
-#define WRITE_D_ARRAY_CMD	0xf2
-#define WRITE_LD_ARRAY_CMD	0x37
-#define WRITE_LD_SLICE_CMD	0x38
-#define WRITE_LD_END_CMD	0x39
-#define WRITE_LI_ARRAY_CMD	0x3A
-#define WRITE_LI_SLICE_CMD	0x3B
-*/
+#define MAX_BINARY_WRITE_LEN 65536
 
 // The following values need to match the homingMethod mbbo record
 #define MBBO_HOME_NONE			0
@@ -95,7 +74,30 @@
 #define SPIIPLUS_MFLAGS_LINEAR              (1<<21)
 #define SPIIPLUS_MFLAGS_ABSCOMM             (1<<22)
 #define SPIIPLUS_MFLAGS_HALL                (1<<27)
-
+//
+#define SPIIPLUS_AXIS_STATUS_LEAD       1<<0
+#define SPIIPLUS_AXIS_STATUS_PEG        1<<2
+#define SPIIPLUS_AXIS_STATUS_DC         1<<3
+#define SPIIPLUS_AXIS_STATUS_PEGREADY   1<<4
+#define SPIIPLUS_AXIS_STATUS_MOVE       1<<5
+#define SPIIPLUS_AXIS_STATUS_ACC        1<<6
+#define SPIIPLUS_AXIS_STATUS_BUILDUP    1<<7
+#define SPIIPLUS_AXIS_STATUS_VELLOCK    1<<8
+#define SPIIPLUS_AXIS_STATUS_POSLOCK    1<<9
+#define SPIIPLUS_AXIS_STATUS_TRIGGER    1<<11
+#define SPIIPLUS_AXIS_STATUS_NEWSEGM    1<<16
+#define SPIIPLUS_AXIS_STATUS_STARV      1<<17
+#define SPIIPLUS_AXIS_STATUS_ENCWARN    1<<18
+#define SPIIPLUS_AXIS_STATUS_ENC2WARN   1<<19
+#define SPIIPLUS_AXIS_STATUS_INRANGE    1<<20
+#define SPIIPLUS_AXIS_STATUS_LCTICKLE   1<<21
+#define SPIIPLUS_AXIS_STATUS_LCMODUL    1<<22
+#define SPIIPLUS_AXIS_STATUS_FOLLOWED   1<<23
+#define SPIIPLUS_AXIS_STATUS_HOLD       1<<24
+#define SPIIPLUS_AXIS_STATUS_INHOMING   1<<25
+#define SPIIPLUS_AXIS_STATUS_DECOMPON   1<<26
+#define SPIIPLUS_AXIS_STATUS_INSHAPE    1<<27
+#define SPIIPLUS_AXIS_STATUS_ENCPROC    1<<29
 
 
 // drvInfo strings for extra parameters that the XPS controller supports
@@ -146,6 +148,17 @@
 //
 #define SPiiPlusDisableSetPosString            "SPIIPLUS_DISABLE_SET_POS"
 //
+#define SPiiPlusPulseModeString                "SPIIPLUS_PULSE_MODE"
+#define SPiiPlusPulsePosString                 "SPIIPLUS_PULSE_POS"
+#define SPiiPlusNumPulsesString                "SPIIPLUS_NUM_PULSES"
+//
+#define SPiiPlusPulseAxisString                "SPIIPLUS_PULSE_AXIS"
+#define SPiiPlusPEGEngEncCodeString            "SPIIPLUS_PEG_ENG_ENC_CODE"
+#define SPiiPlusPEGOutAssignCodeString         "SPIIPLUS_PEG_OUT_ASSIGN_CODE"
+#define SPiiPlusPOUTSOutputIndexString         "SPIIPLUS_POUTS_OUTPUT_INDEX"
+#define SPiiPlusPOUTSBitCodeString             "SPIIPLUS_POUTS_BIT_CODE"
+#define SPiiPlusPulseWidthString               "SPIIPLUS_PULSE_WIDTH"
+//
 #define SPiiPlusTestString                     "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -167,6 +180,7 @@ public:
 	asynStatus setPosition(double position);
 	asynStatus setClosedLoop(bool closedLoop);
 	asynStatus defineProfile(double *positions, size_t numPoints);
+	asynStatus readbackProfile(size_t numPoints);
 	
 	asynStatus getMaxParams();
 	asynStatus updateFeedbackParams();
@@ -175,17 +189,21 @@ public:
 	asynStatus setEncoderOffset(double newEncoderOffset);
 	asynStatus setEncoder2Offset(double newEncoder2Offset);
 	
+	asynStatus correctProfile(size_t numPoints);
+	
 private:
 	SPiiPlusController *pC_;	/**< Pointer to the asynMotorController to which this axis belongs.
 				*   Abbreviated because it is used very frequently */
 	double profileAccelPositions_[MAX_ACCEL_SEGMENTS];  /**< Array of target positions for acceleration of profile moves */
 	double profileDecelPositions_[MAX_ACCEL_SEGMENTS];  /**< Array of target positions for deceleration of profile moves */
 	double *fullProfilePositions_;                      /**< Array of target positions for profile moves */
+	double *profilePositionsUser_;
 	double profilePreDistance_;
 	double profilePostDistance_;
 	double profileStartPos_;
 	double profileFlybackPos_;
 	int moving_;
+	int pegReady_;      // AST, bit 4
 	int dummy_;			// MFLAGS, bit 0
 	int open_;			// MFLAGS, bit 1
 	int micro_;			// MFLAGS, bit 2
@@ -214,6 +232,7 @@ public:
 	asynStatus writeInt32(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
 	asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
+	asynStatus writeFloat64Array(asynUser *pasynUser, epicsFloat64 *value, size_t nElements);
 	asynStatus getAddress(asynUser *pasynUser, int *address);
 	asynStatus drvUserCreate(asynUser *pasynUser, const char *drvInfo, const char **pptypeName, size_t *psize);
 	asynStatus drvUserDestroy(asynUser *pasynUser);
@@ -223,7 +242,7 @@ public:
 	void report(FILE *fp, int level);
 	
 	/* These are functions for profile moves */
-	asynStatus initializeProfile(size_t maxProfilePoints);
+	asynStatus initializeProfile(size_t maxProfilePoints, size_t maxProfilePulses);
 	asynStatus buildProfile();
 	asynStatus executeProfile();
 	asynStatus abortProfile();
@@ -235,8 +254,10 @@ public:
 	void sanityCheckProfile();
 	void createAccDecTimes(double preTimeMax, double postTimeMax);
 	void createAccDecPositions(SPiiPlusAxis* axis, int moveMode, int numPoints, double preTimeMax, double postTimeMax, double preVelocity, double postVelocity);
+	asynStatus definePulses(int pulseAxis, int moveMode, size_t numPulses);
 	asynStatus runProfile();
 	int getNumAccelSegments(double time);
+	long int calculateCurrentPulse(int currentPoint, int startPulse, int endPulse, int numPulses, int pulseMode);
 	asynStatus readGlobalIntVar(asynUser *pasynUser, epicsInt32 *value);
 	asynStatus writeGlobalIntVar(asynUser *pasynUser, epicsInt32 value);
 	asynStatus readGlobalRealVar(asynUser *pasynUser, epicsFloat64 *value);
@@ -299,6 +320,17 @@ protected:
 	//
 	int SPiiPlusDisableSetPos_;
 	//
+	int SPiiPlusPulseMode_;
+	int SPiiPlusPulsePos_;
+	int SPiiPlusNumPulses_;
+	//
+	int SPiiPlusPulseAxis_;
+	int SPiiPlusPEGEngEncCode_;
+	int SPiiPlusPEGOutAssignCode_;
+	int SPiiPlusPOUTSOutputIndex_;
+	int SPiiPlusPOUTSBitCode_;
+	int SPiiPlusPulseWidth_;
+	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
@@ -318,6 +350,7 @@ private:
 	asynStatus waitMotors();
 	void calculateDataCollectionInterval();
 	asynStatus stopDataCollection();
+	asynStatus stopPEG(int pulseAxis);
 	asynStatus test();
 	char firmwareVersion_[MAX_MESSAGE_LEN];
 	
@@ -351,6 +384,15 @@ private:
 	epicsInt32 motorStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 encoderType_[SPIIPLUS_MAX_AXES];
 	epicsInt32 encoder2Type_[SPIIPLUS_MAX_AXES];
+	
+	size_t maxProfilePulses_;
+	double *profilePulses_;
+	double *profilePulsesUser_;
+	double *profilePulsePositions_;
+	double pulseStartPos_;
+	double pulseSpacing_;
+	double pulseEndPos_;
+	int numPulses_;
 	
 friend class SPiiPlusAxis;
 friend class SPiiPlusComm;

@@ -45,6 +45,20 @@ pattern
 {pm1:,  8,    2000,      2000, ACS1,    7,     2.0,    4}
 }
 
+file "$(TOP)/db/SPiiPlusProfileMoveController.db"
+{
+pattern
+{R,     PORT, NPULSES, TIMEOUT, PREC}
+{pm1:,  ACS1,    2000,     2.0,    4}
+}
+
+file "$(TOP)/db/SPiiPlusPEG.db"
+{
+pattern
+{R,     PORT, NAXES,  NPOINTS, NPULSES, TIMEOUT}
+{pm1:,  ACS1,     8,     2000,    2000,     2.0}
+}
+
 ### Uncomment the following to disable setting the position for axes with absolute encoders
 #!file "$(TOP)/db/SPiiPlusDisableSetPos.db"
 #!{

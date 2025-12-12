@@ -30,5 +30,5 @@ asynOctetSetOutputEos("$(PORT)", -1, "\r")
 
 AcsMotionConfig("$(INSTANCE)", "$(PORT)", $(NUM_AXES=1), $(MOVING_POLL=$(POLL_PERIOD=0.1)), $(IDLE_POLL=$(POLL_PERIOD=1.0)), "$(VIRTUAL_AXES=)")
 
-SPiiPlusCreateProfile("$(INSTANCE)", $(MAX_POINTS=2000))
+SPiiPlusCreateProfile("$(INSTANCE)", $(MAX_POINTS=2000), $(MAX_PULSES=2000))
 

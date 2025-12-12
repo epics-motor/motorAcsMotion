@@ -1,0 +1,105 @@
+record(longout, "$(P)$(R)pulseAxis")
+{
+    field(DTYP, "asynInt32")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PULSE_AXIS")
+    field(FLNK, "$(P)$(R)pulseAxis_RBV")
+    field(VAL,  "$(AXIS=0)")
+    field(PINI, "YES")
+}
+
+record(longin, "$(P)$(R)pulseAxis_RBV")
+{
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PULSE_AXIS")
+    field(SCAN, "Passive")
+}
+
+record(longout, "$(P)$(R)outputIndex")
+{
+    field(DTYP, "asynInt32")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_POUTS_OUTPUT_INDEX")
+    field(FLNK, "$(P)$(R)outputIndex_RBV")
+    field(VAL,  "$(OUT_IDX=0)")
+    field(PINI, "YES")
+}
+
+record(longin, "$(P)$(R)outputIndex_RBV")
+{
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_POUTS_OUTPUT_INDEX")
+    field(SCAN, "Passive")
+}
+
+record(ao, "$(P)$(R)pulseWidth")
+{
+    field(DESC, "Pulse Width (ms)")
+    field(DTYP, "asynFloat64")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PULSE_WIDTH")
+    field(FLNK, "$(P)$(R)pulseWidth_RBV")
+    field(VAL,  "$(WIDTH=0.5)")
+    field(PINI, "YES")
+    field(PREC, "3")
+}
+
+record(ai, "$(P)$(R)pulseWidth_RBV")
+{
+    field(DESC, "Pulse Width (ms)")
+    field(DTYP, "asynFloat64")
+    field(INP,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PULSE_WIDTH")
+    field(SCAN, "Passive")
+    field(PREC, "3")
+}
+
+record(stringout, "$(P)$(R)pegEngEnc")
+{
+    field(DESC, "Engine-to-encoder mapping")
+    field(DTYP, "asynOctetWrite")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PEG_ENG_ENC_CODE")
+    field(FLNK, "$(P)$(R)pegEngEnc_RBV")
+    field(VAL,  "0b0")
+    field(PINI, "YES")
+}
+
+record(stringin, "$(P)$(R)pegEngEnc_RBV")
+{
+    field(DESC, "Engine-to-encoder mapping")
+    field(DTYP, "asynOctetRead")
+    field(INP,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PEG_ENG_ENC_CODE")
+    field(SCAN, "Passive")
+}
+
+record(stringout, "$(P)$(R)pegOutAssign")
+{
+    field(DESC, "GP output assignment")
+    field(DTYP, "asynOctetWrite")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PEG_OUT_ASSIGN_CODE")
+    field(FLNK, "$(P)$(R)pegOutAssign_RBV")
+    field(VAL,  "0b0")
+    field(PINI, "YES")
+}
+
+record(stringin, "$(P)$(R)pegOutAssign_RBV")
+{
+    field(DESC, "GP output assignment")
+    field(DTYP, "asynOctetRead")
+    field(INP,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_PEG_OUT_ASSIGN_CODE")
+    field(SCAN, "Passive")
+}
+
+record(stringout, "$(P)$(R)poutsBitCode")
+{
+    field(DESC, "PEG pin config")
+    field(DTYP, "asynOctetWrite")
+    field(OUT,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_POUTS_BIT_CODE")
+    field(FLNK, "$(P)$(R)poutsBitCode_RBV")
+    field(VAL,  "0b0")
+    field(PINI, "YES")
+}
+
+record(stringin, "$(P)$(R)poutsBitCode_RBV")
+{
+    field(DESC, "PEG pin config")
+    field(DTYP, "asynOctetRead")
+    field(INP,  "@asyn($(PORT),0,$(TIMEOUT=1))SPIIPLUS_POUTS_BIT_CODE")
+    field(SCAN, "Passive")
+}
