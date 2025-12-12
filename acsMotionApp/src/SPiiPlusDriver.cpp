@@ -575,6 +575,9 @@ asynStatus SPiiPlusController::poll()
 		if (status != asynSuccess) return status;
 	}
 	
+	status = pComm_->getDoubleArray((char *)feedbackVelocity_, "FVEL", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
 	/* offsets */
 	// RPOS = 0 if MFLAGS(index).#DEFCON=1
 	status = pComm_->getDoubleArray((char *)referenceOffset_, "ROFFS", 0, numAxes_-1, 0, 0);
@@ -608,6 +611,7 @@ asynStatus SPiiPlusController::poll()
 	status = pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
+	// MFLAGSX probably only needs to be polled once at init (and manually). Move it if the poll takes too long.
 	status = pComm_->getIntegerArray((char *)motorFlagsX_, "MFLAGSX", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
@@ -828,6 +832,20 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 	setIntegerParam(controller->motorStatusDone_, !motion);
 	setIntegerParam(controller->motorStatusMoving_, motion);
 	setIntegerParam(controller->motorStatusPowerOn_, enabled);
+	
+	// Update the motor status direction bit based on the feedback velocity.
+	// Do nothing if the move is done or the velocity is zero.
+	if (motion)
+	{
+		if (controller->feedbackVelocity_[axisNo_] > 0.0)
+		{
+			setIntegerParam(controller->motorStatusDirection_, 1);
+		}
+		if (controller->feedbackVelocity_[axisNo_] < 0.0)
+		{
+			setIntegerParam(controller->motorStatusDirection_, 0);
+		}
+	}
 	
 	callParamCallbacks();
 	

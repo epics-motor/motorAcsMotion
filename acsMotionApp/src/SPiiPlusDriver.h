@@ -375,6 +375,7 @@ private:
 	epicsFloat64 feedbackPosition_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 feedback2Position_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 virtualFeedbackPosition_[SPIIPLUS_MAX_AXES];
+	epicsFloat64 feedbackVelocity_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 referenceOffset_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 encoderOffset_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 encoder2Offset_[SPIIPLUS_MAX_AXES];
