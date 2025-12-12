@@ -3049,13 +3049,13 @@ void SPiiPlusController::report(FILE *fp, int level)
   fprintf(fp, "    virtual feedback position support: %s\n", virtualFeedbackPositionSupported_ ? "Yes" : "No");
   fprintf(fp, "\n");
   
-  // Print more axis detail if level = 1
-  // Print all the asyn parameters if level > 1
+  // level = 0: only print ACS driver report info
+  // level > 0: also call base class report method with level-1
   if (level > 0)
-    level -= 1;
-  
-  // Call the base class method
-  asynMotorController::report(fp, level-1);
+  {
+    // Call the base class method
+    asynMotorController::report(fp, level-1);
+  }
   fprintf(fp, "====================================\n");
 }
 
