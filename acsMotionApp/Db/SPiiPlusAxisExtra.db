@@ -16,3 +16,16 @@ record(bi,"$(P)$(M):HOMED") {
     field(SCAN, "I/O Intr")
 }
 
+record(longin,"$(P)$(M):MFLAGS") {
+    field(DESC, "MFLAGS parameter")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_MFLAGS")
+    field(SCAN, "I/O Intr")
+}
+
+record(longin,"$(P)$(M):MFLAGSX") {
+    field(DESC, "MFLAGSX parameter")
+    field(DTYP, "asynInt32")
+    field(INP,  "@asyn($(PORT),$(ADDR))SPIIPLUS_MFLAGSX")
+    field(SCAN, "I/O Intr")
+}
