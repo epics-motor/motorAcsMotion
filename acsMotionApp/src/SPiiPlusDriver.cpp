@@ -9,6 +9,7 @@
 
 #include <iocsh.h>
 #include <epicsThread.h>
+#include <epicsExit.h>
 #include <epicsStdlib.h>
 #include <epicsString.h>
 #include <cantProceed.h>
@@ -34,6 +35,15 @@ static void SPiiPlusProfileThreadC(void *pPvt);
 #define MIN(a,b) ((a)<(b)? (a): (b))
 #endif
 
+static void shutdownCallback(void *pPvt)
+{
+  SPiiPlusController *pC = static_cast<SPiiPlusController *>(pPvt);
+
+  pC->lock();
+  pC->shuttingDown_ = 1;
+  pC->unlock();
+}
+
 SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asynPortName, int numAxes,
                                              double movingPollPeriod, double idlePollPeriod,
                                              const char* virtualAxisList)
@@ -55,6 +65,9 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	pAxes_ = (SPiiPlusAxis **)(asynMotorController::pAxes_);
 	std::stringstream cmd;
 	static const char *functionName="SPiiPlusController";
+	
+	/* Set an EPICS exit handler that will shut down polling before asyn kills the IP sockets */
+	epicsAtExit(shutdownCallback, this);
 	
 	// Create parameters
 	createParam(SPiiPlusHomingMethodString,               asynParamInt32, &SPiiPlusHomingMethod_);
@@ -2248,9 +2261,27 @@ static void SPiiPlusProfileThreadC(void *pPvt)
 /* Function which runs in its own thread to execute profiles */ 
 void SPiiPlusController::profileThread()
 {
+  double timeout;
+  int status;
+  
+  /* Is the idle poll period frequent enough to stop the profileMove thread before the IOC stops? */
+  timeout = movingPollPeriod_;
+
   while (true) {
-    epicsEventWait(profileExecuteEvent_);
-    runProfile();
+    /* Exit the thread if the IOC is shutting down */
+    lock();
+    if (shuttingDown_) {
+      unlock();
+      break;
+    } else {
+      unlock();
+    }
+    
+    status = epicsEventWaitWithTimeout(profileExecuteEvent_, timeout);
+    if (status == epicsEventWaitOK) {
+      /* We got an event, rather than a timeout */
+      runProfile();
+    }
   }
 }
 

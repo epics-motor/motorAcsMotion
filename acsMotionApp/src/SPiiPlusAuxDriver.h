@@ -35,6 +35,8 @@ public:
   /* These are methods unique to SPiiPlusAuxIO */
   asynStatus writeBits(epicsUInt32 chan, epicsUInt32 mask, epicsUInt32 value);
   asynStatus writeAnalog(epicsUInt32 chan, epicsFloat64 value);
+  
+  int shuttingDown_;   /**< Flag indicating that IOC is shutting down.  Stops poller */
 
 protected:
   SPiiPlusComm *pComm_;
