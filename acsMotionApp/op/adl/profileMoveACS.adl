@@ -1429,7 +1429,7 @@ menu {
 		height=20
 	}
 	control {
-		chan="$(P)$(R)MoveMode"
+		chan="$(P)$(R)PulseMode"
 		clr=14
 		bclr=51
 	}

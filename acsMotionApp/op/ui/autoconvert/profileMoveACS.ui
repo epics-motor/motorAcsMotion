@@ -3807,7 +3807,7 @@ border-radius: 2px;
                 </rect>
             </property>
             <property name="channel">
-                <string>$(P)$(R)MoveMode</string>
+                <string>$(P)$(R)PulseMode</string>
             </property>
             <property name="foreground">
                 <color alpha="255">
