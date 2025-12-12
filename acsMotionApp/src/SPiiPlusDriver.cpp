@@ -128,6 +128,9 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	createParam(SPiiPlusPOUTSBitCodeString,               asynParamOctet,   &SPiiPlusPOUTSBitCode_);
 	createParam(SPiiPlusPulseWidthString,                 asynParamFloat64, &SPiiPlusPulseWidth_);
 	//
+	createParam(SPiiPlusMFlagsString,                     asynParamInt32,   &SPiiPlusMFlags_);
+	createParam(SPiiPlusMFlagsXString,                    asynParamInt32,   &SPiiPlusMFlagsX_);
+	//
 	createParam(SPiiPlusTestString,                       asynParamInt32, &SPiiPlusTest_);
 	
 	// Initialize variables to avoid freeing random memory
@@ -605,6 +608,9 @@ asynStatus SPiiPlusController::poll()
 	status = pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
 	if (status != asynSuccess) return status;
 	
+	status = pComm_->getIntegerArray((char *)motorFlagsX_, "MFLAGSX", 0, numAxes_-1, 0, 0);
+	if (status != asynSuccess) return status;
+	
 	// TODO: only get max values when idle polling
 	/* max values */
 	status = pComm_->getDoubleArray((char *)maxVelocity_, "XVEL", 0, numAxes_-1, 0, 0);
@@ -786,6 +792,10 @@ asynStatus SPiiPlusAxis::poll(bool* moving)
 		home = controller->motorFlags_[axisNo_] & SPIIPLUS_MFLAGS_HOME;
 		setIntegerParam(controller->SPiiPlusHomingProcedureDone_, home);
 	}
+	
+	// Updated MFLAGS and MFLAGSX parameters
+	setIntegerParam(controller->SPiiPlusMFlags_, controller->motorFlags_[axisNo_]);
+	setIntegerParam(controller->SPiiPlusMFlagsX_, controller->motorFlagsX_[axisNo_]);
 	
 	getMaxParams();
 	

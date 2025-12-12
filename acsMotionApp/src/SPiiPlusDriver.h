@@ -159,6 +159,9 @@
 #define SPiiPlusPOUTSBitCodeString             "SPIIPLUS_POUTS_BIT_CODE"
 #define SPiiPlusPulseWidthString               "SPIIPLUS_PULSE_WIDTH"
 //
+#define SPiiPlusMFlagsString                   "SPIIPLUS_MFLAGS"
+#define SPiiPlusMFlagsXString                  "SPIIPLUS_MFLAGSX"
+//
 #define SPiiPlusTestString                     "SPIIPLUS_TEST"
 
 struct SPiiPlusDrvUser_t {
@@ -331,6 +334,9 @@ protected:
 	int SPiiPlusPOUTSBitCode_;
 	int SPiiPlusPulseWidth_;
 	//
+	int SPiiPlusMFlags_;
+	int SPiiPlusMFlagsX_;
+	//
 	int SPiiPlusTest_;
 	#define LAST_SPIIPLUS_PARAM SPiiPlusTest_
 	
@@ -377,6 +383,7 @@ private:
 	epicsFloat64 maxVelocity_[SPIIPLUS_MAX_AXES];
 	epicsFloat64 maxAcceleration_[SPIIPLUS_MAX_AXES];
 	epicsInt32 motorFlags_[SPIIPLUS_MAX_AXES];
+	epicsInt32 motorFlagsX_[SPIIPLUS_MAX_AXES];
 	epicsInt32 faultStatus_[SPIIPLUS_MAX_AXES];
 	epicsInt32 encoderFault_[SPIIPLUS_MAX_AXES];
 	epicsInt32 encoder2Fault_[SPIIPLUS_MAX_AXES];
