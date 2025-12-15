@@ -1,5 +1,22 @@
 # motorAcsMotion Releases
 
+## __R2-3 (2025-12-??)__
+R2-3 is a release based on the master branch.
+
+### Changes since R2-2
+
+#### New features
+* TODO
+
+#### Modifications to existing features
+* TODO
+
+#### Bug fixes
+* TODO
+
+
+
+
 ## __R2-2 (2023-06-06)__
 R2-2 is a release based on the master branch.
 
