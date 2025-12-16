@@ -1,5 +1,48 @@
 # motorAcsMotion Releases
 
+## __R2-3 (2025-12-16)__
+R2-3 is a release based on the master branch.
+
+### Important Notes
+
+It is highly recommended to save asynReport output for the ACS port to a file before upgrading IOCs to this version, due to the changes to the resolution detection.  The MRES/ERES fields of the motor record may need to be corrected.
+
+This is the recommended motor record configuration based on the mode:
+
+| Mode                                                         | MRES  | ERES  |
+| :----------------------------------------------------------- | :---: | :---: |
+| Open loop stepper                                            | STEPF | STEPF |
+| Open loop stepper (with enc verification)                    | STEPF | EFAC  |
+| Servo Processor Stepper Algo (closed-loop microstep control) | EFAC  | EFAC  |
+| Closed-loop brushless motor (or brushless stepper algo)      | EFAC  | EFAC  |
+
+### Changes since R2-2
+
+#### New features
+* Pull request [#60](https://github.com/epics-motor/motorAcsMotion/pull/60): Allow disabling setPosition (for axes with absolute encoders)
+* Pull request [#73](https://github.com/epics-motor/motorAcsMotion/pull/73): Added pulse generation (PEG) for profile moves
+* Pull request [#75](https://github.com/epics-motor/motorAcsMotion/pull/75): Added records for MFLAGS and MFLAGSX
+
+#### Modifications to existing features
+* Pull request [#61](https://github.com/epics-motor/motorAcsMotion/pull/61): Improved resolution detection logic based on empirical data collected by [Max Wyman](https://github.com/mdwyman)
+* Commit [f87f14d](https://github.com/epics-motor/motorAcsMotion/commit/f87f14d65ec60b9f9a3d1dd518b4ec10ece87e84): Improved asynReport interest level output
+
+#### Bug fixes
+* Pull request [#52](https://github.com/epics-motor/motorAcsMotion/pull/52): Fix for homing failure when MaxDistance is zero, a problem reported in issue [#51](https://github.com/epics-motor/motorAcsMotion/issues/51) by [Tim Speight](https://github.com/tim-speight)
+* Commit [de7c903](https://github.com/epics-motor/motorAcsMotion/commit/de7c90326da19262f295c5c762f5581295b44389): homingMaxDist, homingOffsetPos, and homingOffsetNeg are now autosaved
+* Pull request [#55](https://github.com/epics-motor/motorAcsMotion/pull/55): Allow specifying the homingCurrLimit to avoid problems caused by the default value. See [#54](https://github.com/epics-motor/motorAcsMotion/issues/54) for more info.
+* Pull request [#59](https://github.com/epics-motor/motorAcsMotion/pull/59): Use the correct axis index for profileMove calculations
+* Commit [3f690cb](https://github.com/epics-motor/motorAcsMotion/commit/3f690cbbddcfd08a6260daf862faef75984b3f5a): [Mark Rivers](https://github.com/MarkRivers) fixed Windows dynamic build problems
+* Pull request [#66](https://github.com/epics-motor/motorAcsMotion/pull/66): [J. Lewis Muir](https://github.com/jlmuir) fixed a bug that prevented the use of a non-standard TCP port
+* Pull request [#65](https://github.com/epics-motor/motorAcsMotion/pull/65) and [#67](https://github.com/epics-motor/motorAcsMotion/pull/67): [J. Lewis Muir](https://github.com/jlmuir) added support for virtual axes, which are specified by a comma-separated list
+* Pull request [#69](https://github.com/epics-motor/motorAcsMotion/pull/69): Improved the default polling period configuration in the example IOC
+* Pull request [#74](https://github.com/epics-motor/motorAcsMotion/pull/74): Exit EPICS threads when the IOC is shutting down to prevent error messages
+* Pull request [#76](https://github.com/epics-motor/motorAcsMotion/pull/76): Set the MSTA direction bit based on the feedback velocity
+
+#### Continuous integration
+* Commit [b6de1b3](https://github.com/epics-motor/motorAcsMotion/commit/b6de1b3f740f1d033860dd1e2acd26cc183b8f41): Updated ci-scripts to v3.4.1
+* Commit [c2d67e7](https://github.com/epics-motor/motorAcsMotion/commit/c2d67e708fd8b91154ccba4469362179b45974fc): Switched to v4 of artifact actions
+
 ## __R2-2 (2023-06-06)__
 R2-2 is a release based on the master branch.
 
