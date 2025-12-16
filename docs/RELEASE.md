@@ -28,7 +28,7 @@ This is the recommended motor record configuration based on the mode:
 * Commit [f87f14d](https://github.com/epics-motor/motorAcsMotion/commit/f87f14d65ec60b9f9a3d1dd518b4ec10ece87e84): Improved asynReport interest level output
 
 #### Bug fixes
-* Pull request [#52](https://github.com/epics-motor/motorAcsMotion/pull/52): Fix for homing failure when MaxDistance is zero
+* Pull request [#52](https://github.com/epics-motor/motorAcsMotion/pull/52): Fix for homing failure when MaxDistance is zero, a problem reported in issue [#51](https://github.com/epics-motor/motorAcsMotion/issues/51) by [Tim Speight](https://github.com/tim-speight)
 * Commit [de7c903](https://github.com/epics-motor/motorAcsMotion/commit/de7c90326da19262f295c5c762f5581295b44389): homingMaxDist, homingOffsetPos, and homingOffsetNeg are now autosaved
 * Pull request [#55](https://github.com/epics-motor/motorAcsMotion/pull/55): Allow specifying the homingCurrLimit to avoid problems caused by the default value. See [#54](https://github.com/epics-motor/motorAcsMotion/issues/54) for more info.
 * Pull request [#59](https://github.com/epics-motor/motorAcsMotion/pull/59): Use the correct axis index for profileMove calculations
