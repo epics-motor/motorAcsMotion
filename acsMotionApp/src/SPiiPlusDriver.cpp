@@ -451,6 +451,15 @@ asynStatus SPiiPlusController::readFloat64(asynUser *pasynUser, epicsFloat64 *va
   return (asynStatus)status;
 }
 
+/** Gets the value for a double for this axis in the parameter library.
+  * \param[in] function The function (parameter) number
+  * \param[in] value Value to set */
+asynStatus SPiiPlusAxis::getDoubleParam(int function, double *value)
+{
+  // Call the base class method
+  return pC_->getDoubleParam(axisNo_, function, value);
+}
+
 /** Called when asyn clients call pasynFloat64->write().
   * \param[in] pasynUser asynUser structure that encodes the reason and address.
   * \param[in] value Value to write. */
@@ -458,12 +467,16 @@ asynStatus SPiiPlusController::writeFloat64(asynUser *pasynUser, epicsFloat64 va
 {
   int function = pasynUser->reason;
   SPiiPlusAxis *pAxis;
+  epicsFloat64 oldValue;
   asynStatus status = asynError;
-  //static const char *functionName = "writeFloat64";
+  static const char *functionName = "writeFloat64";
 
   pAxis = getAxis(pasynUser);
   if (!pAxis) return asynError;
 
+  // Save the old value
+  pAxis->getDoubleParam(function, &oldValue);
+  
   /* Set the parameter and readback in the parameter library. */
   status = pAxis->setDoubleParam(function, value);
 
@@ -486,6 +499,26 @@ asynStatus SPiiPlusController::writeFloat64(asynUser *pasynUser, epicsFloat64 va
   else if (function == SPiiPlusSetEnc2Offset_)
   {
     status = pAxis->setEncoder2Offset(value);
+  }
+  else if (function == motorPosition_)
+  {
+    status = pAxis->setPosition(value);
+    
+    if (status != asynSuccess)
+    {
+      // Restore the old value
+      setDoubleParam(function, oldValue);
+        
+      asynPrint(pasynUser, ASYN_TRACE_ERROR,
+        "%s:%s: Failed to set driver %s, axis %d to position=%f, restoring position=%f\n",
+        driverName, functionName, portName, pAxis->axisNo_, value, oldValue);
+    }
+    else
+    {
+      asynPrint(pasynUser, ASYN_TRACEIO_DRIVER,
+        "%s:%s: Set driver %s, axis %d to position=%f\n",
+        driverName, functionName, portName, pAxis->axisNo_, value);
+    }
   }
   else
   {

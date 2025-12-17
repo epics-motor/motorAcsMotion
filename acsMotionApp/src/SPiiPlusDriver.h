@@ -175,6 +175,7 @@ public:
 	SPiiPlusAxis(class SPiiPlusController *pC, int axisNo);
 	void report(FILE *fp, int level);
 	
+	asynStatus getDoubleParam(int function, double *value);
 	asynStatus move(double position, int relative, double min_velocity, double max_velocity, double acceleration);
 	asynStatus moveVelocity(double minVelocity, double maxVelocity, double acceleration);
 	asynStatus home(double minVelocity, double maxVelocity, double acceleration, int forwards);
