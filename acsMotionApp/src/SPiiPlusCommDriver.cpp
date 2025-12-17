@@ -333,13 +333,13 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	// The reply from the controller has a 4-byte header and a 1-byte suffix
 	status = pasynOctetSyncIO->read(pasynUserComm_, packetBuffer, inBytes, SPIIPLUS_ARRAY_TIMEOUT, &nread, &eomReason);
 	
-	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input bytes = %i\n", driverName, functionName, inBytes);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: input bytes = %i\n", driverName, functionName, inBytes);
 	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
 	
 	if (status == asynSuccess)
 	{
 		// Check for an error reply
-		status = binaryErrorCheck(packetBuffer);
+		status = binaryErrorCheck(packetBuffer, nread);
 		if (status == asynError)
 		{
 			*sliceAvailable = false;
@@ -387,29 +387,79 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	return status;
 	}
 
-asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer)
+asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 {
 	asynStatus status=asynSuccess;
 	std::stringstream val_convert;
-	int errNo;
+	int errNo, idx;
+	char replyStart, replyEnd, cmdId, bodyLength, bodyStart, bodyEnd;
+	char errorStr[5] = {0, 0, 0, 0, 0};
+	bool errNoIsValid = true;
 	static const char *functionName = "binaryErrorCheck";
 	
-	// If the first character of the data is a question mark, the error number follows it
-	if ((buffer[4] == 0x3f) && (buffer[9] == 0x0d))
+	/*
+	 * This was the original expected error response (11 bytes), but I can't find it anywhere in the documentation now.
+	 * Error response: [E3][XX][06][00]?####[0D][E6]
+	 *
+	 * This is documented error response (10 bytes) that is present in many verions of the low level host communication user guide.
+	 * Error response: [E3][XX]6?####[0D][E6]
+	 */
+	
+	if (readBytes == 10)
 	{
-		/*
-		 *  Error response: [E3][XX][06][00]?####[0D][E6]
-		 */
-		 
-		// replace the carriage return with a null byte
-		buffer[9] = 0;
+		replyStart = buffer[0];
+		cmdId = buffer[1];
+		bodyLength = buffer[2];
+		bodyStart = buffer[3];
+		bodyEnd = buffer[8];
+		replyEnd = buffer[9];
 		
-		// convert the error number bytes into an int
-		val_convert << buffer+5;
-		val_convert >> errNo;
-		
-		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error #%i\n", driverName, functionName, errNo);
-		status = asynError;
+		if ((replyStart == 0xe3) && (bodyLength == '6') && (replyEnd == 0xe6))
+		{
+			// '?' is 0x3f
+			if ((bodyStart == 0x3f) && (bodyEnd == 0x0d))
+			{
+				for (idx=0; idx<4; idx++)
+				{
+					/* 
+					 * The error number starts at index = 4 in the error reply
+					 * Confirm the error number has valid characters (digits 0-9)
+					 * '0' is 48; '9' is 57
+					 */
+					if ((buffer[4+idx] < 48) && (buffer[4+idx] > 57))
+					{
+						errNoIsValid = false;
+						break;
+					}
+					else
+					{
+						errorStr[idx] = buffer[4+idx];
+					}
+				}
+				
+				if (errNoIsValid)
+				{
+					// The error string is valid and can be converted into an int and reported on the IOC's shell
+					val_convert << errorStr;
+					val_convert >> errNo;
+					
+					asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error #%i for command id %x\n", driverName, functionName, errNo, cmdId);
+					status = asynError;
+				}
+			}
+			else
+			{
+				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Incorrect error body start/end: bodyStart = %x, bodyEnd = %x\n", driverName, functionName, bodyStart, bodyEnd);
+			}
+		}
+		else
+		{
+			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Incorrect error reply prefix/suffix: replyStart = %x, bodyLength = %x, replyEnd = %x\n", driverName, functionName, replyStart, bodyLength, replyEnd);
+		}
+	}
+	else if (readBytes == 11)
+	{
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Possible old binary command error; read %d bytes\n", driverName, functionName, readBytes);
 	}
 	
 	return status;
@@ -493,7 +543,7 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 			asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,    "%s:%s: status = %i; extraRead = %li, eomReason = %i\n", driverName, functionName, status, extraRead, eomReason);
 			
 			// Check for an error reply -- this overwrites the buffer if an error occurs
-			status = binaryErrorCheck(input);
+			status = binaryErrorCheck(input, nread+extraRead);
 			if (status == asynError)
 			{
 				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
