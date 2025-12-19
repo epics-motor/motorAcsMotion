@@ -461,8 +461,9 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 					errorStr[0] = 0x3f;
 					asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error %s for command id %x\n", driverName, functionName, errorStr, cmdId);
 					
-					// The following should print the human-readable error string, but it fails to do so for unknown reasons 
-					//writeReadErrorMessage((char *)errorStr);
+					// TODO: print the human-readable error string
+					// Note: writeReadErrorMessage causes a deadlock if called here because it attempts to take
+					//       a lock but the calling method already has the lock, which also breaks the poller.
 					
 					status = asynError;
 				}
