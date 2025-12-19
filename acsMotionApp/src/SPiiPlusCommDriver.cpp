@@ -260,7 +260,7 @@ asynStatus SPiiPlusComm::writeReadErrorMessage(char* errNoReply)
 	std::stringstream val_convert;
 	std::stringstream local_cmd;
 	char inString[MAX_CONTROLLER_STRING_SIZE];
-	int errNo;
+	int errNo = 0;
 	
 	/* errNoReply is of the form ?#### */
 	
@@ -307,7 +307,7 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	char* packetBuffer;
 	size_t nwrite, nread;
 	int eomReason;
-	asynStatus status;
+	asynStatus status, errCheckStatus;
 	static const char *functionName = "writeReadBinary";
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
@@ -371,6 +371,16 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	{
 		*sliceAvailable = false;
 		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (asyn): status=%i, nread=%li\n", driverName, functionName, status, nread);
+		
+		// If fewer bytes were read and there was an asyn timeout, there might still be an error message
+		if (nread > 0)
+		{
+			errCheckStatus = binaryErrorCheck(packetBuffer, nread);
+			if (errCheckStatus == asynError)
+			{
+				status = errCheckStatus;
+			}
+		}
 	}
 	
 	// Restore the EOS characters
@@ -392,8 +402,9 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 	asynStatus status=asynSuccess;
 	std::stringstream val_convert;
 	int errNo, idx;
-	char replyStart, replyEnd, cmdId, bodyLength, bodyStart, bodyEnd;
-	char errorStr[5] = {0, 0, 0, 0, 0};
+	uint8_t replyStart, replyEnd, cmdId, bodyLenLsb, bodyLenMsb, bodyStart, bodyEnd;
+	int bodyLength;
+	uint8_t errorStr[6] = {0, 0, 0, 0, 0, 0};
 	bool errNoIsValid = true;
 	static const char *functionName = "binaryErrorCheck";
 	
@@ -405,21 +416,24 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 	 * Error response: [E3][XX]6?####[0D][E6]
 	 */
 	
-	if (readBytes == 10)
+	if (readBytes == 11)
 	{
 		replyStart = buffer[0];
 		cmdId = buffer[1];
-		bodyLength = buffer[2];
-		bodyStart = buffer[3];
-		bodyEnd = buffer[8];
-		replyEnd = buffer[9];
+		bodyLenLsb = buffer[2];
+		bodyLenMsb = buffer[3];
+		// Only the least two significant bits of the most signficant body-length byte are the most significant bits of the body length
+		bodyLength = ((int)bodyLenMsb << 8) | (int)bodyLenLsb;
+		bodyStart = buffer[4];
+		bodyEnd = buffer[9];
+		replyEnd = buffer[10];
 		
-		if ((replyStart == 0xe3) && (bodyLength == '6') && (replyEnd == 0xe6))
+		if ((replyStart == 0xe3) && (bodyLength == 6) && (replyEnd == 0xe6))
 		{
 			// '?' is 0x3f
 			if ((bodyStart == 0x3f) && (bodyEnd == 0x0d))
 			{
-				for (idx=0; idx<4; idx++)
+				for (idx=1; idx<5; idx++)
 				{
 					/* 
 					 * The error number starts at index = 4 in the error reply
@@ -440,10 +454,16 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 				if (errNoIsValid)
 				{
 					// The error string is valid and can be converted into an int and reported on the IOC's shell
-					val_convert << errorStr;
-					val_convert >> errNo;
+					//val_convert << errorStr;
+					//val_convert >> errNo;
 					
-					asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error #%i for command id %x\n", driverName, functionName, errNo, cmdId);
+					// The error string is valid.  Convert it into a form that can be used to query the human-readable string
+					errorStr[0] = 0x3f;
+					asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error %s for command id %x\n", driverName, functionName, errorStr, cmdId);
+					
+					// The following should print the human-readable error string, but it fails to do so for unknown reasons 
+					//writeReadErrorMessage((char *)errorStr);
+					
 					status = asynError;
 				}
 			}
@@ -454,12 +474,8 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 		}
 		else
 		{
-			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Incorrect error reply prefix/suffix: replyStart = %x, bodyLength = %x, replyEnd = %x\n", driverName, functionName, replyStart, bodyLength, replyEnd);
+			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Incorrect error reply prefix/suffix: replyStart = %x, bodyLength = %i, replyEnd = %x\n", driverName, functionName, replyStart, bodyLength, replyEnd);
 		}
-	}
-	else if (readBytes == 11)
-	{
-		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Possible old binary command error; read %d bytes\n", driverName, functionName, readBytes);
 	}
 	
 	return status;
