@@ -342,7 +342,8 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	char* packetBuffer;
 	size_t nwrite, nread;
 	int eomReason;
-	asynStatus status, errCheckStatus;
+	int errNo = 0;
+	asynStatus status;
 	static const char *functionName = "writeReadBinary";
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: start\n", driverName, functionName);
@@ -374,11 +375,12 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	if (status == asynSuccess)
 	{
 		// Check for an error reply
-		status = binaryErrorCheck(packetBuffer, nread);
-		if (status == asynError)
+		errNo = binaryErrorCheck(packetBuffer, nread);
+		if (errNo != 0)
 		{
 			*sliceAvailable = false;
 			asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
+			status = asynError;
 		}
 		else
 		{
@@ -410,10 +412,10 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 		// If fewer bytes were read and there was an asyn timeout, there might still be an error message
 		if (nread > 0)
 		{
-			errCheckStatus = binaryErrorCheck(packetBuffer, nread);
-			if (errCheckStatus == asynError)
+			errNo = binaryErrorCheck(packetBuffer, nread);
+			if (errNo != 0)
 			{
-				status = errCheckStatus;
+				status = asynError;
 			}
 		}
 	}
@@ -427,16 +429,23 @@ asynStatus SPiiPlusComm::writeReadBinary(char *output, int outBytes, char *input
 	
 	unlock();
 	
+	if (errNo != 0)
+	{
+		// Print the human-readable error string; humans don't like searching pdfs for error descriptions
+		writeReadBinaryErrorMessage(errNo);
+	}
+	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
 	
 	return status;
 	}
 
-asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
+// Return value is 0 if there is no error and the error number if an error is detected
+int SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 {
-	asynStatus status=asynSuccess;
 	std::stringstream val_convert;
-	int errNo, idx;
+	int errNo = 0;
+	int idx;
 	uint8_t replyStart, replyEnd, cmdId, bodyLenLsb, bodyLenMsb, bodyStart, bodyEnd;
 	int bodyLength;
 	uint8_t errorStr[5] = {0, 0, 0, 0, 0};
@@ -493,12 +502,6 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 					val_convert >> errNo;
 					
 					asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error %i for command id %x\n", driverName, functionName, errNo, cmdId);
-					
-					// TODO: Print the human-readable error string; humans don't like searching pdfs for error descriptions
-					// The following call causes a deadlock, even though it doesn't take any locks
-					//writeReadBinaryErrorMessage(errNo);
-					
-					status = asynError;
 				}
 			}
 			else
@@ -512,7 +515,7 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 		}
 	}
 	
-	return status;
+	return errNo;
 }
 
 asynStatus SPiiPlusComm::isVariableDefined(bool *isDefined, const char *var)
@@ -553,6 +556,7 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 	size_t nwrite, nread, extraRead;
 	int eomReason;
 	int commandID;
+	int errNo = 0;
 	asynStatus status;
 	static const char *functionName = "writeReadAckBinary";
 	
@@ -592,11 +596,12 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 			
 			asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,    "%s:%s: status = %i; extraRead = %li, eomReason = %i\n", driverName, functionName, status, extraRead, eomReason);
 			
-			// Check for an error reply -- this overwrites the buffer if an error occurs
-			status = binaryErrorCheck(input, nread+extraRead);
-			if (status == asynError)
+			// Check for an error reply
+			errNo = binaryErrorCheck(input, nread+extraRead);
+			if (errNo != 0)
 			{
 				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary read failed (controller)\n", driverName, functionName);
+				status = asynError;
 			}
 		
 		}
@@ -609,6 +614,7 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 			else
 			{
 				asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Command ID mismatch: write ID = %i, read ID = %i\n", driverName, functionName, commandID, input[1]);
+				// Should status be set to asynError here?
 			}
 		}
 	}
@@ -622,6 +628,12 @@ asynStatus SPiiPlusComm::writeReadAckBinary(char *output, int outBytes, char *in
 	pasynOctetSyncIO->setOutputEos(pasynUserComm_, "\r", 1);
 	
 	unlock();
+	
+	if (errNo > 0)
+	{
+		// Print the human-readable error string; humans don't like searching pdfs for error descriptions
+		writeReadBinaryErrorMessage(errNo);
+	}
 	
 	asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: end\n", driverName, functionName);
 	
