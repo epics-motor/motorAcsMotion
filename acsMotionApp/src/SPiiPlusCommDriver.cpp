@@ -298,6 +298,41 @@ asynStatus SPiiPlusComm::writeReadErrorMessage(char* errNoReply)
 	return status;
 }
 
+// A separate method to read error messages from binary comm methods is needed to avoid deadlocks
+asynStatus SPiiPlusComm::writeReadBinaryErrorMessage(int errNo)
+{
+	static const char *functionName = "writeReadBinaryErrorMessage";
+	std::stringstream local_cmd;
+	char inString[MAX_CONTROLLER_STRING_SIZE];
+	
+	std::fill(inString, inString + 256, '\0');
+	
+	// The command to query the error message is ??####
+	local_cmd << "??" << errNo;
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: output = %s\n", driverName, functionName, local_cmd.str().c_str());
+	
+	size_t response;
+	// The function calling binaryErrorCheck already has the lock, so no locking is needed here
+	asynStatus status = writeReadController(local_cmd.str().c_str(), inString, 256, &response, -1);
+	
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s:  input = %s\n", driverName, functionName, inString);
+	asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: status = %i\n", driverName, functionName, status);
+	
+	if (inString[0] != '?')
+	{
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i: %s\n", driverName, functionName, errNo, inString);
+	}
+	else {
+		// We should never get here unless a controller returns an error for which it doesn't have an error message defined
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ERROR #%i\n", driverName, functionName, errNo);
+		
+		status = asynError;
+	}
+	
+	return status;
+}
+
 // NOTE: readBytes the number of data bytes that were read, excluding the command header and suffix
 // NOTE: there is no error checking on inBytes and outBytes
 // FYI: motor/motorApp/MotorSrc/asynMotorController.h:#define MAX_CONTROLLER_STRING_SIZE 256
@@ -404,7 +439,7 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 	int errNo, idx;
 	uint8_t replyStart, replyEnd, cmdId, bodyLenLsb, bodyLenMsb, bodyStart, bodyEnd;
 	int bodyLength;
-	uint8_t errorStr[6] = {0, 0, 0, 0, 0, 0};
+	uint8_t errorStr[5] = {0, 0, 0, 0, 0};
 	bool errNoIsValid = true;
 	static const char *functionName = "binaryErrorCheck";
 	
@@ -433,37 +468,35 @@ asynStatus SPiiPlusComm::binaryErrorCheck(char *buffer, int readBytes)
 			// '?' is 0x3f
 			if ((bodyStart == 0x3f) && (bodyEnd == 0x0d))
 			{
-				for (idx=1; idx<5; idx++)
+				for (idx=0; idx<4; idx++)
 				{
 					/* 
 					 * The error number starts at index = 4 in the error reply
 					 * Confirm the error number has valid characters (digits 0-9)
 					 * '0' is 48; '9' is 57
 					 */
-					if ((buffer[4+idx] < 48) && (buffer[4+idx] > 57))
+					if ((buffer[5+idx] < 48) && (buffer[5+idx] > 57))
 					{
 						errNoIsValid = false;
 						break;
 					}
 					else
 					{
-						errorStr[idx] = buffer[4+idx];
+						errorStr[idx] = buffer[5+idx];
 					}
 				}
 				
 				if (errNoIsValid)
 				{
 					// The error string is valid and can be converted into an int and reported on the IOC's shell
-					//val_convert << errorStr;
-					//val_convert >> errNo;
+					val_convert << errorStr;
+					val_convert >> errNo;
 					
-					// The error string is valid.  Convert it into a form that can be used to query the human-readable string
-					errorStr[0] = 0x3f;
-					asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error %s for command id %x\n", driverName, functionName, errorStr, cmdId);
+					asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary command error %i for command id %x\n", driverName, functionName, errNo, cmdId);
 					
-					// TODO: print the human-readable error string
-					// Note: writeReadErrorMessage causes a deadlock if called here because it attempts to take
-					//       a lock but the calling method already has the lock, which also breaks the poller.
+					// TODO: Print the human-readable error string; humans don't like searching pdfs for error descriptions
+					// The following call causes a deadlock, even though it doesn't take any locks
+					//writeReadBinaryErrorMessage(errNo);
 					
 					status = asynError;
 				}

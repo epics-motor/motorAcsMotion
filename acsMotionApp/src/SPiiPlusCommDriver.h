@@ -21,6 +21,7 @@ public:
   asynStatus writeReadStr(std::stringstream& cmd, char* val);
   asynStatus writeReadAck(std::stringstream& cmd);
   asynStatus writeReadErrorMessage(char* errNoReply);
+  asynStatus writeReadBinaryErrorMessage(int errNo);
   asynStatus getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
   asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
   asynStatus putDoubleArray(double *data, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
