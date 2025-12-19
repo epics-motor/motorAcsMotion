@@ -1,6 +1,7 @@
 
 #include <string.h>
 #include <cstdlib>
+#include <cstdint>
 #include <sstream>
 
 #include <iocsh.h>
