@@ -3005,10 +3005,10 @@ asynStatus SPiiPlusController::test()
 {
   asynStatus status;
   char* buffer=NULL;
-  double* data=NULL;
-  long maxDoubles;
-  long dataSize;
-  int i;
+  //double* data=NULL;
+  //long maxDoubles;
+  //long dataSize;
+  //int i;
   static const char *functionName = "test";
   
   asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: calling test function\n", driverName, functionName);
@@ -3016,19 +3016,29 @@ asynStatus SPiiPlusController::test()
   buffer = (char *)calloc(MAX_BINARY_READ_LEN, sizeof(char));
   
   // MAX_BINARY_READ_LEN is in bytes so we need to calculate how many doubles that will hold
+  /*
   maxDoubles = floorl(MAX_BINARY_READ_LEN/sizeof(double));
   data = (double *)calloc(maxDoubles, sizeof(double));
+  */
   
   //status = pComm_->getDoubleArray(buffer, "DC_DATA_1", 0, 2, 0, (maxProfilePoints_-1));
   
+  // Generate three binary read errors by attempting to read variables that don't exist
+  status = pComm_->getDoubleArray(buffer, "FAKE_VAR_1", 0, 2, 0, 0);
+  status = pComm_->getDoubleArray(buffer, "FAKE_VAR_2", 0, 2, 0, 0);
+  status = pComm_->getDoubleArray(buffer, "FAKE_VAR_3", 0, 2, 0, 0);
+  // Try to read too many points
+  //status = pComm_->getDoubleArray(buffer, "testVar", 0, 2, 0, maxProfilePoints_);
+  
   // Create test data
   //dataSize = 101;
+  /*
   dataSize = 2000;
   for (i=0; i<dataSize; i++)
   {
       data[i] = i * 1.0;
   }
-  
+  */
   /*
   // create larger test data
   dataSize = 100000;
@@ -3043,7 +3053,8 @@ asynStatus SPiiPlusController::test()
   */
   
   // Note: it is assumed that data has enough values to fill the specified array
-  status = pComm_->putDoubleArray(data, "testVar", 0, dataSize-1, 0, 0);
+  //status = pComm_->putDoubleArray(data, "testVar", 0, dataSize-1, 0, 0);
+  
   /*
   // 2D testing
   // This results in a real(500)(4) array and the data from the 11th packet doesn't get appended properly

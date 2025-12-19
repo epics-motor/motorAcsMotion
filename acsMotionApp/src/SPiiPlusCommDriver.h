@@ -21,12 +21,13 @@ public:
   asynStatus writeReadStr(std::stringstream& cmd, char* val);
   asynStatus writeReadAck(std::stringstream& cmd);
   asynStatus writeReadErrorMessage(char* errNoReply);
+  asynStatus writeReadBinaryErrorMessage(int errNo);
   asynStatus getIntegerArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
   asynStatus getDoubleArray(char *output, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
   asynStatus putDoubleArray(double *data, const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
   asynStatus writeReadBinary(char *output, int outBytes, char *input, int inBytes, size_t *dataBytes, bool* sliceAvailable);
   asynStatus writeReadAckBinary(char *output, int outBytes, char *input, int inBytes);
-  asynStatus binaryErrorCheck(char *buffer);
+  int binaryErrorCheck(char *buffer, int readBytes);
   asynStatus isVariableDefined(bool *isDefined, const char *var);
   asynStatus globalVarCheck(const char *var, int idx1start, int idx1end, int idx2start, int idx2end, int *dimensions, int *numElements, int *errNo);
   asynStatus createGlobalRealVar(const char *var, int idx1start, int idx1end, int idx2start, int idx2end);
