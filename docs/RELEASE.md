@@ -1,5 +1,14 @@
 # motorAcsMotion Releases
 
+## __R2-3-1 (2026-01-14)__
+R2-3-1 is a bugfix release based on the master branch.
+
+### Changes since R2-3
+
+#### Bug fixes
+
+* Pull request [#79](https://github.com/epics-motor/motorAcsMotion/pull/79): Fix for binary communication error false positives, first reported by [J. Lewis Muir](https://github.com/jlmuir) in issue [#72](https://github.com/epics-motor/motorAcsMotion/issues/72)
+
 ## __R2-3 (2025-12-16)__
 R2-3 is a release based on the master branch.
 
