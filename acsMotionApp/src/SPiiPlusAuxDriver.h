@@ -49,7 +49,6 @@ protected:
   #define LAST_SPIIPLUS_AUXIO_PARAM analogOutput_
 
 private:
-  SPiiPlusController *pC_;
   double pollPeriod_;
   int forceCallback_;
   double ain_[MAX_SIGNALS];

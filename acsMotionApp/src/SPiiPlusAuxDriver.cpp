@@ -26,11 +26,11 @@ static void SPiiPlusAuxIOThreadC(void *pPvt)
 
 static void shutdownCallback(void *pPvt)
 {
-  SPiiPlusController *pC = static_cast<SPiiPlusController *>(pPvt);
+  SPiiPlusAuxIO *pAux = static_cast<SPiiPlusAuxIO *>(pPvt);
 
-  pC->lock();
-  pC->shuttingDown_ = 1;
-  pC->unlock();
+  pAux->lock();
+  pAux->shuttingDown_ = 1;
+  pAux->unlock();
 }
 
 SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortName, int numChannels, double pollPeriod)
@@ -52,7 +52,7 @@ SPiiPlusAuxIO::SPiiPlusAuxIO(const char *ACSAuxPortName, const char* asynPortNam
   pComm_ = new SPiiPlusComm(ACSCommPortName, asynPortName, numChannels);
   
   /* Set an EPICS exit handler that will shut down polling before asyn kills the IP sockets */
-  epicsAtExit(shutdownCallback, pC_);
+  epicsAtExit(shutdownCallback, this);
   
   /*
    * MP4U controllers have significantly larger arrays for the AIN, AOUT, IN and OUT commands than the controller
