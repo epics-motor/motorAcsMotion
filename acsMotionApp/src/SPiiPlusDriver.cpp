@@ -158,27 +158,34 @@ SPiiPlusController::SPiiPlusController(const char* ACSPortName, const char* asyn
 	}
 	
 	// Parse the virtual axis list and set the listed axes as virtual
-	char *tmpVirtualAxisList = epicsStrDup(virtualAxisList);
-	char *strtok_rLast;
-	anyAxisVirtual_ = false;
-	for (char *p = epicsStrtok_r(tmpVirtualAxisList, ",", &strtok_rLast); p != NULL; p = epicsStrtok_r(NULL, ",", &strtok_rLast))
+	if (virtualAxisList != 0)
 	{
-		long index;
-		int status = epicsParseLong(p, &index, 10, NULL);
-		if (status != 0)
+		char *tmpVirtualAxisList = epicsStrDup(virtualAxisList);
+		char *strtok_rLast;
+		anyAxisVirtual_ = false;
+		for (char *p = epicsStrtok_r(tmpVirtualAxisList, ",", &strtok_rLast); p != NULL; p = epicsStrtok_r(NULL, ",", &strtok_rLast))
 		{
-			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Invalid virtual axis list axis \"%s\"; ignoring\n", driverName, functionName, p);
-			continue;
+			long index;
+			int status = epicsParseLong(p, &index, 10, NULL);
+			if (status != 0)
+			{
+				asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Invalid virtual axis list axis \"%s\"; ignoring\n", driverName, functionName, p);
+				continue;
+			}
+			if (index < 0 || index >= numAxes)
+			{
+				asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Virtual axis list axis %ld out of range; ignoring\n", driverName, functionName, index);
+				continue;
+			}
+			pAxes_[index]->virtual_ = true;
+			anyAxisVirtual_ = true;
 		}
-		if (index < 0 || index >= numAxes)
-		{
-			asynPrint(this->pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Virtual axis list axis %ld out of range; ignoring\n", driverName, functionName, index);
-			continue;
-		}
-		pAxes_[index]->virtual_ = true;
-		anyAxisVirtual_ = true;
+		free(tmpVirtualAxisList);
 	}
-	free(tmpVirtualAxisList);
+	else
+	{
+		anyAxisVirtual_ = false;
+	}
 	
 	// Query setup parameters
 	pComm_->getIntegerArray((char *)motorFlags_, "MFLAGS", 0, numAxes_-1, 0, 0);
