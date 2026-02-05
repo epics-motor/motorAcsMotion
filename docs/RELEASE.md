@@ -1,5 +1,15 @@
 # motorAcsMotion Releases
 
+## __R2-3-2 (2026-02-05)__
+R2-3-2 is a bugfix release based on the master branch.
+
+### Changes since R2-3-1
+
+#### Bug fixes
+
+* Pull request [#82](https://github.com/epics-motor/motorAcsMotion/pull/82): Fix for segfault when virtual axes argument to AcsMotionConfig is omitted 
+* Pull request [#83](https://github.com/epics-motor/motorAcsMotion/pull/83): Fix for segfault at IOC exit when SPiiPlusAuxIO is loaded
+
 ## __R2-3-1 (2026-01-14)__
 R2-3-1 is a bugfix release based on the master branch.
 
